@@ -194,16 +194,18 @@ public sealed class WebRtcSession : ISessionLink
 
     public async ValueTask CloseChannelAsync(IMessageChannel channel)
     {
-        if (channel is not WebRtcChannel own || !ReferenceEquals(_channels.GetValueOrDefault(own.Id), own))
+        if (channel is not WebRtcChannel own)
             throw new ArgumentException("The channel does not belong to this session.", nameof(channel));
+        // Both ends close a job's channels; whoever comes second finds it already released.
         Forget(own);
         await Task.Run(own.Delete).ConfigureAwait(false);
     }
 
+    /// <remarks>The selected pair is read live: ICE can succeed while DTLS never completes (the other side never applied the answer).</remarks>
     public IceReport GetIceReport() => new(
         ReadLocalDescription() is { } local ? SdpInspector.CandidateTypes(local) : [],
         _remoteSdp is { } remote ? SdpInspector.CandidateTypes(remote) : [],
-        Route);
+        Route ?? (Volatile.Read(ref _disposed) == 0 ? ReadSelectedRoute() : null));
 
     public async ValueTask DisposeAsync()
     {

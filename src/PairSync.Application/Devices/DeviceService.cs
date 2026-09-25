@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using PairSync.Application.Internet;
 using PairSync.Application.Presence;
 using PairSync.Application.Transfers;
 using PairSync.Domain;
@@ -12,7 +13,8 @@ namespace PairSync.Application.Devices;
 /// blocked, removed. A removed device has to pair again.
 /// </summary>
 public sealed class DeviceService(
-    IDbContextFactory<PairSyncDbContext> contexts, PresenceService presence, TransferService transfers, ILogger<DeviceService> logger)
+    IDbContextFactory<PairSyncDbContext> contexts, PresenceService presence, TransferService transfers, InternetLinkService internet,
+    ILogger<DeviceService> logger)
 {
     /// <summary>A device was blocked, unblocked, removed or its permissions changed. Pairing is reported by presence.</summary>
     public event Action? Changed;
@@ -30,7 +32,8 @@ public sealed class DeviceService(
         UpdateAsync(deviceId, d => d.CanSendToMe = allowed, cancellationToken);
 
     /// <summary>
-    /// A blocked device can neither connect nor receive; its unfinished jobs are paused, so a running transfer stops.
+    /// A blocked device can neither connect nor receive; its unfinished jobs are paused, so a running transfer stops,
+    /// and its internet connection is closed.
     /// Unblocking lets the paused jobs be resumed by hand.
     /// </summary>
     public async Task SetBlockedAsync(Guid deviceId, bool blocked, CancellationToken cancellationToken)
@@ -39,6 +42,7 @@ public sealed class DeviceService(
         logger.LogInformation("Device {DeviceId} {Action}", deviceId, blocked ? "blocked" : "unblocked");
         if (!blocked)
             return;
+        await internet.CloseAsync(deviceId).ConfigureAwait(false);
         foreach (var job in await JobsOfAsync(deviceId, cancellationToken).ConfigureAwait(false))
         {
             if (job.State is not JobState.Paused)
@@ -51,6 +55,7 @@ public sealed class DeviceService(
     {
         foreach (var job in await JobsOfAsync(deviceId, cancellationToken).ConfigureAwait(false))
             await transfers.CancelAsync(job.Id).ConfigureAwait(false);
+        await internet.CloseAsync(deviceId).ConfigureAwait(false);
 
         await using (var db = await contexts.CreateDbContextAsync(cancellationToken).ConfigureAwait(false))
             await db.Devices.Where(d => d.Id == deviceId).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);

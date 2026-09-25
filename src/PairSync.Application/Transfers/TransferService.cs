@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PairSync.Application.Connections;
-using PairSync.Application.Presence;
 using PairSync.Domain;
 using PairSync.Protocol;
 using PairSync.Storage;
@@ -22,8 +21,7 @@ public sealed partial class TransferService : IAsyncDisposable
 {
     private readonly IDbContextFactory<PairSyncDbContext> _contexts;
     private readonly SettingsStore _settings;
-    private readonly LanConnectionService _lan;
-    private readonly PresenceService _presence;
+    private readonly PeerLinks _links;
     private readonly IChunkJournal _journal;
     private readonly TransferOptions _options;
     private readonly TimeProvider _time;
@@ -36,13 +34,12 @@ public sealed partial class TransferService : IAsyncDisposable
     private Task _scheduler = Task.CompletedTask;
 
     public TransferService(
-        IDbContextFactory<PairSyncDbContext> contexts, SettingsStore settings, LanConnectionService lan, PresenceService presence,
+        IDbContextFactory<PairSyncDbContext> contexts, SettingsStore settings, PeerLinks links,
         IChunkJournal journal, TransferOptions options, TimeProvider time, ILogger<TransferService> logger)
     {
         _contexts = contexts;
         _settings = settings;
-        _lan = lan;
-        _presence = presence;
+        _links = links;
         _journal = journal;
         _options = options;
         _time = time;
@@ -71,7 +68,7 @@ public sealed partial class TransferService : IAsyncDisposable
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _presence.PairedDeviceAvailable += OnDeviceAvailable;
+        _links.DeviceAvailable += OnDeviceAvailable;
         _settings.Changed += OnSettingsChanged;
         _scheduler = Task.Run(async () =>
         {
@@ -219,7 +216,7 @@ public sealed partial class TransferService : IAsyncDisposable
     /// <summary>Tells the other device about a pause, resume or cancel while no job connection is open. Best effort.</summary>
     private async Task TryNotifyPeerAsync(TransferJob job, JobAction action, string? reason)
     {
-        if (_presence.FindEndpoint(job.PeerDeviceId) is not { } endpoint)
+        if (!_links.IsReachable(job.PeerDeviceId))
             return;
         try
         {
@@ -229,7 +226,7 @@ public sealed partial class TransferService : IAsyncDisposable
                 return;
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_stopping.Token);
             timeout.CancelAfter(TimeSpan.FromSeconds(10));
-            await using var connection = await _lan.ConnectAsync(device, endpoint.Addresses, endpoint.Port, timeout.Token).ConfigureAwait(false);
+            await using var connection = await _links.ConnectAsync(device, timeout.Token).ConfigureAwait(false);
             await connection.Channels.Control.SendAsync(new JobControl { JobId = job.Id, Action = action, Reason = reason }, timeout.Token)
                 .ConfigureAwait(false);
             // Wait for the other side to close, so the message is read before the connection goes away.
@@ -307,7 +304,7 @@ public sealed partial class TransferService : IAsyncDisposable
         }
     }
 
-    private void OnDeviceAvailable(PairedDevice device, Discovery.Lan.LanServiceInfo info)
+    private void OnDeviceAvailable()
     {
         foreach (var (jobId, _) in _notBefore)
             _notBefore.TryRemove(jobId, out _);
@@ -372,7 +369,7 @@ public sealed partial class TransferService : IAsyncDisposable
                 return;
             if (_runs.ContainsKey(job.Id) || (_notBefore.TryGetValue(job.Id, out var notBefore) && now < notBefore))
                 continue;
-            if (_presence.FindEndpoint(job.PeerDeviceId) is null)
+            if (!_links.IsReachable(job.PeerDeviceId))
                 continue;
 
             var run = new JobRun(job.Id, _stopping.Token) { IsSend = true };
@@ -460,7 +457,7 @@ public sealed partial class TransferService : IAsyncDisposable
         // Called by PairSyncCore while the service provider still works, and again when the provider is disposed.
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
             return;
-        _presence.PairedDeviceAvailable -= OnDeviceAvailable;
+        _links.DeviceAvailable -= OnDeviceAvailable;
         _settings.Changed -= OnSettingsChanged;
         await _stopping.CancelAsync().ConfigureAwait(false);
         await _scheduler.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);

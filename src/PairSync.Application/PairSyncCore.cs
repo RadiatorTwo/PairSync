@@ -100,6 +100,10 @@ public sealed class PairSyncCore : IAsyncDisposable
 
     public Devices.DeviceService Devices => _services.GetRequiredService<Devices.DeviceService>();
 
+    public Internet.InternetLinkService Internet => _services.GetRequiredService<Internet.InternetLinkService>();
+
+    public PeerLinks Links => _services.GetRequiredService<PeerLinks>();
+
     public async ValueTask DisposeAsync()
     {
         // Stop the active services in order while the provider still works: a disposing ServiceProvider refuses to
@@ -108,6 +112,7 @@ public sealed class PairSyncCore : IAsyncDisposable
         if (_services.GetService<TransferService>() is { } transfers)
             await transfers.DisposeAsync().ConfigureAwait(false);
         await _services.GetRequiredService<PairingService>().DisposeAsync().ConfigureAwait(false);
+        await _services.GetRequiredService<Internet.InternetLinkService>().DisposeAsync().ConfigureAwait(false);
         await _services.GetRequiredService<PresenceService>().DisposeAsync().ConfigureAwait(false);
         await _services.GetRequiredService<LanConnectionService>().DisposeAsync().ConfigureAwait(false);
         await _services.DisposeAsync().ConfigureAwait(false);

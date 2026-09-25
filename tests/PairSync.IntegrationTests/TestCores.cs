@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using PairSync.Application;
 using PairSync.Application.Connections;
+using PairSync.Application.Internet;
 using PairSync.Application.Pairing;
 using PairSync.Application.Transfers;
 using PairSync.Discovery.Lan;
@@ -18,16 +19,23 @@ internal static class TestCores
     /// <param name="presence">mDNS settings; off unless given, so tests do not announce themselves on the network.</param>
     /// <param name="pairing">Pairing settings; invitations point to loopback unless given.</param>
     /// <param name="transfers">Transfer settings; downloads go below the data directory and retries are fast unless given.</param>
-    public static Task<PairSyncCore> StartAsync(
+    /// <param name="internet">Internet link settings; no NAT detection unless given. STUN servers are always cleared, so
+    /// internet links run over host candidates on this machine and tests make no external requests.</param>
+    public static async Task<PairSyncCore> StartAsync(
         DataDirectory data, CancellationToken cancellationToken, PresenceOptions? presence = null, PairingOptions? pairing = null,
-        TransferOptions? transfers = null) =>
-        PairSyncCore.StartAsync(data, cancellationToken, services =>
+        TransferOptions? transfers = null, InternetOptions? internet = null)
+    {
+        var core = await PairSyncCore.StartAsync(data, cancellationToken, services =>
         {
             services.AddSingleton(new LanOptions { Port = 0 });
             services.AddSingleton(presence ?? new PresenceOptions { Enabled = false });
             services.AddSingleton(pairing ?? new PairingOptions { InvitationAddresses = [IPAddress.Loopback] });
             services.AddSingleton(transfers ?? ForTests(data));
+            services.AddSingleton(internet ?? new InternetOptions { DetectNat = false });
         });
+        core.Settings.Update(s => s with { StunServers = [] });
+        return core;
+    }
 
     public static TransferOptions ForTests(DataDirectory data) => new()
     {

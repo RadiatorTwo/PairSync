@@ -49,7 +49,8 @@ public sealed class PeerConnection(ITransportSession session, PeerHandshake hand
 /// <summary>
 /// The LAN side of the connection layer (plan §5, §6, §11): listens on the configured port on all interfaces and
 /// connects to other devices. Every session is TLS 1.3 with both device certificates, followed by the Hello
-/// handshake in which each side checks the other against its list of paired devices.
+/// handshake in which each side checks the other against its list of paired devices. Sessions over an internet
+/// link go through the same handshake (<see cref="ConnectOverAsync"/>, <see cref="AcceptAsync"/>).
 /// </summary>
 public sealed class LanConnectionService(
     CurrentIdentity identity, SettingsStore settings, PeerAuthorizer authorizer, LanOptions lanOptions, TimeProvider time,
@@ -119,6 +120,37 @@ public sealed class LanConnectionService(
         }
         return connection;
     }
+
+    /// <summary>
+    /// Runs the handshake as the connecting side over a session that is already bound to <paramref name="device"/>'s
+    /// key, e.g. one job's channels on an internet link.
+    /// </summary>
+    /// <exception cref="PeerRejectedException">The other device refused, or no longer knows this one.</exception>
+    public async Task<PeerConnection> ConnectOverAsync(ITransportSession session, PairedDevice device, CancellationToken cancellationToken)
+    {
+        if (session.RemotePublicKey is not { } key || !key.AsSpan().SequenceEqual(device.PublicKey))
+        {
+            await session.DisposeAsync().ConfigureAwait(false);
+            throw new TransportException($"The session is not bound to the key of {device.Name}.");
+        }
+        var connection = await InitiateAsync(session, cancellationToken).ConfigureAwait(false);
+        if (connection.Access != PeerAccess.Paired)
+        {
+            await connection.DisposeAsync().ConfigureAwait(false);
+            throw new PeerRejectedException("the other device no longer knows this one; pair again", byOtherDevice: true);
+        }
+        return connection;
+    }
+
+    /// <summary>Opens a pairing session over a session that is already bound to the other device's key (internet pairing).</summary>
+    public Task<PeerConnection> ConnectForPairingOverAsync(ITransportSession session, CancellationToken cancellationToken) =>
+        InitiateAsync(session, cancellationToken, forPairing: true);
+
+    /// <summary>
+    /// Answers the handshake on a session the other side opened (an internet link job) and hands the result to
+    /// <see cref="IncomingConnectionHandler"/>, like an incoming LAN connection.
+    /// </summary>
+    public Task AcceptAsync(ITransportSession session) => OnSessionAsync(session);
 
     /// <summary>
     /// Opens a pairing session: always <see cref="PeerAccess.PairingOnly"/>, also with a device that is already
@@ -216,6 +248,10 @@ public static class ConnectionServices
         services.AddSingleton(new LanOptions());
         services.AddSingleton<PeerAuthorizer>();
         services.AddSingleton<LanConnectionService>();
+        services.AddSingleton(new Internet.InternetOptions());
+        services.AddSingleton<Internet.AnsweredOffers>();
+        services.AddSingleton<Internet.InternetLinkService>();
+        services.AddSingleton<PeerLinks>();
         services.AddSingleton(new PresenceOptions());
         services.AddSingleton<PresenceService>();
         services.AddSingleton(new PairingOptions());

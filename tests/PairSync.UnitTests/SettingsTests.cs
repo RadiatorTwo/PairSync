@@ -83,4 +83,23 @@ public sealed class SettingsTests : IDisposable
             Assert.Equal(data.Root, Path.GetDirectoryName(path));
         Assert.EndsWith(OperatingSystem.IsWindows() ? "PairSync" : "pairsync", DataDirectory.DefaultRoot());
     }
+
+    [Fact]
+    public void Stun_servers_default_to_two_public_servers_and_are_cleaned_up()
+    {
+        Assert.Equal(AppSettings.DefaultStunServers, Open().Current.StunServers);
+
+        Open().Update(s => s with { StunServers = [" stun:a.example:1 ", "", "STUN:A.EXAMPLE:1", "stun:b.example"] });
+
+        Assert.Equal(["stun:a.example:1", "stun:b.example"], Open().Current.StunServers);
+    }
+
+    [Fact]
+    public void Empty_stun_list_stays_empty_and_turns_internet_connections_off()
+    {
+        Open().Update(s => s with { StunServers = [] });
+
+        Assert.Empty(Open().Current.StunServers);
+        Assert.Equal(Open().Current, Open().Current);
+    }
 }

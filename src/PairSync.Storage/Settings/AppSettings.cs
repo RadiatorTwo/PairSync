@@ -35,6 +35,16 @@ public sealed record AppSettings
     /// <summary>Debug-level diagnostic logs (never file contents or keys).</summary>
     public bool VerboseLogging { get; init; }
 
+    /// <summary>
+    /// STUN servers for internet connections (<c>stun:host:port</c>). Queried only when the user starts an internet
+    /// connection or the NAT diagnostic, never for the LAN. Empty turns internet connections off.
+    /// </summary>
+    public IReadOnlyList<string> StunServers { get; init; } = DefaultStunServers;
+
+    public static IReadOnlyList<string> DefaultStunServers { get; } = ["stun:stun.cloudflare.com:3478", "stun:stun.l.google.com:19302"];
+
+    public const int MaxStunServers = 8;
+
     [JsonIgnore]
     public string EffectiveDeviceName => string.IsNullOrWhiteSpace(DeviceName) ? Environment.MachineName : DeviceName.Trim();
 
@@ -49,10 +59,30 @@ public sealed record AppSettings
             Port = Port is >= 1024 and <= 65535 ? Port : DefaultPort,
             UploadLimitBytesPerSecond = Math.Max(0, UploadLimitBytesPerSecond),
             ParallelTransfers = Math.Clamp(ParallelTransfers, 1, 8),
+            StunServers = StunServers is null
+                ? DefaultStunServers
+                : [.. StunServers.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase).Take(MaxStunServers)],
         };
     }
 
     public const int MaxDeviceNameLength = 64;
+
+    // Value equality including the list (the generated one compares it by reference). New properties go here too.
+    public bool Equals(AppSettings? other) =>
+        other is not null
+        && DeviceName == other.DeviceName
+        && CloseBehavior == other.CloseBehavior
+        && StartWithSystem == other.StartWithSystem
+        && Port == other.Port
+        && UploadLimitBytesPerSecond == other.UploadLimitBytesPerSecond
+        && ParallelTransfers == other.ParallelTransfers
+        && VerboseLogging == other.VerboseLogging
+        && StunServers.SequenceEqual(other.StunServers);
+
+    public override int GetHashCode() =>
+        HashCode.Combine(DeviceName, CloseBehavior, StartWithSystem, Port, UploadLimitBytesPerSecond, ParallelTransfers, VerboseLogging,
+            StunServers.Count);
 }
 
 [JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]

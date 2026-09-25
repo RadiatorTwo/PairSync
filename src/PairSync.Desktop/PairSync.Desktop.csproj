@@ -6,6 +6,8 @@
     <!-- The UI follows the system language (.resx, English and German). -->
     <InvariantGlobalization>false</InvariantGlobalization>
     <SatelliteResourceLanguages>en;de</SatelliteResourceLanguages>
+    <!-- Single-file builds carry libdatachannel and its dependencies (native/runtimes) inside the executable. -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="PairSync.UiTests" />

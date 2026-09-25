@@ -43,10 +43,10 @@ public sealed partial class TransferService
                 RetryLater(job.Id, _options.RetryInterval);
                 return;
             }
-            if (_presence.FindEndpoint(job.PeerDeviceId) is not { } endpoint)
+            if (!_links.IsReachable(job.PeerDeviceId))
                 return;
 
-            connection = await _lan.ConnectAsync(device, endpoint.Addresses, endpoint.Port, token).ConfigureAwait(false);
+            connection = await _links.ConnectAsync(device, token).ConfigureAwait(false);
             var control = connection.Channels.Control;
             await SendOfferAsync(control, job, token).ConfigureAwait(false);
             await SetStateAsync(job.Id, JobState.AwaitingAcceptance, false, null).ConfigureAwait(false);
