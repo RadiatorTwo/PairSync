@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using PairSync.Application.Presence;
 using PairSync.Domain;
 using PairSync.Protocol;
 using PairSync.Storage.Identity;
@@ -198,6 +199,8 @@ public static class ConnectionServices
         services.AddSingleton(new LanOptions());
         services.AddSingleton<PeerAuthorizer>();
         services.AddSingleton<LanConnectionService>();
+        services.AddSingleton(new PresenceOptions());
+        services.AddSingleton<PresenceService>();
         return services;
     }
 }

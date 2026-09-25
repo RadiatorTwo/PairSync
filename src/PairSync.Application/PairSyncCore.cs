@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PairSync.Application.Connections;
+using PairSync.Application.Presence;
 using PairSync.Storage;
 using PairSync.Storage.Identity;
 using PairSync.Storage.Settings;
@@ -64,6 +65,7 @@ public sealed class PairSyncCore : IAsyncDisposable
 
             // A busy port is not fatal: the app still works as a sender and Settings shows the error.
             await services.GetRequiredService<LanConnectionService>().StartAsync(cancellationToken).ConfigureAwait(false);
+            await services.GetRequiredService<PresenceService>().StartAsync(cancellationToken).ConfigureAwait(false);
 
             services.GetRequiredService<ILogger<PairSyncCore>>()
                 .LogInformation("PairSync core started, data directory {DataDirectory}", dataDirectory.Root);
@@ -77,6 +79,8 @@ public sealed class PairSyncCore : IAsyncDisposable
     }
 
     public LanConnectionService Lan => _services.GetRequiredService<LanConnectionService>();
+
+    public PresenceService Presence => _services.GetRequiredService<PresenceService>();
 
     public async ValueTask DisposeAsync()
     {

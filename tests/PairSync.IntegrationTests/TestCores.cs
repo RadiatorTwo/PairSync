@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using PairSync.Application;
 using PairSync.Application.Connections;
+using PairSync.Application.Presence;
 using PairSync.Domain;
 using PairSync.Storage;
 
@@ -11,8 +12,13 @@ namespace PairSync.IntegrationTests;
 /// <summary>Application cores for tests: own data directory, listener on a free loopback-reachable port.</summary>
 internal static class TestCores
 {
-    public static Task<PairSyncCore> StartAsync(DataDirectory data, CancellationToken cancellationToken) =>
-        PairSyncCore.StartAsync(data, cancellationToken, services => services.AddSingleton(new LanOptions { Port = 0 }));
+    /// <param name="presence">mDNS settings; off unless given, so tests do not announce themselves on the network.</param>
+    public static Task<PairSyncCore> StartAsync(DataDirectory data, CancellationToken cancellationToken, PresenceOptions? presence = null) =>
+        PairSyncCore.StartAsync(data, cancellationToken, services =>
+        {
+            services.AddSingleton(new LanOptions { Port = 0 });
+            services.AddSingleton(presence ?? new PresenceOptions { Enabled = false });
+        });
 
     /// <summary>How <paramref name="other"/> is recorded in the device list of <paramref name="owner"/>.</summary>
     public static PairedDevice DeviceEntryFor(PairSyncCore other) => new()
