@@ -105,7 +105,7 @@ public sealed class ScreenTests(HeadlessFixture ui)
         var inviting = workstation.Page<DevicesViewModel>().Pairing;
         var joining = laptop.Page<DevicesViewModel>().Pairing;
 
-        inviting.CreateInvitationCommand.Execute(null);
+        await inviting.CreateInvitationCommand.ExecuteAsync(null);
         Assert.Equal(PairingStep.Invitation, inviting.Step);
         Assert.NotNull(inviting.QrCode);
         Assert.StartsWith("Expires in 0", inviting.ExpiresText, StringComparison.Ordinal);
@@ -142,7 +142,7 @@ public sealed class ScreenTests(HeadlessFixture ui)
         var workstation = await cores.StartAsync("workstation");
         var inviting = workstation.Page<DevicesViewModel>().Pairing;
         var joining = laptop.Page<DevicesViewModel>().Pairing;
-        inviting.CreateInvitationCommand.Execute(null);
+        await inviting.CreateInvitationCommand.ExecuteAsync(null);
         await inviting.CopyInvitationCommand.ExecuteAsync(null);
         joining.InvitationInput = workstation.Desktop.Copied!;
         await joining.ImportCommand.ExecuteAsync(null);

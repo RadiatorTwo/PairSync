@@ -383,7 +383,7 @@
     <value>Pair a new device</value>
   </data>
   <data name="Pair_Step" xml:space="preserve">
-    <value>Step {0} of 3</value>
+    <value>Step {0} of {1}</value>
   </data>
   <data name="Pair_OnLan" xml:space="preserve">
     <value>On this network</value>
@@ -398,10 +398,10 @@
     <value>For devices that do not show up on the LAN.</value>
   </data>
   <data name="Pair_Import" xml:space="preserve">
-    <value>Have an invitation from the other device?</value>
+    <value>Have an invitation or a code from the other device?</value>
   </data>
   <data name="Pair_ImportPlaceholder" xml:space="preserve">
-    <value>Paste the invitation here</value>
+    <value>Paste the invitation or code here</value>
   </data>
   <data name="Pair_ImportButton" xml:space="preserve">
     <value>Connect</value>
@@ -510,5 +510,353 @@
   </data>
   <data name="Settings_OpenFolder" xml:space="preserve">
     <value>Open folder</value>
+  </data>
+  <data name="Code_FileTooLarge" xml:space="preserve">
+    <value>The file is too large to be a PairSync code.</value>
+  </data>
+  <data name="Code_FileFailed" xml:space="preserve">
+    <value>The file cannot be read: {0}</value>
+  </data>
+  <data name="Route_Host" xml:space="preserve">
+    <value>host candidate</value>
+  </data>
+  <data name="Route_Srflx" xml:space="preserve">
+    <value>STUN (srflx)</value>
+  </data>
+  <data name="Route_Prflx" xml:space="preserve">
+    <value>peer reflexive (prflx)</value>
+  </data>
+  <data name="Route_Relay" xml:space="preserve">
+    <value>relay</value>
+  </data>
+  <data name="Route_Unknown" xml:space="preserve">
+    <value>unknown</value>
+  </data>
+  <data name="Route_Line" xml:space="preserve">
+    <value>Route: {0} · manual code</value>
+  </data>
+  <data name="Card_RouteInternet" xml:space="preserve">
+    <value>Internet · direct</value>
+  </data>
+  <data name="Card_RouteInternetRtt" xml:space="preserve">
+    <value>Internet · direct · {0} ms</value>
+  </data>
+  <data name="Overview_PasteCode" xml:space="preserve">
+    <value>Paste connection code</value>
+  </data>
+  <data name="Banner_Dismiss" xml:space="preserve">
+    <value>Dismiss</value>
+  </data>
+  <data name="Card_ConnectInternet" xml:space="preserve">
+    <value>Connect via internet…</value>
+  </data>
+  <data name="Card_PasteAnswer" xml:space="preserve">
+    <value>Paste answer…</value>
+  </data>
+  <data name="Card_CancelCode" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Card_Disconnect" xml:space="preserve">
+    <value>Disconnect</value>
+  </data>
+  <data name="Card_WaitingForAnswer" xml:space="preserve">
+    <value>Waiting for answer · expires in {0}</value>
+  </data>
+  <data name="Card_WaitingForApply" xml:space="preserve">
+    <value>Waiting for {0} to apply the answer</value>
+  </data>
+  <data name="Card_Connecting" xml:space="preserve">
+    <value>Connecting…</value>
+  </data>
+  <data name="Card_ConnectionLost" xml:space="preserve">
+    <value>Connection lost · new code needed</value>
+  </data>
+  <data name="Card_ConnectionFailed" xml:space="preserve">
+    <value>No connection · new code needed</value>
+  </data>
+  <data name="Dialog_Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Connect_Title" xml:space="preserve">
+    <value>Connect to {0} via internet</value>
+  </data>
+  <data name="Connect_PasteTitle" xml:space="preserve">
+    <value>Paste connection code</value>
+  </data>
+  <data name="Connect_AnswerTitle" xml:space="preserve">
+    <value>Paste the answer from {0}</value>
+  </data>
+  <data name="Connect_Step" xml:space="preserve">
+    <value>Step {0} of 3</value>
+  </data>
+  <data name="Connect_Preparing" xml:space="preserve">
+    <value>Creating the connection code… This takes a few seconds.</value>
+  </data>
+  <data name="Connect_CodeHint" xml:space="preserve">
+    <value>Send this code to {0} any way you like: scan it, copy it or save it as a file. {0} answers with a code of its own.</value>
+  </data>
+  <data name="Connect_AnswerHint" xml:space="preserve">
+    <value>Send this answer back to {0}. The connection comes up as soon as it is pasted there.</value>
+  </data>
+  <data name="Connect_WaitingForApply" xml:space="preserve">
+    <value>Waiting for {0} to paste the answer…</value>
+  </data>
+  <data name="Connect_PasteAnswer" xml:space="preserve">
+    <value>Paste the answer from {0}</value>
+  </data>
+  <data name="Connect_PasteCode" xml:space="preserve">
+    <value>Connection code or answer</value>
+  </data>
+  <data name="Connect_Placeholder" xml:space="preserve">
+    <value>Paste the code here (PSC1:…, PSR1:… or PSI…)</value>
+  </data>
+  <data name="Connect_Submit" xml:space="preserve">
+    <value>Connect</value>
+  </data>
+  <data name="Connect_OpenFile" xml:space="preserve">
+    <value>Open file…</value>
+  </data>
+  <data name="Connect_Copy" xml:space="preserve">
+    <value>Copy code</value>
+  </data>
+  <data name="Connect_NotAnAnswer" xml:space="preserve">
+    <value>This is not an answer code. Paste the code that starts with PSR1.</value>
+  </data>
+  <data name="Connect_NotACode" xml:space="preserve">
+    <value>This is not a PairSync code.</value>
+  </data>
+  <data name="Connect_Connecting" xml:space="preserve">
+    <value>Connecting…</value>
+  </data>
+  <data name="Connect_ConnectingTo" xml:space="preserve">
+    <value>Connecting to {0}…</value>
+  </data>
+  <data name="Connect_Connected" xml:space="preserve">
+    <value>Connected to {0} over the internet</value>
+  </data>
+  <data name="Connect_Failed" xml:space="preserve">
+    <value>No connection.</value>
+  </data>
+  <data name="Nat_Run" xml:space="preserve">
+    <value>Run NAT diagnostic</value>
+  </data>
+  <data name="Nat_AboutRelays" xml:space="preserve">
+    <value>About relays</value>
+  </data>
+  <data name="Nat_Title" xml:space="preserve">
+    <value>NAT diagnostic</value>
+  </data>
+  <data name="Nat_Intro" xml:space="preserve">
+    <value>PairSync asks the STUN servers from Settings how this network reaches the internet. Nothing else is contacted.</value>
+  </data>
+  <data name="Nat_Running" xml:space="preserve">
+    <value>Checking…</value>
+  </data>
+  <data name="Nat_NoServers" xml:space="preserve">
+    <value>No STUN servers are set. Add one in Settings to use internet connections.</value>
+  </data>
+  <data name="Nat_Error" xml:space="preserve">
+    <value>The diagnostic failed: {0}</value>
+  </data>
+  <data name="Nat_PublicAddress" xml:space="preserve">
+    <value>Public address: {0}</value>
+  </data>
+  <data name="Nat_CheckServer" xml:space="preserve">
+    <value>STUN {0}</value>
+  </data>
+  <data name="Nat_ServerAnswered" xml:space="preserve">
+    <value>answered</value>
+  </data>
+  <data name="Nat_ServerDnsBlocked" xml:space="preserve">
+    <value>blocked by a DNS filter</value>
+  </data>
+  <data name="Nat_ServerDnsFailed" xml:space="preserve">
+    <value>name not found</value>
+  </data>
+  <data name="Nat_ServerNoResponse" xml:space="preserve">
+    <value>no answer</value>
+  </data>
+  <data name="Nat_ServerInvalid" xml:space="preserve">
+    <value>not a valid STUN server</value>
+  </data>
+  <data name="Nat_ServerNoAddress" xml:space="preserve">
+    <value>no usable address</value>
+  </data>
+  <data name="Nat_ServerFailed" xml:space="preserve">
+    <value>answered with an error</value>
+  </data>
+  <data name="Nat_CheckDns" xml:space="preserve">
+    <value>DNS</value>
+  </data>
+  <data name="Nat_DnsOk" xml:space="preserve">
+    <value>STUN servers resolve normally</value>
+  </data>
+  <data name="Nat_DnsFiltered" xml:space="preserve">
+    <value>A DNS filter blocks STUN servers (e.g. Pi-hole, AdGuard)</value>
+  </data>
+  <data name="Nat_CheckUdp" xml:space="preserve">
+    <value>UDP</value>
+  </data>
+  <data name="Nat_UdpOk" xml:space="preserve">
+    <value>UDP gets through</value>
+  </data>
+  <data name="Nat_UdpBlocked" xml:space="preserve">
+    <value>No STUN server answered: UDP is blocked by a firewall</value>
+  </data>
+  <data name="Nat_CheckMapping" xml:space="preserve">
+    <value>NAT mapping</value>
+  </data>
+  <data name="Nat_MappingNone" xml:space="preserve">
+    <value>No NAT: this device has a public address</value>
+  </data>
+  <data name="Nat_MappingIndependent" xml:space="preserve">
+    <value>Same public address towards every server (direct connections likely)</value>
+  </data>
+  <data name="Nat_MappingSymmetric" xml:space="preserve">
+    <value>A different public address per server (symmetric NAT / CGNAT)</value>
+  </data>
+  <data name="Nat_MappingUnknown" xml:space="preserve">
+    <value>Unknown: fewer than two servers answered</value>
+  </data>
+  <data name="Nat_CheckCgnat" xml:space="preserve">
+    <value>Carrier-grade NAT</value>
+  </data>
+  <data name="Nat_CgnatYes" xml:space="preserve">
+    <value>Likely (shared address range 100.64.0.0/10)</value>
+  </data>
+  <data name="Nat_CgnatNo" xml:space="preserve">
+    <value>No sign of it</value>
+  </data>
+  <data name="Nat_CheckIpv6" xml:space="preserve">
+    <value>IPv6</value>
+  </data>
+  <data name="Nat_Ipv6NotChecked" xml:space="preserve">
+    <value>Not checked</value>
+  </data>
+  <data name="Nat_Ipv6None" xml:space="preserve">
+    <value>No global IPv6 address</value>
+  </data>
+  <data name="Nat_Ipv6Ok" xml:space="preserve">
+    <value>Global address, STUN reachable over IPv6</value>
+  </data>
+  <data name="Nat_Ipv6NoStun" xml:space="preserve">
+    <value>Global address, but no STUN answer over IPv6</value>
+  </data>
+  <data name="Nat_SummaryDns" xml:space="preserve">
+    <value>Your DNS filter blocks the STUN servers. Allow them there, or enter servers by IP address.</value>
+  </data>
+  <data name="Nat_SummaryUdp" xml:space="preserve">
+    <value>UDP is blocked here, so direct internet connections cannot work from this network.</value>
+  </data>
+  <data name="Nat_SummaryOpen" xml:space="preserve">
+    <value>This device is reachable directly; internet connections should work.</value>
+  </data>
+  <data name="Nat_SummaryIndependent" xml:space="preserve">
+    <value>This network allows direct connections with most other networks.</value>
+  </data>
+  <data name="Nat_SummarySymmetric" xml:space="preserve">
+    <value>This network uses symmetric NAT: direct connections only work if the other network is open. Two such networks need a relay.</value>
+  </data>
+  <data name="Nat_SummaryUnknown" xml:space="preserve">
+    <value>The NAT type could not be determined. A connection may still work.</value>
+  </data>
+  <data name="Nat_ReportTitle" xml:space="preserve">
+    <value>PairSync NAT diagnostic</value>
+  </data>
+  <data name="Nat_IncludeAddress" xml:space="preserve">
+    <value>Include my public address in the report</value>
+  </data>
+  <data name="Nat_CopyReport" xml:space="preserve">
+    <value>Copy report</value>
+  </data>
+  <data name="Relays_Title" xml:space="preserve">
+    <value>About relays</value>
+  </data>
+  <data name="Relays_Why" xml:space="preserve">
+    <value>Some networks, for example two mobile or carrier-grade NAT connections, never let a direct connection through. Then only a relay (TURN server) in between can connect the two devices.</value>
+  </data>
+  <data name="Relays_Later" xml:space="preserve">
+    <value>PairSync does not use a relay yet. A later version will let you add one if you want.</value>
+  </data>
+  <data name="Relays_Encrypted" xml:space="preserve">
+    <value>A relay would only ever see encrypted data: the connection stays end-to-end encrypted between your devices.</value>
+  </data>
+  <data name="Pair_Preparing" xml:space="preserve">
+    <value>Creating the invitation… This takes a few seconds.</value>
+  </data>
+  <data name="Pair_QrHintInternet" xml:space="preserve">
+    <value>Scan this code on the other device, or send the invitation any way you like. Over the internet the other device answers with a code; paste it below.</value>
+  </data>
+  <data name="Pair_PasteAnswer" xml:space="preserve">
+    <value>Paste the answer from the other device</value>
+  </data>
+  <data name="Pair_AnswerPlaceholder" xml:space="preserve">
+    <value>PSR1:…</value>
+  </data>
+  <data name="Pair_AnswerHint" xml:space="preserve">
+    <value>{0} is not on this network. Send this answer back to {0}; pairing continues once it is pasted there.</value>
+  </data>
+  <data name="Pair_WaitingForApply" xml:space="preserve">
+    <value>Waiting for {0} to paste the answer…</value>
+  </data>
+  <data name="Pair_NoAnswer" xml:space="preserve">
+    <value>the answer was not applied in time</value>
+  </data>
+  <data name="Pair_ConnectedWaiting" xml:space="preserve">
+    <value>Connected to {0}. Waiting for the security code…</value>
+  </data>
+  <data name="Pair_DoneInternet" xml:space="preserve">
+    <value>Paired with {0}. The internet connection stays open.</value>
+  </data>
+  <data name="Settings_Internet" xml:space="preserve">
+    <value>Internet connections</value>
+  </data>
+  <data name="Settings_InternetUnavailable" xml:space="preserve">
+    <value>Internet connections are not available: {0}</value>
+  </data>
+  <data name="Settings_StunServers" xml:space="preserve">
+    <value>STUN servers</value>
+  </data>
+  <data name="Settings_StunNone" xml:space="preserve">
+    <value>None: internet connections are off.</value>
+  </data>
+  <data name="Settings_StunRemove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Settings_StunAdd" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="Settings_StunReset" xml:space="preserve">
+    <value>Reset to defaults</value>
+  </data>
+  <data name="Settings_StunHint" xml:space="preserve">
+    <value>Only asked when you connect over the internet or run the NAT diagnostic, never for the LAN.</value>
+  </data>
+  <data name="Settings_Turn" xml:space="preserve">
+    <value>Relay (TURN)</value>
+  </data>
+  <data name="Settings_TurnState" xml:space="preserve">
+    <value>Not configured · add after the MVP</value>
+  </data>
+  <data name="Stun_Empty" xml:space="preserve">
+    <value>Enter a STUN server, e.g. stun:stun.example.org:3478.</value>
+  </data>
+  <data name="Stun_Scheme" xml:space="preserve">
+    <value>Only plain STUN over UDP (stun:) is supported.</value>
+  </data>
+  <data name="Stun_Port" xml:space="preserve">
+    <value>The port must be a number from 1 to 65535.</value>
+  </data>
+  <data name="Stun_Invalid" xml:space="preserve">
+    <value>This is not a valid host name or address.</value>
+  </data>
+  <data name="Stun_Duplicate" xml:space="preserve">
+    <value>This server is already in the list.</value>
+  </data>
+  <data name="Stun_TooMany" xml:space="preserve">
+    <value>At most {0} servers.</value>
+  </data>
+  <data name="Send_RouteInternet" xml:space="preserve">
+    <value>Internet direct · slower than on the LAN · can pause and resume</value>
   </data>
 </root>

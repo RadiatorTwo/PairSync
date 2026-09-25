@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using PairSync.Application;
 using PairSync.Application.Connections;
+using PairSync.Application.Internet;
 using PairSync.Application.Pairing;
 using PairSync.Application.Presence;
 using PairSync.Application.Transfers;
@@ -79,17 +80,26 @@ public sealed class TwoCores : IAsyncDisposable
 
     public string Root => _root.FullName;
 
-    public async Task<TestApp> StartAsync(string name)
+    /// <param name="lanInvitations">False: invitations carry no LAN address, so the other device has to pair over the internet.</param>
+    /// <param name="stunServers">STUN servers; none by default, so internet links use host candidates and nothing leaves the machine.</param>
+    public async Task<TestApp> StartAsync(string name, bool lanInvitations = true, IReadOnlyList<string>? stunServers = null)
     {
         var data = new DataDirectory(Path.Combine(Root, name));
         var core = await PairSyncCore.StartAsync(data, CancellationToken.None, services =>
         {
             services.AddSingleton(new LanOptions { Port = 0 });
             services.AddSingleton(new PresenceOptions { Enabled = false });
-            services.AddSingleton(new PairingOptions { InvitationAddresses = [IPAddress.Loopback] });
+            services.AddSingleton(new PairingOptions { InvitationAddresses = lanInvitations ? [IPAddress.Loopback] : [] });
             services.AddSingleton(new TransferOptions { DownloadsFolder = Path.Combine(data.Root, "downloads"), RetryInterval = TimeSpan.FromSeconds(1) });
+            services.AddSingleton(new InternetOptions
+            {
+                DetectNat = false,
+                GatheringTimeout = TimeSpan.FromSeconds(1),
+                PingInterval = TimeSpan.FromMilliseconds(500),
+                ConnectTimeout = TimeSpan.FromSeconds(15),
+            });
         });
-        core.Settings.Update(s => s with { DeviceName = name });
+        core.Settings.Update(s => s with { DeviceName = name, StunServers = stunServers ?? [] });
         var desktop = new FakeDesktop();
         var shell = App.CreateShell(core, trayAvailable: true, new FakeAutostart(), desktop, TimeProvider.System, () => { });
         var window = new MainWindow { DataContext = shell };

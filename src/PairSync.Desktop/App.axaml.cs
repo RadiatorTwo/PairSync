@@ -67,19 +67,25 @@ public sealed partial class App : Avalonia.Application
         ShellViewModel? shell = null;
         void Navigate(AppPage page) => shell?.Navigate(page);
         var dialogs = new DialogHost();
-        var devices = new DevicesViewModel(core, dialogs, desktop, time);
+        var internet = new InternetUi(core, dialogs, desktop, time);
+        var devices = new DevicesViewModel(core, dialogs, desktop, time, internet);
+        internet.ShowPairing = () =>
+        {
+            Navigate(AppPage.Devices);
+            return devices.Pairing;
+        };
         shell = new ShellViewModel(core.Settings, trayAvailable,
         [
             new OverviewViewModel(core, device =>
             {
                 Navigate(AppPage.Devices);
                 return devices.Pairing.PairWithAsync(device);
-            }, new LatencyProbe(), time),
+            }, new LatencyProbe(), time, internet),
             new SendViewModel(core, desktop, Navigate),
             SyncsPage(),
             ClaudeCodePage(),
             devices,
-            new SettingsViewModel(core.Settings, autostart, trayAvailable, core, desktop),
+            new SettingsViewModel(core.Settings, autostart, trayAvailable, core, desktop, internet),
         ], quit, dialogs);
         return shell;
     }

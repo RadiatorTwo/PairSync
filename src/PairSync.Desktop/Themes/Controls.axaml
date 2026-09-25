@@ -91,6 +91,20 @@
       <Setter Property="Padding" Value="8,4" />
       <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
     </Style>
+
+    <!-- On the dark NAT banner: light text, Frame border. -->
+    <Style Selector="^.onDark">
+      <Setter Property="BorderBrush" Value="{StaticResource FrameBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource BgBrush}" />
+      <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource Accent700Brush}" />
+        <Setter Property="Foreground" Value="{StaticResource BgBrush}" />
+      </Style>
+      <Style Selector="^.link:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource Accent100Brush}" />
+      </Style>
+    </Style>
   </ControlTheme>
 
   <!-- Radios: 14 px square, selected with a 6 px square inside. -->

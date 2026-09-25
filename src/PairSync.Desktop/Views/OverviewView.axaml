@@ -16,10 +16,33 @@
   </UserControl.Styles>
 
   <Grid Margin="{StaticResource PagePadding}" RowDefinitions="Auto,Auto,*" RowSpacing="18">
-    <DockPanel>
-      <TextBlock DockPanel.Dock="Right" Classes="meta" VerticalAlignment="Bottom" Text="{Binding Header}" />
-      <TextBlock Classes="h1" Text="{Binding Title}" />
-    </DockPanel>
+    <StackPanel Spacing="18">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="16" VerticalAlignment="Bottom">
+          <TextBlock Classes="meta" VerticalAlignment="Center" Text="{Binding Header}" />
+          <Button Name="PasteCode" Content="{x:Static res:Strings.Overview_PasteCode}" Command="{Binding PasteCodeCommand}"
+                  IsVisible="{Binding CanPasteCode}" />
+        </StackPanel>
+        <TextBlock Classes="h1" Text="{Binding Title}" />
+      </DockPanel>
+
+      <!-- NAT failure: only after an ICE check failed without a relay -->
+      <Border Name="NatBanner" Classes="banner warning" IsVisible="{Binding HasNatBanner}">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center" Margin="16,0,0,0">
+            <Button Classes="onDark" Content="{x:Static res:Strings.Nat_Run}" Command="{Binding RunDiagnosticCommand}" />
+            <Button Classes="link onDark" FontSize="13" VerticalAlignment="Center" Content="{x:Static res:Strings.Nat_AboutRelays}"
+                    Command="{Binding AboutRelaysCommand}" />
+            <Button Classes="link onDark" FontSize="13" VerticalAlignment="Center" Content="{x:Static res:Strings.Banner_Dismiss}"
+                    Command="{Binding DismissNatBannerCommand}" />
+          </StackPanel>
+          <TextBlock FontSize="14" TextWrapping="Wrap" LineHeight="20.3" VerticalAlignment="Center">
+            <Run FontWeight="Bold" Text="{Binding NatBanner.Headline, FallbackValue=''}" />
+            <Run Text="{Binding NatBanner.Detail, FallbackValue=''}" />
+          </TextBlock>
+        </DockPanel>
+      </Border>
+    </StackPanel>
 
     <!-- Device grid: 4 columns, 14 px apart -->
     <Panel Grid.Row="1">
@@ -50,8 +73,23 @@
                            Margin="{Binding IsFound, Converter={x:Static vm:Converters.FoundTextMargin}}" />
                 <TextBlock Classes="meta" LineHeight="19.5" TextTrimming="CharacterEllipsis" Text="{Binding Line2}"
                            IsVisible="{Binding Line2, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <TextBlock Classes="meta accent" LineHeight="19.5" TextWrapping="Wrap" Margin="0,4,0,0" Text="{Binding InternetText}"
+                           IsVisible="{Binding InternetText, Converter={x:Static ObjectConverters.IsNotNull}}" />
                 <Button Classes="accent" FontSize="13" Content="{x:Static res:Strings.Card_Pair}"
                         Command="{Binding PairCommand}" IsVisible="{Binding IsFound}" />
+                <ItemsControl ItemsSource="{Binding Actions}" IsVisible="{Binding HasActions}" Margin="0,10,0,0">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel ItemSpacing="8" LineSpacing="6" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CardActionViewModel">
+                      <Button FontSize="13" Classes.accent="{Binding IsPrimary}"
+                              Content="{Binding Label}" Command="{Binding Command}" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
               </StackPanel>
             </ctl:Card>
           </DataTemplate>

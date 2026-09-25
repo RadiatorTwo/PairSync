@@ -59,6 +59,36 @@ public sealed class SettingsViewModelTests(HeadlessFixture ui) : IDisposable
     });
 
     [Fact]
+    public Task Stun_servers_are_validated_added_removed_and_reset() => ui.RunAsync(() =>
+    {
+        using var vm = new SettingsViewModel(_settings.Store, new FakeAutostart(), trayAvailable: true);
+        Assert.Equal(AppSettings.DefaultStunServers, vm.StunServers.Select(s => s.Uri));
+
+        vm.NewStunServer = "turn:relay.example.org";
+        vm.AddStunServerCommand.Execute(null);
+        Assert.Equal("Only plain STUN over UDP (stun:) is supported.", vm.StunError);
+
+        vm.NewStunServer = "stun.example.org:3479";
+        vm.AddStunServerCommand.Execute(null);
+        Assert.Null(vm.StunError);
+        Assert.Equal("", vm.NewStunServer);
+        Assert.Equal("stun:stun.example.org:3479", _settings.Open().Current.StunServers[^1]);
+
+        vm.NewStunServer = "STUN:stun.example.org:3479";
+        vm.AddStunServerCommand.Execute(null);
+        Assert.Equal("This server is already in the list.", vm.StunError);
+
+        foreach (var row in vm.StunServers.ToList())
+            row.RemoveCommand.Execute(null);
+        Assert.Empty(_settings.Open().Current.StunServers);
+        Assert.False(vm.HasStunServers);
+
+        vm.ResetStunServersCommand.Execute(null);
+        Assert.Equal(AppSettings.DefaultStunServers, _settings.Open().Current.StunServers);
+        Assert.Equal(2, vm.StunServers.Count);
+    });
+
+    [Fact]
     public Task External_changes_are_picked_up() => ui.RunAsync(() =>
     {
         using var vm = new SettingsViewModel(_settings.Store, new FakeAutostart(), trayAvailable: true);

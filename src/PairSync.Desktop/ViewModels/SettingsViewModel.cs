@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -6,12 +7,16 @@ using PairSync.Desktop.Platform;
 using PairSync.Desktop.Resources;
 using PairSync.Storage.Secrets;
 using PairSync.Storage.Settings;
+using PairSync.Stun;
 
 namespace PairSync.Desktop.ViewModels;
 
+/// <summary>A STUN server in the "Internet connections" list.</summary>
+public sealed record StunServerRow(string Uri, IRelayCommand RemoveCommand);
+
 /// <summary>
-/// Settings screen (max. 640 px): device, close behavior, autostart, network, limits, logs. The STUN/TURN section
-/// follows in phase 2.
+/// Settings screen (max. 640 px): device, close behavior, autostart, network, internet connections (STUN, relay,
+/// NAT diagnostic), limits, logs.
 /// </summary>
 public sealed partial class SettingsViewModel : PageViewModel, IDisposable
 {
@@ -19,7 +24,15 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
     private readonly IAutostart _autostart;
     private readonly PairSyncCore? _core;
     private readonly IDesktopServices? _desktop;
+    private readonly InternetUi? _internet;
     private bool _loading;
+
+    [ObservableProperty]
+    private string _newStunServer = "";
+
+    /// <summary>Why the entered STUN server was not added.</summary>
+    [ObservableProperty]
+    private string? _stunError;
 
     [ObservableProperty]
     private Choice<CloseBehavior> _selectedCloseOption;
@@ -47,14 +60,17 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
     private bool _verboseLogging;
 
     /// <param name="core">Null in tests that only cover close behavior and autostart.</param>
+    /// <param name="internet">Opens the NAT diagnostic; null leaves the button out.</param>
     public SettingsViewModel(
-        SettingsStore settings, IAutostart autostart, bool trayAvailable, PairSyncCore? core = null, IDesktopServices? desktop = null)
+        SettingsStore settings, IAutostart autostart, bool trayAvailable, PairSyncCore? core = null, IDesktopServices? desktop = null,
+        InternetUi? internet = null)
         : base(AppPage.Settings)
     {
         _settings = settings;
         _autostart = autostart;
         _core = core;
         _desktop = desktop;
+        _internet = internet;
         TrayAvailable = trayAvailable;
         CloseOptions =
         [
@@ -92,6 +108,65 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
         : null;
 
     public bool CanOpenLogs => _core is not null && _desktop is not null;
+
+    public ObservableCollection<StunServerRow> StunServers { get; } = [];
+
+    public bool HasStunServers => StunServers.Count > 0;
+
+    public bool CanAddStunServer => StunServers.Count < AppSettings.MaxStunServers;
+
+    public bool CanRunDiagnostic => _internet is not null;
+
+    /// <summary>The native WebRTC library is missing: internet connections are off, with the reason.</summary>
+    public string? InternetUnavailable => _core is { Internet.IsAvailable: false } core
+        ? string.Format(CultureInfo.CurrentCulture, Strings.Settings_InternetUnavailable, core.Internet.UnavailableReason)
+        : null;
+
+    [RelayCommand]
+    private void AddStunServer()
+    {
+        if (!StunServerUri.TryParse(NewStunServer.Trim(), out var uri, out var error))
+        {
+            StunError = error switch
+            {
+                StunUriError.Empty => Strings.Stun_Empty,
+                StunUriError.UnsupportedScheme => Strings.Stun_Scheme,
+                StunUriError.InvalidPort => Strings.Stun_Port,
+                _ => Strings.Stun_Invalid,
+            };
+            return;
+        }
+        var text = uri.ToString();
+        if (_settings.Current.StunServers.Contains(text, StringComparer.OrdinalIgnoreCase))
+        {
+            StunError = Strings.Stun_Duplicate;
+            return;
+        }
+        if (!CanAddStunServer)
+        {
+            StunError = string.Format(CultureInfo.CurrentCulture, Strings.Stun_TooMany, AppSettings.MaxStunServers);
+            return;
+        }
+        StunError = null;
+        NewStunServer = "";
+        _settings.Update(s => s with { StunServers = [.. s.StunServers, text] });
+    }
+
+    private void RemoveStunServer(string uri)
+    {
+        StunError = null;
+        _settings.Update(s => s with { StunServers = [.. s.StunServers.Where(x => !string.Equals(x, uri, StringComparison.OrdinalIgnoreCase))] });
+    }
+
+    [RelayCommand]
+    private void ResetStunServers()
+    {
+        StunError = null;
+        _settings.Update(s => s with { StunServers = AppSettings.DefaultStunServers });
+    }
+
+    [RelayCommand]
+    private Task RunDiagnosticAsync() => _internet?.ShowDiagnosticAsync() ?? Task.CompletedTask;
 
     [RelayCommand]
     private async Task OpenLogsAsync()
@@ -162,6 +237,14 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
             UploadLimitMegabytes = settings.UploadLimitBytesPerSecond / 1_000_000m;
             ParallelTransfers = settings.ParallelTransfers;
             VerboseLogging = settings.VerboseLogging;
+            if (!StunServers.Select(r => r.Uri).SequenceEqual(settings.StunServers))
+            {
+                StunServers.Clear();
+                foreach (var server in settings.StunServers)
+                    StunServers.Add(new StunServerRow(server, new RelayCommand(() => RemoveStunServer(server))));
+                OnPropertyChanged(nameof(HasStunServers));
+                OnPropertyChanged(nameof(CanAddStunServer));
+            }
         }
         finally
         {

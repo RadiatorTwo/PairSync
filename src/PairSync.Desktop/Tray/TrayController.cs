@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using PairSync.Application;
+using PairSync.Application.Presence;
 using PairSync.Desktop.Resources;
 using PairSync.Domain;
 
@@ -49,6 +50,7 @@ internal sealed class TrayController : IDisposable
 
         _core.Presence.Changed += QueueRefresh;
         _core.Transfers.Changed += QueueRefresh;
+        _core.Internet.Changed += QueueRefresh;
         QueueRefresh();
     }
 
@@ -65,7 +67,9 @@ internal sealed class TrayController : IDisposable
         try
         {
             var jobs = await _core.Transfers.GetJobsAsync(CancellationToken.None);
-            var status = TrayStatus.Describe(_core.Presence.Devices, jobs.Count(j => j.State == JobState.Running));
+            var devices = _core.Presence.Devices;
+            var internetOnly = devices.Where(d => d.State != PresenceState.Online && _core.Internet.LinkTo(d.Id) is not null).Select(d => d.Name).ToList();
+            var status = TrayStatus.Describe(devices, jobs.Count(j => j.State == JobState.Running), internetOnly);
             _headline.Header = status.Headline;
             _detail.Header = status.Detail;
             _icon.ToolTipText = status.Headline;
@@ -92,6 +96,7 @@ internal sealed class TrayController : IDisposable
     {
         _core.Presence.Changed -= QueueRefresh;
         _core.Transfers.Changed -= QueueRefresh;
+        _core.Internet.Changed -= QueueRefresh;
         TrayIcon.SetIcons(_app, null);
         _icon.Dispose();
     }

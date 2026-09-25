@@ -128,6 +128,10 @@ public sealed class PlatformTests : IDisposable
         var many = TrayStatus.Describe(
             [Device("a", PresenceState.Online), Device("b", PresenceState.Online), Device("c", PresenceState.Online)], 3);
         Assert.Equal("LAN · a, b +1 · 3 transfers running", many.Detail);
+
+        var internet = TrayStatus.Describe([Device("office-pc", PresenceState.Offline)], 0, ["office-pc"]);
+        Assert.Equal("PairSync · Connected", internet.Headline);
+        Assert.Equal("Internet · office-pc · No transfers", internet.Detail);
     }
 
     [Fact]

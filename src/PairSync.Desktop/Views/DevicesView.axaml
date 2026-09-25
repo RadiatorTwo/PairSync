@@ -93,25 +93,44 @@
             </StackPanel>
           </StackPanel>
 
-          <!-- Step 2: invitation -->
-          <Grid Name="InvitationStep" ColumnDefinitions="Auto,*" ColumnSpacing="20" IsVisible="{Binding IsInvitation}">
-            <Border Width="200" Height="200" Background="{StaticResource BgBrush}" VerticalAlignment="Top">
-              <Image Source="{Binding QrCode}" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None" />
-            </Border>
-            <StackPanel Grid.Column="1" Spacing="12">
-              <TextBlock TextWrapping="Wrap" Text="{x:Static res:Strings.Pair_QrHint}" />
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Content="{x:Static res:Strings.Pair_Copy}" Command="{Binding CopyInvitationCommand}" />
-                <Button Content="{x:Static res:Strings.Pair_Save}" Command="{Binding SaveInvitationCommand}" />
+          <!-- Step 2: invitation, or (internet, invited device) the answer code -->
+          <StackPanel Spacing="16" IsVisible="{Binding ShowsQrCode}">
+            <Grid Name="InvitationStep" ColumnDefinitions="Auto,*" ColumnSpacing="20">
+              <Border Width="200" Height="200" Background="{StaticResource BgBrush}" VerticalAlignment="Top">
+                <Image Source="{Binding QrCode}" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None" />
+              </Border>
+              <StackPanel Grid.Column="1" Spacing="12">
+                <TextBlock TextWrapping="Wrap" Text="{Binding QrHint}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Content="{x:Static res:Strings.Pair_Copy}" Command="{Binding CopyInvitationCommand}" IsVisible="{Binding IsInvitation}" />
+                  <Button Content="{x:Static res:Strings.Connect_Copy}" Command="{Binding CopyInvitationCommand}" IsVisible="{Binding IsAnswerCode}" />
+                  <Button Content="{x:Static res:Strings.Pair_Save}" Command="{Binding SaveInvitationCommand}" />
+                </StackPanel>
+                <TextBlock Classes="meta" Text="{Binding CopiedText}" IsVisible="{Binding CopiedText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <TextBlock Classes="meta" TextWrapping="Wrap" Text="{Binding ExpiresText}" Classes.problem="{Binding IsExpired}" />
+                <TextBlock Classes="meta" TextWrapping="Wrap" Text="{Binding ConnectingText}" IsVisible="{Binding IsAnswerCode}" />
+                <Button Classes="quiet" Padding="0,4" HorizontalAlignment="Left" Content="{x:Static res:Strings.Pair_Close}" Command="{Binding CloseCommand}" />
               </StackPanel>
-              <TextBlock Classes="meta" Text="{Binding CopiedText}" IsVisible="{Binding CopiedText, Converter={x:Static ObjectConverters.IsNotNull}}" />
-              <TextBlock Classes="meta" TextWrapping="Wrap" Text="{Binding ExpiresText}" Classes.problem="{Binding IsExpired}" />
-              <Button Classes="quiet" Padding="0,4" HorizontalAlignment="Left" Content="{x:Static res:Strings.Pair_Close}" Command="{Binding CloseCommand}" />
+            </Grid>
+
+            <!-- Internet invitation: the answer from the invited device -->
+            <StackPanel Name="AnswerStep" Spacing="8" IsVisible="{Binding InvitationIsInternet}">
+              <Separator />
+              <ctl:Rubric Text="{x:Static res:Strings.Pair_PasteAnswer}" />
+              <TextBox Name="AnswerInput" Classes="mono" FontSize="12" Height="64" AcceptsReturn="True" TextWrapping="Wrap"
+                       Text="{Binding AnswerInput}" PlaceholderText="{x:Static res:Strings.Pair_AnswerPlaceholder}" />
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Classes="accent" Content="{x:Static res:Strings.Connect_Submit}" Command="{Binding ApplyAnswerCommand}" />
+                <Button Classes="link" FontSize="13" VerticalAlignment="Center" Content="{x:Static res:Strings.Connect_OpenFile}"
+                        Command="{Binding OpenAnswerFileCommand}" />
+              </StackPanel>
+              <TextBlock Classes="problem" FontSize="13" TextWrapping="Wrap" Text="{Binding AnswerMessage}"
+                         IsVisible="{Binding AnswerMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
             </StackPanel>
-          </Grid>
+          </StackPanel>
 
           <!-- Step 2: connecting -->
-          <TextBlock Classes="muted" Text="{Binding ConnectingText}" IsVisible="{Binding IsConnecting}" />
+          <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding ConnectingText}" IsVisible="{Binding IsConnecting}" />
 
           <!-- Step 3: security code -->
           <StackPanel Name="CodeStep" Spacing="12" IsVisible="{Binding IsCode}">

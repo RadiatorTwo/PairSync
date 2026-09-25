@@ -54,6 +54,13 @@ public enum InternetLinkPhase
     Failed,
 }
 
+/// <summary>What an answer code (<c>PSR1</c>) answers; see <see cref="InternetLinkService.TargetOfAnswer"/>.</summary>
+public enum AnswerTarget
+{
+    ConnectionCode,
+    Invitation,
+}
+
 /// <summary>What the UI shows for a device's internet connection.</summary>
 public sealed record InternetLinkStatus(
     Guid DeviceId,
@@ -367,6 +374,25 @@ public sealed class InternetLinkService(
         }
         var device = new PairedDevice { Id = answer.DeviceId, Name = answer.DeviceName, PublicKey = answer.PublicKey };
         return await ConnectPairingAsync(offer.Session, device, offer.LocalNat, answer.RemoteNat, answering: false, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// What a pasted answer code belongs to: an open connection code (<see cref="ApplyAnswerAsync"/>) or an open
+    /// internet invitation (<see cref="PairingService.ApplyInvitationAnswerAsync"/>).
+    /// </summary>
+    /// <exception cref="InvalidConnectCodeException">Not a valid answer code, or it belongs to neither.</exception>
+    public AnswerTarget TargetOfAnswer(string text)
+    {
+        var answer = ConnectCodes.ReadAnswer(text, time.GetUtcNow().UtcDateTime, options.ClockSkew, identity.Value.Identity.Id);
+        lock (_gate)
+        {
+            if (_entries.Values.Any(e => e.Phase == InternetLinkPhase.WaitingForAnswer && e.OfferNonce is { } n && n.AsSpan().SequenceEqual(answer.OfferNonce)))
+                return AnswerTarget.ConnectionCode;
+            if (_pairingOffers.ContainsKey(Convert.ToHexString(answer.OfferNonce)))
+                return AnswerTarget.Invitation;
+        }
+        throw new InvalidConnectCodeException(
+            "This answer code does not belong to an open connection code or invitation of this device. It may have expired or been used already.");
     }
 
     /// <summary>An internet connection to this device is open for a pairing that has not completed yet.</summary>

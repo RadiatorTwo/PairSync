@@ -3,6 +3,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PairSync.Application;
+using PairSync.Application.Connections;
 using PairSync.Application.Presence;
 using PairSync.Application.Transfers;
 using PairSync.Desktop.Platform;
@@ -41,7 +42,8 @@ public sealed class SendEntryViewModel
 }
 
 /// <summary>A paired device in the "Send to" segments; offline ones are disabled (mockup).</summary>
-public sealed record SendTarget(Guid Id, string Name, bool IsOnline)
+/// <param name="ViaInternet">Reachable only over an internet link (slower than the LAN).</param>
+public sealed record SendTarget(Guid Id, string Name, bool IsOnline, bool ViaInternet = false)
 {
     public override string ToString() => IsOnline ? Name : string.Format(CultureInfo.CurrentCulture, Strings.Send_Offline, Name);
 }
@@ -92,6 +94,7 @@ public sealed partial class SendViewModel : PageViewModel, IDisposable
         _desktop = desktop;
         _navigate = navigate;
         _core.Presence.Changed += OnPresenceChanged;
+        _core.Internet.Changed += OnPresenceChanged;
         LoadTargets();
         UpdateSummary();
     }
@@ -129,9 +132,12 @@ public sealed partial class SendViewModel : PageViewModel, IDisposable
 
     public string SendLabel => Target is null ? Strings.Send_ButtonNoTarget : string.Format(CultureInfo.CurrentCulture, Strings.Send_Button, Target.Name);
 
-    public string RouteText => Target is { IsOnline: false }
-        ? string.Format(CultureInfo.CurrentCulture, Strings.Send_RouteOffline, Target.Name)
-        : Strings.Send_Route;
+    public string RouteText => Target switch
+    {
+        { IsOnline: false } => string.Format(CultureInfo.CurrentCulture, Strings.Send_RouteOffline, Target.Name),
+        { ViaInternet: true } => Strings.Send_RouteInternet,
+        _ => Strings.Send_Route,
+    };
 
     /// <summary>Adds dropped or picked files and folders; the list is scanned again in the background.</summary>
     public Task AddPathsAsync(IEnumerable<string> paths)
@@ -261,7 +267,8 @@ public sealed partial class SendViewModel : PageViewModel, IDisposable
         var selected = Target?.Id;
         var targets = _core.Presence.Devices
             .Where(d => d.IsPaired && d.Trust != DeviceTrust.Blocked)
-            .Select(d => new SendTarget(d.Id, d.Name, d.State == PresenceState.Online))
+            .Select(d => (Device: d, Route: _core.Links.RouteTo(d.Id)))
+            .Select(x => new SendTarget(x.Device.Id, x.Device.Name, x.Route != PeerRoute.None, x.Route == PeerRoute.Internet))
             .ToList();
         if (targets.SequenceEqual(Targets))
             return;
@@ -276,5 +283,6 @@ public sealed partial class SendViewModel : PageViewModel, IDisposable
     {
         _disposed = true;
         _core.Presence.Changed -= OnPresenceChanged;
+        _core.Internet.Changed -= OnPresenceChanged;
     }
 }

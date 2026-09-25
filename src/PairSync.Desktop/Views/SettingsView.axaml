@@ -63,6 +63,47 @@
                    IsVisible="{Binding DiscoveryError, Converter={x:Static ObjectConverters.IsNotNull}}" />
       </StackPanel>
 
+      <StackPanel Name="InternetSection" Spacing="8" IsVisible="{Binding Fingerprint, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <ctl:Rubric Text="{x:Static res:Strings.Settings_Internet}" />
+        <TextBlock Classes="problem" FontSize="13" TextWrapping="Wrap" Text="{Binding InternetUnavailable}"
+                   IsVisible="{Binding InternetUnavailable, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <TextBlock Text="{x:Static res:Strings.Settings_StunServers}" />
+        <Border Classes="input" Padding="12,8">
+          <StackPanel>
+            <TextBlock Classes="hint" Text="{x:Static res:Strings.Settings_StunNone}" IsVisible="{Binding !HasStunServers}" />
+            <ItemsControl Name="StunServers" ItemsSource="{Binding StunServers}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:StunServerRow">
+                  <DockPanel Margin="0,2">
+                    <Button DockPanel.Dock="Right" Classes="quiet" FontSize="12" Content="{x:Static res:Strings.Settings_StunRemove}"
+                            Command="{Binding RemoveCommand}" />
+                    <TextBlock Classes="mono" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding Uri}" />
+                  </DockPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="12" Margin="10,0,0,0">
+            <Button Name="AddStun" Content="{x:Static res:Strings.Settings_StunAdd}" Command="{Binding AddStunServerCommand}"
+                    IsEnabled="{Binding CanAddStunServer}" />
+            <Button Classes="link" FontSize="13" VerticalAlignment="Center" Content="{x:Static res:Strings.Settings_StunReset}"
+                    Command="{Binding ResetStunServersCommand}" />
+          </StackPanel>
+          <TextBox Name="NewStunServer" Classes="mono" Text="{Binding NewStunServer}" PlaceholderText="stun:stun.example.org:3478" />
+        </DockPanel>
+        <TextBlock Classes="problem" FontSize="13" TextWrapping="Wrap" Text="{Binding StunError}"
+                   IsVisible="{Binding StunError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Settings_StunHint}" />
+        <DockPanel Margin="0,6,0,0">
+          <TextBlock DockPanel.Dock="Right" Classes="meta" Text="{x:Static res:Strings.Settings_TurnState}" />
+          <TextBlock Text="{x:Static res:Strings.Settings_Turn}" />
+        </DockPanel>
+        <Button HorizontalAlignment="Left" Margin="0,6,0,0" Content="{x:Static res:Strings.Nat_Run}" Command="{Binding RunDiagnosticCommand}"
+                IsVisible="{Binding CanRunDiagnostic}" />
+      </StackPanel>
+
       <StackPanel Spacing="10" IsVisible="{Binding Fingerprint, Converter={x:Static ObjectConverters.IsNotNull}}">
         <ctl:Rubric Text="{x:Static res:Strings.Settings_Limits}" />
         <Grid ColumnDefinitions="*,*" ColumnSpacing="14">

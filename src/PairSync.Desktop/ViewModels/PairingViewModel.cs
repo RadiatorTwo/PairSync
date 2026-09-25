@@ -5,12 +5,12 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PairSync.Application;
+using PairSync.Application.Internet;
 using PairSync.Application.Pairing;
 using PairSync.Application.Presence;
 using PairSync.Desktop.Platform;
 using PairSync.Desktop.Resources;
 using PairSync.Protocol;
-using QRCoder;
 
 namespace PairSync.Desktop.ViewModels;
 
@@ -19,39 +19,59 @@ public enum PairingStep
     /// <summary>Step 1: devices on the LAN, create or import an invitation.</summary>
     Start,
 
-    /// <summary>Step 2: the invitation is shown and waits to be redeemed.</summary>
+    /// <summary>Step 2: the invitation is shown and waits to be redeemed (internet: waits for the answer code).</summary>
     Invitation,
 
-    /// <summary>Step 2: connecting to the other device.</summary>
+    /// <summary>Internet, invited device: the answer code is shown and has to reach the inviting device.</summary>
+    AnswerCode,
+
+    /// <summary>Connecting to the other device (or preparing an invitation).</summary>
     Connecting,
 
-    /// <summary>Step 3: both screens show the security code.</summary>
+    /// <summary>Last step: both screens show the security code.</summary>
     Code,
 }
 
 /// <summary>
-/// The pairing card on Devices (plan §5, work package E): LAN or invitation, then the security code. Nothing is
-/// stored unless both users confirm; cancel and timeout keep the lists as they were.
+/// The pairing card on Devices (plan §5, work package E; phase 2 block F): LAN or invitation, then the security code.
+/// An internet invitation adds one step: the invited device shows an answer code, the inviting device pastes it.
+/// Nothing is stored unless both users confirm; cancel and timeout keep the lists as they were.
 /// </summary>
 public sealed partial class PairingViewModel : ObservableObject, IDisposable
 {
     private readonly PairSyncCore _core;
     private readonly IDesktopServices _desktop;
     private readonly TimeProvider _time;
+    private readonly InternetUi? _internet;
     private readonly DispatcherTimer _countdown;
     private IssuedInvitation? _invitation;
+    private IssuedCode? _answer;
+    private CancellationTokenSource? _wait;
     private PairingSession? _session;
     private bool _disposed;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StepText), nameof(IsStart), nameof(IsInvitation), nameof(IsConnecting), nameof(IsCode))]
+    [NotifyPropertyChangedFor(nameof(StepText), nameof(IsStart), nameof(IsInvitation), nameof(IsAnswerCode), nameof(IsConnecting),
+        nameof(IsCode), nameof(ShowsQrCode))]
     private PairingStep _step = PairingStep.Start;
+
+    /// <summary>The current pairing runs over the internet (one more step: the answer code).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StepText))]
+    private bool _isInternet;
 
     [ObservableProperty]
     private string _invitationInput = "";
 
+    /// <summary>Internet invitation: the answer code of the invited device.</summary>
+    [ObservableProperty]
+    private string _answerInput = "";
+
     [ObservableProperty]
     private Bitmap? _qrCode;
+
+    [ObservableProperty]
+    private string? _qrHint;
 
     [ObservableProperty]
     private string? _expiresText;
@@ -79,14 +99,20 @@ public sealed partial class PairingViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string? _message;
 
+    /// <summary>Why the pasted answer was not accepted; the invitation stays.</summary>
+    [ObservableProperty]
+    private string? _answerMessage;
+
     [ObservableProperty]
     private string? _copiedText;
 
-    public PairingViewModel(PairSyncCore core, IDesktopServices desktop, TimeProvider time)
+    /// <param name="internet">Opens connection codes pasted here; null when the dialogs are not available (tests).</param>
+    public PairingViewModel(PairSyncCore core, IDesktopServices desktop, TimeProvider time, InternetUi? internet = null)
     {
         _core = core;
         _desktop = desktop;
         _time = time;
+        _internet = internet;
         _countdown = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => UpdateCountdown());
         _core.Presence.Changed += OnPresenceChanged;
         LoadFound();
@@ -100,92 +126,288 @@ public sealed partial class PairingViewModel : ObservableObject, IDisposable
     public string StepText => string.Format(CultureInfo.CurrentCulture, Strings.Pair_Step, Step switch
     {
         PairingStep.Start => 1,
-        PairingStep.Code => 3,
-        _ => 2,
-    });
+        PairingStep.Invitation or PairingStep.AnswerCode => 2,
+        PairingStep.Connecting => IsInternet ? 3 : 2,
+        _ => IsInternet ? 4 : 3,
+    }, IsInternet ? 4 : 3);
 
     public bool IsStart => Step == PairingStep.Start;
 
     public bool IsInvitation => Step == PairingStep.Invitation;
 
+    public bool IsAnswerCode => Step == PairingStep.AnswerCode;
+
     public bool IsConnecting => Step == PairingStep.Connecting;
 
     public bool IsCode => Step == PairingStep.Code;
 
+    public bool ShowsQrCode => Step is PairingStep.Invitation or PairingStep.AnswerCode;
+
     /// <summary>Paired or canceled: the device lists may have changed.</summary>
     public event Action? Finished;
 
+    /// <summary>"Pair a new device": an internet invitation when STUN servers are set, otherwise a LAN invitation.</summary>
     [RelayCommand]
-    private void CreateInvitation()
+    private async Task CreateInvitationAsync()
     {
         Message = null;
         RevokeInvitation();
-        _invitation = _core.Pairing.CreateInvitation();
-        QrCode = CreateQrCode(_invitation.Text);
-        CopiedText = null;
-        IsExpired = false;
-        UpdateCountdown();
-        _countdown.Start();
+        var overInternet = _core.Internet.CanInviteOverInternet;
+        if (overInternet)
+        {
+            // Gathering the candidates takes a few seconds.
+            ConnectingText = Strings.Pair_Preparing;
+            IsInternet = true;
+            Step = PairingStep.Connecting;
+        }
+        IssuedInvitation invitation;
+        try
+        {
+            invitation = await _core.Pairing.CreateInvitationAsync(CancellationToken.None, overInternet);
+        }
+        catch (PairingException e)
+        {
+            Reset(string.Format(CultureInfo.CurrentCulture, Strings.Pair_Failed, e.Message));
+            return;
+        }
+        if (_disposed || Step is PairingStep.Code)
+        {
+            _core.Pairing.RevokeInvitation(invitation);
+            return;
+        }
+        _invitation = invitation;
+        IsInternet = overInternet;
+        ShowQrCode(invitation.Text, invitation.ExpiresAtUtc, overInternet ? Strings.Pair_QrHintInternet : Strings.Pair_QrHint);
+        AnswerInput = "";
+        AnswerMessage = null;
         Step = PairingStep.Invitation;
     }
+
+    public bool InvitationIsInternet => IsInternet && _invitation is not null;
 
     [RelayCommand]
     private async Task CopyInvitationAsync()
     {
-        if (_invitation is null)
+        if ((_invitation?.Text ?? _answer?.Text) is not { } text)
             return;
-        await _desktop.CopyTextAsync(_invitation.Text);
+        await _desktop.CopyTextAsync(text);
         CopiedText = Strings.Pair_Copied;
     }
 
     [RelayCommand]
     private async Task SaveInvitationAsync()
     {
-        if (_invitation is null)
+        var name = _core.Settings.Current.EffectiveDeviceName;
+        var (text, fileName, extension) = _invitation is { } invitation
+            ? (invitation.Text, invitation.SuggestedFileName(name), InvitationCodec.FileExtension)
+            : _answer is { } answer
+                ? (answer.Text, answer.SuggestedFileName(name), ConnectCodec.FileExtension)
+                : (null, null, null);
+        if (text is null)
             return;
-        var name = _invitation.SuggestedFileName(_core.Settings.Current.EffectiveDeviceName);
-        if (await _desktop.PickSaveFileAsync(name, InvitationCodec.FileExtension) is { } path)
-            await File.WriteAllTextAsync(path, _invitation.Text);
+        if (await _desktop.PickSaveFileAsync(fileName!, extension!) is { } path)
+            await File.WriteAllTextAsync(path, text);
     }
 
+    /// <summary>"Connect" under an invitation, a connection code or an answer code pasted on step 1.</summary>
     [RelayCommand]
-    private Task ImportAsync() => ConnectAsync(() =>
-    {
-        var invitation = _core.Pairing.ReadInvitation(InvitationInput);
-        return (invitation.DeviceName, ct => _core.Pairing.PairAsync(invitation, ct));
-    });
+    private Task ImportAsync() => ImportTextAsync(InvitationInput);
 
     [RelayCommand]
     private async Task ImportFileAsync()
     {
-        if (await _desktop.PickOpenFileAsync(InvitationCodec.FileExtension) is not { } path)
-            return;
-        ReceivedInvitation invitation;
+        string? text;
         try
         {
-            invitation = await _core.Pairing.ReadInvitationFileAsync(path, CancellationToken.None);
+            text = await Codes.LoadFileAsync(_desktop, InvitationCodec.FileExtension);
         }
-        catch (Exception e) when (e is PairingException or IOException or UnauthorizedAccessException)
+        catch (IOException e)
         {
             Message = string.Format(CultureInfo.CurrentCulture, Strings.Pair_Failed, e.Message);
             return;
         }
-        await ConnectAsync(() => (invitation.DeviceName, ct => _core.Pairing.PairAsync(invitation, ct)));
+        if (text is not null)
+            await ImportTextAsync(text);
+    }
+
+    /// <summary>Takes any PairSync code: invitations pair here, connection codes and answers go where they belong.</summary>
+    internal async Task ImportTextAsync(string text)
+    {
+        if (Step is PairingStep.Connecting or PairingStep.Code or PairingStep.AnswerCode)
+            return;
+        Message = null;
+        switch (Codes.Classify(text))
+        {
+            case CodeKind.Invitation:
+                await AcceptInvitationAsync(text.Trim());
+                break;
+            case CodeKind.Answer:
+                await ApplyAnswerTextAsync(text.Trim());
+                break;
+            case CodeKind.ConnectionCode when _internet is not null:
+                InvitationInput = "";
+                await _internet.PasteCodeAsync(text.Trim());
+                break;
+            default:
+                Message = string.Format(CultureInfo.CurrentCulture, Strings.Pair_Failed, Strings.Connect_NotACode);
+                break;
+        }
+    }
+
+    private async Task AcceptInvitationAsync(string text)
+    {
+        ReceivedInvitation invitation;
+        try
+        {
+            invitation = _core.Pairing.ReadInvitation(text);
+        }
+        catch (PairingException e)
+        {
+            Message = string.Format(CultureInfo.CurrentCulture, Strings.Pair_Failed, e.Message);
+            return;
+        }
+
+        RevokeInvitation();
+        IsInternet = false;
+        ConnectingText = string.Format(CultureInfo.CurrentCulture, Strings.Pair_Connecting, invitation.DeviceName);
+        Step = PairingStep.Connecting;
+        _wait = new CancellationTokenSource();
+        var wait = _wait;
+        try
+        {
+            // The LAN part is quick; the internet part waits until the other side applied the answer (or Close).
+            using (var lan = CancellationTokenSource.CreateLinkedTokenSource(wait.Token))
+            {
+                if (invitation.Offer is null)
+                    lan.CancelAfter(TimeSpan.FromSeconds(30));
+                var pairing = await _core.Pairing.AcceptInvitationAsync(invitation, lan.Token);
+                if (pairing.Answer is { } answer)
+                {
+                    _answer = answer;
+                    IsInternet = true;
+                    ShowQrCode(answer.Text, answer.ExpiresAtUtc,
+                        string.Format(CultureInfo.CurrentCulture, Strings.Pair_AnswerHint, invitation.DeviceName));
+                    ConnectingText = string.Format(CultureInfo.CurrentCulture, Strings.Pair_WaitingForApply, invitation.DeviceName);
+                    Step = PairingStep.AnswerCode;
+                }
+                var session = await pairing.Session.WaitAsync(wait.Token);
+                if (!ReferenceEquals(_wait, wait) || _disposed)
+                {
+                    _ = session.CancelAsync("the pairing was closed");
+                    return;
+                }
+                ShowSession(session);
+            }
+        }
+        catch (Exception e) when (e is PairingException or IOException or OperationCanceledException or TimeoutException)
+        {
+            if (ReferenceEquals(_wait, wait) && !_disposed)
+                Reset(wait.IsCancellationRequested && e is OperationCanceledException
+                    ? null
+                    : string.Format(CultureInfo.CurrentCulture, Strings.Pair_Failed,
+                        e is OperationCanceledException ? Strings.Pair_NoAnswer : e.Message));
+        }
+        finally
+        {
+            if (ReferenceEquals(_wait, wait))
+                _wait = null;
+            wait.Dispose();
+        }
+    }
+
+    /// <summary>Internet invitation, inviting device: "Connect" with the pasted answer.</summary>
+    [RelayCommand]
+    private Task ApplyAnswerAsync() => ApplyAnswerTextAsync(AnswerInput.Trim());
+
+    [RelayCommand]
+    private async Task OpenAnswerFileAsync()
+    {
+        try
+        {
+            if (await Codes.LoadFileAsync(_desktop, ConnectCodec.FileExtension) is { } text)
+            {
+                AnswerInput = text;
+                await ApplyAnswerTextAsync(text.Trim());
+            }
+        }
+        catch (IOException e)
+        {
+            AnswerMessage = string.Format(CultureInfo.CurrentCulture, Strings.Code_FileFailed, e.Message);
+        }
+    }
+
+    /// <summary>
+    /// The answer to this device's internet invitation: connects, then the other device starts the pairing and the code
+    /// step follows (<see cref="ShowIncoming"/>). An answer to a connection code goes to the connect dialog.
+    /// </summary>
+    internal async Task ApplyAnswerTextAsync(string text)
+    {
+        AnswerMessage = null;
+        try
+        {
+            if (_core.Internet.TargetOfAnswer(text) == AnswerTarget.ConnectionCode)
+            {
+                if (_internet is not null)
+                    await _internet.PasteCodeAsync(text);
+                return;
+            }
+        }
+        catch (InvalidConnectCodeException e)
+        {
+            ShowAnswerProblem(e.Message);
+            return;
+        }
+        if (Step is PairingStep.Code or PairingStep.Connecting)
+            return;
+
+        _countdown.Stop();
+        IsInternet = true;
+        ConnectingText = Strings.Connect_Connecting;
+        Step = PairingStep.Connecting;
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(1));
+            var answer = await _core.Pairing.ApplyInvitationAnswerAsync(text, timeout.Token);
+            // The invitation is redeemed by the pairing request that follows; it must not be revoked now.
+            _invitation = null;
+            if (Step == PairingStep.Connecting && _session is null)
+                ConnectingText = string.Format(CultureInfo.CurrentCulture, Strings.Pair_ConnectedWaiting, answer.DeviceName);
+        }
+        catch (InvalidInvitationException e) when (_invitation is not null)
+        {
+            // Wrong or damaged answer: the invitation stays open for the right one.
+            Step = PairingStep.Invitation;
+            _countdown.Start();
+            ShowAnswerProblem(e.Message);
+        }
+        catch (Exception e) when (e is PairingException or OperationCanceledException)
+        {
+            _invitation = null;
+            Reset(string.Format(CultureInfo.CurrentCulture, Strings.Pair_Failed, e.Message));
+        }
+    }
+
+    private void ShowAnswerProblem(string message)
+    {
+        if (Step == PairingStep.Invitation)
+            AnswerMessage = message;
+        else
+            Message = string.Format(CultureInfo.CurrentCulture, Strings.Pair_Failed, message);
     }
 
     /// <summary>"Pair…" on a device found on the LAN (here or on Overview).</summary>
     public Task PairWithAsync(NearbyDevice device) =>
-        ConnectAsync(() => (device.Name, ct => _core.Pairing.PairAsync(device, ct)));
+        ConnectAsync(device.Name, ct => _core.Pairing.PairAsync(device, ct));
 
-    private async Task ConnectAsync(Func<(string Name, Func<CancellationToken, Task<PairingSession>> Pair)> start)
+    private async Task ConnectAsync(string name, Func<CancellationToken, Task<PairingSession>> pair)
     {
-        if (Step is PairingStep.Connecting or PairingStep.Code)
+        if (Step is PairingStep.Connecting or PairingStep.Code or PairingStep.AnswerCode)
             return;
         Message = null;
         try
         {
-            var (name, pair) = start();
             RevokeInvitation();
+            IsInternet = false;
             ConnectingText = string.Format(CultureInfo.CurrentCulture, Strings.Pair_Connecting, name);
             Step = PairingStep.Connecting;
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -197,7 +419,7 @@ public sealed partial class PairingViewModel : ObservableObject, IDisposable
         }
     }
 
-    /// <summary>The other device found this one or redeemed its invitation.</summary>
+    /// <summary>The other device found this one, redeemed its invitation, or paired over the internet connection.</summary>
     public void ShowIncoming(PairingSession session)
     {
         if (_session is not null)
@@ -213,6 +435,8 @@ public sealed partial class PairingViewModel : ObservableObject, IDisposable
     private void ShowSession(PairingSession session)
     {
         _session = session;
+        _countdown.Stop();
+        QrCode = null;
         RespondedText = string.Format(CultureInfo.CurrentCulture, Strings.Pair_Responded, session.RemoteName);
         SecurityCode = session.SecurityCode;
         RemoteFingerprint = string.Format(CultureInfo.CurrentCulture, Strings.Pair_Fingerprint, session.RemoteFingerprint.ToShortString());
@@ -227,7 +451,7 @@ public sealed partial class PairingViewModel : ObservableObject, IDisposable
         try
         {
             var device = await session.Completion;
-            message = string.Format(CultureInfo.CurrentCulture, Strings.Pair_Done, device.Name);
+            message = string.Format(CultureInfo.CurrentCulture, IsInternet ? Strings.Pair_DoneInternet : Strings.Pair_Done, device.Name);
         }
         catch (PairingCanceledException e)
         {
@@ -271,7 +495,7 @@ public sealed partial class PairingViewModel : ObservableObject, IDisposable
             await session.CancelAsync();
     }
 
-    /// <summary>Closes the invitation (it cannot be used anymore) and goes back to step 1.</summary>
+    /// <summary>Closes the invitation or the answer (neither can be used anymore) and goes back to step 1.</summary>
     [RelayCommand]
     private void Close()
     {
@@ -281,14 +505,42 @@ public sealed partial class PairingViewModel : ObservableObject, IDisposable
 
     private void Reset(string? message)
     {
+        CancelWait();
         _countdown.Stop();
+        _answer = null;
         QrCode = null;
         SecurityCode = null;
         WaitingText = null;
         InvitationInput = "";
+        AnswerInput = "";
+        AnswerMessage = null;
         Message = message;
         Step = PairingStep.Start;
+        IsInternet = false;
     }
+
+    private void CancelWait()
+    {
+        if (_wait is { } wait)
+        {
+            _wait = null;
+            wait.Cancel();
+        }
+    }
+
+    private void ShowQrCode(string text, DateTime expiresAtUtc, string hint)
+    {
+        QrCode = Codes.QrCode(text);
+        QrHint = hint;
+        CopiedText = null;
+        IsExpired = false;
+        _expiresAtUtc = expiresAtUtc;
+        UpdateCountdown();
+        _countdown.Start();
+        OnPropertyChanged(nameof(InvitationIsInternet));
+    }
+
+    private DateTime? _expiresAtUtc;
 
     private void RevokeInvitation()
     {
@@ -300,9 +552,9 @@ public sealed partial class PairingViewModel : ObservableObject, IDisposable
 
     private void UpdateCountdown()
     {
-        if (_invitation is null)
+        if (_expiresAtUtc is not { } expires)
             return;
-        var left = _invitation.ExpiresAtUtc - _time.GetUtcNow().UtcDateTime;
+        var left = expires - _time.GetUtcNow().UtcDateTime;
         if (left <= TimeSpan.Zero)
         {
             _countdown.Stop();
@@ -310,17 +562,7 @@ public sealed partial class PairingViewModel : ObservableObject, IDisposable
             ExpiresText = Strings.Pair_Expired;
             return;
         }
-        ExpiresText = string.Format(CultureInfo.CurrentCulture, Strings.Pair_Expires, $"{(int)left.TotalMinutes:00}:{left.Seconds:00}");
-    }
-
-    private static Bitmap CreateQrCode(string text)
-    {
-        using var generator = new QRCodeGenerator();
-        using var data = generator.CreateQrCode(text, QRCodeGenerator.ECCLevel.M);
-        // Dark modules in Text (#1D1F20) on the page background, 1 px per module; the view scales without smoothing.
-        var png = new PngByteQRCode(data).GetGraphic(1, [0x1D, 0x1F, 0x20], [0xF2, 0xF2, 0xF3]);
-        using var stream = new MemoryStream(png);
-        return new Bitmap(stream);
+        ExpiresText = string.Format(CultureInfo.CurrentCulture, Strings.Pair_Expires, Codes.Countdown(left));
     }
 
     private void OnPresenceChanged() => Ui.Run(() =>
@@ -343,6 +585,7 @@ public sealed partial class PairingViewModel : ObservableObject, IDisposable
         _countdown.Stop();
         _core.Presence.Changed -= OnPresenceChanged;
         RevokeInvitation();
+        CancelWait();
         if (_session is { } session)
             _ = session.CancelAsync("the window was closed");
     }

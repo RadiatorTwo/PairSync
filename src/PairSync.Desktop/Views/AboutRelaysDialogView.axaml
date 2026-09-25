@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PairSync.Desktop.ViewModels"
+             xmlns:res="using:PairSync.Desktop.Resources"
+             x:Class="PairSync.Desktop.Views.AboutRelaysDialogView"
+             x:DataType="vm:AboutRelaysDialogViewModel">
+  <StackPanel Spacing="14">
+    <TextBlock Classes="h2" Text="{x:Static res:Strings.Relays_Title}" />
+    <TextBlock TextWrapping="Wrap" LineHeight="20.3" Text="{x:Static res:Strings.Relays_Why}" />
+    <TextBlock TextWrapping="Wrap" LineHeight="20.3" Text="{x:Static res:Strings.Relays_Later}" />
+    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Relays_Encrypted}" />
+    <Button Classes="primary compact" HorizontalAlignment="Right" Content="{x:Static res:Strings.Dialog_Done}" Command="{Binding DoneCommand}" />
+  </StackPanel>
+</UserControl>

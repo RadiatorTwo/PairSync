@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using PairSync.Application;
+using PairSync.Application.Internet;
 using PairSync.Application.Presence;
 using PairSync.Application.Transfers;
 using PairSync.Desktop.Resources;
@@ -20,8 +21,19 @@ public enum CardKind
     Found,
 }
 
+/// <summary>A button on a device card ("Connect via internet…", "Paste answer…", "Cancel").</summary>
+public sealed record CardActionViewModel(string Label, IAsyncRelayCommand Command, bool IsPrimary = false)
+{
+    public CardActionViewModel(string label, Func<Task> action, bool isPrimary = false)
+        : this(label, new AsyncRelayCommand(action), isPrimary)
+    {
+    }
+}
+
 /// <summary>One card of the device grid.</summary>
-public sealed class DeviceCardViewModel(NearbyDevice device, CardKind kind, string? state, string line1, string? line2, Func<NearbyDevice, Task>? pair)
+public sealed class DeviceCardViewModel(
+    NearbyDevice device, CardKind kind, string? state, string line1, string? line2, Func<NearbyDevice, Task>? pair,
+    string? internetText = null, IReadOnlyList<CardActionViewModel>? actions = null)
 {
     public Guid Id => Device.Id;
 
@@ -42,8 +54,18 @@ public sealed class DeviceCardViewModel(NearbyDevice device, CardKind kind, stri
 
     public string? Line2 { get; } = line2;
 
+    /// <summary>State of an internet connection in progress: "Waiting for answer · expires in 08:41", "Connection lost · new code needed".</summary>
+    public string? InternetText { get; } = internetText;
+
+    public IReadOnlyList<CardActionViewModel> Actions { get; } = actions ?? [];
+
+    public bool HasActions => Actions.Count > 0;
+
     public IAsyncRelayCommand PairCommand { get; } = new AsyncRelayCommand(() => pair?.Invoke(device) ?? Task.CompletedTask);
 }
+
+/// <summary>The NAT banner over the device grid: "Can't connect directly to office-pc." and why.</summary>
+public sealed record NatBannerViewModel(Guid DeviceId, string Headline, string Detail);
 
 /// <summary>A job under "Active transfers"; updated in place so the list does not flicker.</summary>
 public sealed partial class TransferRowViewModel(Guid id, TransferService transfers) : ObservableObject
@@ -134,6 +156,7 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
 {
     private readonly PairSyncCore _core;
     private readonly Func<NearbyDevice, Task> _pair;
+    private readonly InternetUi? _internet;
     private readonly LatencyProbe _latency;
     private readonly TimeProvider _time;
     private readonly DispatcherTimer _timer;
@@ -143,14 +166,24 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
     private int _ticks;
     private bool _disposed;
 
+    private bool _anyCountdown;
+
     [ObservableProperty]
     private string _header = "";
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasNatBanner))]
+    private NatBannerViewModel? _natBanner;
+
     /// <param name="pair">"Pair…" on a found device: switches to Devices and starts pairing there.</param>
-    public OverviewViewModel(PairSyncCore core, Func<NearbyDevice, Task> pair, LatencyProbe latency, TimeProvider time) : base(AppPage.Overview)
+    /// <param name="internet">The internet dialogs; null leaves out the internet actions.</param>
+    public OverviewViewModel(PairSyncCore core, Func<NearbyDevice, Task> pair, LatencyProbe latency, TimeProvider time, InternetUi? internet = null)
+        : base(AppPage.Overview)
     {
         _core = core;
         _pair = pair;
+        _internet = internet;
+        _core.Internet.Changed += QueueRefresh;
         _latency = latency;
         _time = time;
         _logger = core.Logger<OverviewViewModel>();
@@ -176,12 +209,32 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
 
     public bool HasRecentTransfers => RecentTransfers.Count > 0;
 
+    public bool HasNatBanner => NatBanner is not null;
+
+    public bool CanPasteCode => _internet is not null && _core.Internet.IsAvailable;
+
+    [RelayCommand]
+    private Task PasteCodeAsync() => _internet?.PasteCodeAsync() ?? Task.CompletedTask;
+
+    [RelayCommand]
+    private Task RunDiagnosticAsync() => _internet?.ShowDiagnosticAsync() ?? Task.CompletedTask;
+
+    [RelayCommand]
+    private Task AboutRelaysAsync() => _internet?.ShowAboutRelaysAsync() ?? Task.CompletedTask;
+
+    [RelayCommand]
+    private void DismissNatBanner()
+    {
+        if (NatBanner is { } banner)
+            _core.Internet.Dismiss(banner.DeviceId);
+    }
+
     private void OnTick()
     {
         if (_disposed)
             return;
         _ticks++;
-        if (_anyRunning || _ticks % 30 == 0)
+        if (_anyRunning || _anyCountdown || _ticks % 30 == 0)
             QueueRefresh();
         if (_ticks % 30 == 1)
             _latency.Probe(_core.Presence.Devices.Where(d => d.State == PresenceState.Online && d.Lan is not null).Select(d => (d.Id, d.Lan!)));
@@ -219,8 +272,10 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
         var culture = CultureInfo.CurrentCulture;
 
         Devices.Clear();
+        _anyCountdown = false;
         foreach (var device in devices)
             Devices.Add(Card(device, jobs.Count(j => j.PeerDeviceId == device.Id), now));
+        NatBanner = FindNatFailure(devices);
         var paired = devices.Count(d => d.IsPaired);
         var found = devices.Count - paired;
         var pairedText = paired == 1 ? Strings.Count_PairedOne : string.Format(culture, Strings.Count_PairedMany, paired);
@@ -286,16 +341,67 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
             : Strings.Card_NeverSeen;
         if (device.Trust == DeviceTrust.Blocked)
             return new DeviceCardViewModel(device, CardKind.Blocked, Strings.Card_Blocked, lastSeen, waiting, null);
-        if (device.State == PresenceState.Offline)
-            return new DeviceCardViewModel(device, CardKind.Offline, Strings.Card_Offline, lastSeen, waiting, null);
 
-        var route = _latency.RoundTrip(device.Id) is { } rtt
-            ? string.Format(culture, Strings.Card_RouteLanRtt, Math.Max(1, (int)Math.Round(rtt.TotalMilliseconds)))
-            : Strings.Card_RouteLan;
-        var address = device.Lan is { Addresses.Count: > 0 } lan
-            ? string.Format(culture, Strings.Card_Address, $"{lan.Addresses[0]}:{lan.Port}")
-            : null;
-        return new DeviceCardViewModel(device, CardKind.Connected, Strings.Card_Connected, route, address, null);
+        var internet = _core.Internet.StatusOf(device.Id);
+        if (device.State == PresenceState.Online)
+        {
+            var route = _latency.RoundTrip(device.Id) is { } rtt
+                ? string.Format(culture, Strings.Card_RouteLanRtt, Math.Max(1, (int)Math.Round(rtt.TotalMilliseconds)))
+                : Strings.Card_RouteLan;
+            var address = device.Lan is { Addresses.Count: > 0 } lan
+                ? string.Format(culture, Strings.Card_Address, $"{lan.Addresses[0]}:{lan.Port}")
+                : null;
+            return new DeviceCardViewModel(device, CardKind.Connected, Strings.Card_Connected, route, address, null);
+        }
+        if (internet is { Phase: InternetLinkPhase.Connected })
+            return new DeviceCardViewModel(device, CardKind.Connected, Strings.Card_Connected, Codes.InternetLine(internet.RoundTrip),
+                Codes.RouteLine(internet.Route), null, null,
+                [new CardActionViewModel(Strings.Card_Disconnect, () => _core.Internet.CloseAsync(device.Id))]);
+
+        var (text, actions) = InternetState(device, internet, now);
+        return new DeviceCardViewModel(device, CardKind.Offline, Strings.Card_Offline, lastSeen, waiting, null, text, actions);
+    }
+
+    /// <summary>What an offline card says about the internet connection and which actions it offers.</summary>
+    private (string? Text, IReadOnlyList<CardActionViewModel> Actions) InternetState(NearbyDevice device, InternetLinkStatus? status, DateTime now)
+    {
+        var culture = CultureInfo.CurrentCulture;
+        if (_internet is not { } ui || !_core.Internet.IsAvailable)
+            return (null, []);
+        CardActionViewModel Connect(bool primary = true) =>
+            new(Strings.Card_ConnectInternet, () => ui.ConnectAsync(device.Id, device.Name), primary);
+        CardActionViewModel Cancel() => new(Strings.Card_CancelCode, () => _core.Internet.CloseAsync(device.Id));
+
+        switch (status?.Phase)
+        {
+            case InternetLinkPhase.WaitingForAnswer:
+                _anyCountdown = true;
+                var left = (status.ExpiresAtUtc ?? now) - now;
+                return (string.Format(culture, Strings.Card_WaitingForAnswer, Codes.Countdown(left)),
+                    [new(Strings.Card_PasteAnswer, () => ui.PasteCodeAsync(deviceName: device.Name), true), Cancel()]);
+            case InternetLinkPhase.WaitingForConnection:
+                return (string.Format(culture, Strings.Card_WaitingForApply, device.Name), [Cancel()]);
+            case InternetLinkPhase.Connecting:
+                return (Strings.Card_Connecting, []);
+            case InternetLinkPhase.Failed:
+                return (status.WasConnected ? Strings.Card_ConnectionLost : Strings.Card_ConnectionFailed, [Connect()]);
+            default:
+                return (null, [Connect(primary: false)]);
+        }
+    }
+
+    /// <summary>The banner shows the first attempt whose ICE check failed (not a lost link, not an expired code).</summary>
+    private NatBannerViewModel? FindNatFailure(IReadOnlyList<NearbyDevice> devices)
+    {
+        var failed = _core.Internet.Statuses
+            .FirstOrDefault(s => s is { Phase: InternetLinkPhase.Failed, Failure: not null, WasConnected: false } && devices.Any(d => d.Id == s.DeviceId));
+        if (failed?.Error is not { } error)
+            return null;
+        // "Can't connect directly to office-pc." in bold, the reason after it.
+        var split = error.IndexOf(". ", StringComparison.Ordinal);
+        return split < 0
+            ? new NatBannerViewModel(failed.DeviceId, error, "")
+            : new NatBannerViewModel(failed.DeviceId, error[..(split + 1)], error[(split + 2)..]);
     }
 
     public void Dispose()
@@ -305,6 +411,7 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
         _core.Presence.Changed -= QueueRefresh;
         _core.Transfers.Changed -= QueueRefresh;
         _core.Devices.Changed -= QueueRefresh;
+        _core.Internet.Changed -= QueueRefresh;
         _latency.Changed -= QueueRefresh;
     }
 }

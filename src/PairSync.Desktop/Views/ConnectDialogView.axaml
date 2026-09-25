@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="using:PairSync.Desktop.Controls"
+             xmlns:vm="using:PairSync.Desktop.ViewModels"
+             xmlns:res="using:PairSync.Desktop.Resources"
+             x:Class="PairSync.Desktop.Views.ConnectDialogView"
+             x:DataType="vm:ConnectDialogViewModel">
+  <StackPanel Spacing="16">
+    <DockPanel>
+      <TextBlock DockPanel.Dock="Right" Classes="meta" VerticalAlignment="Center" Text="{Binding StepText}" />
+      <TextBlock Classes="h2" TextWrapping="Wrap" Text="{Binding Title}" />
+    </DockPanel>
+
+    <!-- Preparing / connecting -->
+    <TextBlock Name="Status" Classes="muted" TextWrapping="Wrap" Text="{Binding StatusText}"
+               IsVisible="{Binding IsPreparing}" />
+    <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding StatusText}" IsVisible="{Binding IsConnecting}" />
+
+    <!-- A code of this device: connection code (step 1) or answer (step 2) -->
+    <Grid Name="CodePanel" ColumnDefinitions="Auto,*" ColumnSpacing="20" IsVisible="{Binding ShowsCode}">
+      <Border Width="200" Height="200" Background="{StaticResource BgBrush}" VerticalAlignment="Top">
+        <Image Source="{Binding QrCode}" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None" />
+      </Border>
+      <StackPanel Grid.Column="1" Spacing="12">
+        <TextBlock TextWrapping="Wrap" LineHeight="20.3" Text="{Binding CodeHint}" />
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Name="CopyCode" Content="{x:Static res:Strings.Connect_Copy}" Command="{Binding CopyCommand}" />
+          <Button Content="{x:Static res:Strings.Pair_Save}" Command="{Binding SaveCommand}" />
+        </StackPanel>
+        <TextBlock Classes="meta" Text="{Binding CopiedText}" IsVisible="{Binding CopiedText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <TextBlock Classes="meta" TextWrapping="Wrap" Text="{Binding ExpiresText}" Classes.problem="{Binding IsExpired}" />
+        <TextBlock Classes="meta" TextWrapping="Wrap" Text="{Binding StatusText}" IsVisible="{Binding IsAnswer}" />
+      </StackPanel>
+    </Grid>
+
+    <!-- Paste a code or the answer -->
+    <StackPanel Name="InputPanel" Spacing="8" IsVisible="{Binding TakesInput}">
+      <Separator IsVisible="{Binding IsCode}" />
+      <ctl:Rubric Text="{Binding InputLabel}" />
+      <TextBox Name="CodeInput" Classes="mono" FontSize="12" Height="64" AcceptsReturn="True" TextWrapping="Wrap"
+               Text="{Binding Input}" PlaceholderText="{Binding InputPlaceholder}" />
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <Button Name="Submit" Classes="primary compact" Content="{x:Static res:Strings.Connect_Submit}" Command="{Binding SubmitCommand}" />
+        <Button Classes="link" FontSize="13" VerticalAlignment="Center" Content="{x:Static res:Strings.Connect_OpenFile}"
+                Command="{Binding OpenFileCommand}" />
+      </StackPanel>
+    </StackPanel>
+
+    <Border Classes="banner" IsVisible="{Binding Message, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <TextBlock Name="Message" TextWrapping="Wrap" Text="{Binding Message}" />
+    </Border>
+
+    <!-- Result -->
+    <StackPanel Name="Connected" Spacing="6" IsVisible="{Binding IsConnected}">
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <Border Width="8" Height="8" VerticalAlignment="Center" Background="{StaticResource AccentBrush}" />
+        <TextBlock FontWeight="Medium" TextWrapping="Wrap" Text="{Binding StatusText}" />
+      </StackPanel>
+      <TextBlock Classes="meta" Text="{Binding RouteText}" />
+    </StackPanel>
+    <StackPanel Name="Failed" Spacing="12" IsVisible="{Binding IsFailed}">
+      <Border Classes="banner warning">
+        <TextBlock TextWrapping="Wrap" LineHeight="20.3" Text="{Binding StatusText}" />
+      </Border>
+      <StackPanel Orientation="Horizontal" Spacing="14" IsVisible="{Binding CanRunDiagnostic}">
+        <Button Content="{x:Static res:Strings.Nat_Run}" Command="{Binding RunDiagnosticCommand}" />
+        <Button Classes="link" FontSize="13" VerticalAlignment="Center" Content="{x:Static res:Strings.Nat_AboutRelays}"
+                Command="{Binding AboutRelaysCommand}" />
+      </StackPanel>
+    </StackPanel>
+
+    <Button Name="Close" HorizontalAlignment="Right" Content="{Binding CloseLabel}" Command="{Binding DismissCommand}" />
+  </StackPanel>
+</UserControl>

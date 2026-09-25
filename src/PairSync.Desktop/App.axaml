@@ -47,6 +47,15 @@
     <DataTemplate DataType="vm:PermissionsDialogViewModel">
       <views:PermissionsDialogView />
     </DataTemplate>
+    <DataTemplate DataType="vm:ConnectDialogViewModel">
+      <views:ConnectDialogView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:NatDiagnosticDialogViewModel">
+      <views:NatDiagnosticDialogView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:AboutRelaysDialogViewModel">
+      <views:AboutRelaysDialogView />
+    </DataTemplate>
   </Application.DataTemplates>
 
   <Application.Styles>

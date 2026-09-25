@@ -75,12 +75,13 @@ public sealed partial class DevicesViewModel : PageViewModel, IDisposable
     [ObservableProperty]
     private string? _error;
 
-    public DevicesViewModel(PairSyncCore core, DialogHost dialogs, IDesktopServices desktop, TimeProvider time) : base(AppPage.Devices)
+    public DevicesViewModel(PairSyncCore core, DialogHost dialogs, IDesktopServices desktop, TimeProvider time, InternetUi? internet = null)
+        : base(AppPage.Devices)
     {
         _core = core;
         _dialogs = dialogs;
         _logger = core.Logger<DevicesViewModel>();
-        Pairing = new PairingViewModel(core, desktop, time);
+        Pairing = new PairingViewModel(core, desktop, time, internet);
         Pairing.Finished += QueueRefresh;
         _core.Devices.Changed += QueueRefresh;
         _core.Presence.Changed += QueueRefresh;
