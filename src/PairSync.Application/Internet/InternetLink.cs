@@ -42,7 +42,8 @@ public sealed class InternetLink : IAsyncDisposable
         ConnectedAtUtc = time.GetUtcNow().UtcDateTime;
     }
 
-    public PairedDevice Device { get; }
+    /// <remarks>During an internet pairing a provisional entry from the codes; the stored device once pairing completed.</remarks>
+    public PairedDevice Device { get; internal set; }
 
     internal WebRtcSession Session { get; }
 

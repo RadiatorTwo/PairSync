@@ -134,6 +134,20 @@ public sealed class InvitationBook(TimeProvider time)
             return _open.Remove(Convert.ToHexString(nonce), out var expiresAtUtc) && time.GetUtcNow().UtcDateTime <= expiresAtUtc;
     }
 
+    /// <summary>Keeps an open invitation redeemable at least until <paramref name="untilUtc"/>.</summary>
+    /// <returns>False if the invitation is not open (expired, redeemed or revoked).</returns>
+    public bool TryExtend(byte[] nonce, DateTime untilUtc)
+    {
+        lock (_gate)
+        {
+            var key = Convert.ToHexString(nonce);
+            if (!_open.TryGetValue(key, out var expiresAtUtc) || time.GetUtcNow().UtcDateTime > expiresAtUtc)
+                return false;
+            _open[key] = expiresAtUtc > untilUtc ? expiresAtUtc : untilUtc;
+            return true;
+        }
+    }
+
     /// <summary>The user closed the invitation or created a new one.</summary>
     public void Revoke(byte[] nonce)
     {

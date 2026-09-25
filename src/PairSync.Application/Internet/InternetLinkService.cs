@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PairSync.Application.Connections;
+using PairSync.Application.Pairing;
 using PairSync.Domain;
 using PairSync.Storage;
 using PairSync.Storage.Identity;
@@ -84,6 +85,8 @@ public sealed class InternetLinkService(
 {
     private readonly Lock _gate = new();
     private readonly Dictionary<Guid, Entry> _entries = [];
+    private readonly Dictionary<string, PairingOffer> _pairingOffers = [];
+    private readonly Dictionary<Guid, PairingLink> _pairingLinks = [];
     private readonly CancellationTokenSource _stopping = new();
     private int _disposed;
 
@@ -114,10 +117,28 @@ public sealed class InternetLinkService(
         public bool WasConnected { get; set; }
     }
 
+    /// <summary>The WebRTC offer inside an internet invitation (<c>PSI2</c>), waiting for the answer of a new device.</summary>
+    private sealed record PairingOffer(WebRtcSession Session, NatHint LocalNat);
+
+    /// <summary>
+    /// A connection to a device that is being paired (block D). Until both users confirmed the security code it only
+    /// carries the pairing session; afterwards it becomes the device's internet link (<see cref="AdoptPairingLinkAsync"/>).
+    /// </summary>
+    private sealed record PairingLink(InternetLink Link, NatHint LocalNat)
+    {
+        public bool Claimed { get; set; }
+    }
+
     /// <summary>False if the native WebRTC library is missing; see <see cref="UnavailableReason"/>.</summary>
     public bool IsAvailable => WebRtcTransport.IsAvailable;
 
     public string? UnavailableReason => WebRtcTransport.UnavailableReason;
+
+    /// <summary>
+    /// New invitations carry a WebRTC offer (<c>PSI2</c>): WebRTC is available and STUN servers are set, without
+    /// which the offer would hold no public address.
+    /// </summary>
+    public bool CanInviteOverInternet => IsAvailable && StunServers().Count > 0;
 
     /// <summary>A status changed (code issued, connected, lost, round trip measured).</summary>
     public event Action? Changed;
@@ -263,6 +284,229 @@ public sealed class InternetLinkService(
         }
     }
 
+    /// <summary>
+    /// Block D, device A: the WebRTC offer for an internet invitation with this nonce. It waits for the new device's
+    /// answer until the invitation expires or is revoked (<see cref="RevokePairingOffer"/>).
+    /// </summary>
+    /// <exception cref="InternetConnectException">Not possible (no WebRTC, no network).</exception>
+    internal async Task<(SessionDescription Offer, NatHint Nat)> CreatePairingOfferAsync(
+        byte[] nonce, DateTime expiresAtUtc, CancellationToken cancellationToken)
+    {
+        EnsureAvailable();
+        var servers = StunServers();
+        var nat = DetectNatAsync(servers, cancellationToken);
+        var (session, offer) = await CreateTransportAsync(servers, t => new WebRtcConnector(t).CreateOfferAsync(InternetLink.ChannelLabels, cancellationToken))
+            .ConfigureAwait(false);
+        var localNat = await nat.ConfigureAwait(false);
+        var key = Convert.ToHexString(nonce);
+        lock (_gate)
+            _pairingOffers[key] = new PairingOffer(session, localNat);
+        _ = ExpirePairingOfferAsync(key, session, expiresAtUtc);
+        return (offer, localNat);
+    }
+
+    /// <summary>The invitation was closed or replaced; its offer can no longer be answered.</summary>
+    internal void RevokePairingOffer(byte[] nonce)
+    {
+        PairingOffer? offer;
+        lock (_gate)
+            _pairingOffers.Remove(Convert.ToHexString(nonce), out offer);
+        if (offer is not null)
+            _ = offer.Session.DisposeAsync().AsTask();
+    }
+
+    /// <summary>
+    /// Block D, device B: answers the offer of an internet invitation. <c>Connected</c> completes with the link once
+    /// A applied the answer and ICE got through; until <see cref="AdoptPairingLinkAsync"/> the link carries only the pairing.
+    /// </summary>
+    /// <exception cref="InvalidConnectCodeException">This invitation was answered already.</exception>
+    /// <exception cref="InternetConnectException">Not possible here (no WebRTC, no network).</exception>
+    internal async Task<(IssuedCode Answer, Task<InternetLink> Connected)> AnswerInvitationAsync(
+        ReceivedInvitation invitation, CancellationToken cancellationToken)
+    {
+        EnsureAvailable();
+        if (invitation.Offer is not { } offer)
+            throw new ArgumentException("The invitation carries no internet offer.", nameof(invitation));
+        if (!answered.TryUse(invitation.Nonce, invitation.ExpiresAtUtc, options.ClockSkew))
+            throw new InvalidConnectCodeException("This invitation was already answered. Create a new one on the other device.");
+
+        var servers = StunServers();
+        var nat = DetectNatAsync(servers, cancellationToken);
+        var (session, answer) = await CreateTransportAsync(servers,
+            t => new WebRtcConnector(t).AcceptOfferAsync(offer, invitation.PublicKey, cancellationToken)).ConfigureAwait(false);
+        var localNat = await nat.ConfigureAwait(false);
+        var expires = time.GetUtcNow().UtcDateTime + options.AnswerLifetime;
+        var code = ConnectCodes.CreateAnswer(identity.Value.Identity, settings.Current.EffectiveDeviceName, invitation.Nonce, answer, expires, localNat);
+        var device = new PairedDevice { Id = invitation.DeviceId, Name = invitation.DeviceName, PublicKey = invitation.PublicKey };
+        logger.LogInformation("Answered an internet invitation from {Name}", device.Name);
+        return (new IssuedCode(code, expires, invitation.Nonce),
+            ConnectPairingAsync(session, device, localNat, invitation.RemoteNat, answering: true, cancellationToken));
+    }
+
+    /// <summary>Block D, device A: applies the new device's answer to the offer of an open invitation and waits for the connection.</summary>
+    /// <exception cref="InvalidConnectCodeException">No open invitation offer with this nonce.</exception>
+    /// <exception cref="InternetConnectException">No connection came up; <see cref="InternetConnectException.Failure"/> says why.</exception>
+    internal async Task<InternetLink> ConnectInvitationAsync(ReceivedAnswer answer, CancellationToken cancellationToken)
+    {
+        PairingOffer? offer;
+        lock (_gate)
+            _pairingOffers.Remove(Convert.ToHexString(answer.OfferNonce), out offer);
+        if (offer is null)
+            throw new InvalidConnectCodeException(
+                "This answer code does not belong to an open invitation of this device. It may have expired or been used already.");
+
+        try
+        {
+            offer.Session.BindRemotePublicKey(answer.PublicKey);
+            await offer.Session.ApplyAnswerAsync(answer.Answer, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            await offer.Session.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+        var device = new PairedDevice { Id = answer.DeviceId, Name = answer.DeviceName, PublicKey = answer.PublicKey };
+        return await ConnectPairingAsync(offer.Session, device, offer.LocalNat, answer.RemoteNat, answering: false, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>An internet connection to this device is open for a pairing that has not completed yet.</summary>
+    public bool HasPairingConnection(Guid deviceId)
+    {
+        lock (_gate)
+            return _pairingLinks.TryGetValue(deviceId, out var pairing) && pairing.Link.IsOpen;
+    }
+
+    /// <summary>A pairing session runs over the pairing link to this device; from now on that session decides its end.</summary>
+    internal void ClaimPairingLink(Guid deviceId)
+    {
+        lock (_gate)
+        {
+            if (_pairingLinks.TryGetValue(deviceId, out var pairing))
+                pairing.Claimed = true;
+        }
+    }
+
+    /// <summary>
+    /// Pairing completed: the pairing link to <paramref name="device"/> stays open as its internet link. No effect
+    /// without a pairing link, or if that link is bound to another key than the stored one.
+    /// </summary>
+    internal async Task AdoptPairingLinkAsync(PairedDevice device)
+    {
+        PairingLink? pairing;
+        lock (_gate)
+        {
+            if (!_pairingLinks.TryGetValue(device.Id, out pairing) || !pairing.Link.Device.PublicKey.AsSpan().SequenceEqual(device.PublicKey))
+                return;
+            _pairingLinks.Remove(device.Id);
+        }
+        var link = pairing.Link;
+        if (!link.IsOpen)
+        {
+            await link.DisposeAsync().ConfigureAwait(false);
+            return;
+        }
+        link.Device = device;
+        var entry = await ReplaceAsync(device, e =>
+        {
+            e.Phase = InternetLinkPhase.Connected;
+            e.Session = link.Session;
+            e.Link = link;
+            e.LocalNat = pairing.LocalNat;
+            e.RemoteNat = link.RemoteNat;
+            e.WasConnected = true;
+        }).ConfigureAwait(false);
+        link.RoundTripChanged += () => Changed?.Invoke();
+        logger.LogInformation("Internet connection to the newly paired {Name}: {Route}", device.Name, link.Route);
+        _ = WatchAsync(entry, link);
+        LinkEstablished?.Invoke(device);
+    }
+
+    /// <summary>Pairing failed or was canceled: the connection it ran over is closed.</summary>
+    internal async Task DiscardPairingLinkAsync(Guid deviceId)
+    {
+        PairingLink? pairing;
+        lock (_gate)
+            _pairingLinks.Remove(deviceId, out pairing);
+        if (pairing is not null)
+        {
+            logger.LogInformation("Closed the pairing connection to {Name}", pairing.Link.Device.Name);
+            await pairing.Link.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Waits until <paramref name="session"/> is up and keeps it as the pairing link to <paramref name="device"/>.</summary>
+    private async Task<InternetLink> ConnectPairingAsync(
+        WebRtcSession session, PairedDevice device, NatHint localNat, NatHint remoteNat, bool answering, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // The session deadline (AnswerTimeout or ConnectTimeout) ends the wait.
+            using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _stopping.Token);
+            await session.GetChannelAsync(InternetLink.LinkChannel, stop.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            await session.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+        catch (Exception e) when (e is TransportException or OperationCanceledException)
+        {
+            var (message, reason) = DescribeFailure(session, localNat, remoteNat, answering, device.Name, e);
+            await session.DisposeAsync().ConfigureAwait(false);
+            throw new InternetConnectException(message, reason, e);
+        }
+
+        var link = new InternetLink(device, session, remoteNat, time, logger);
+        var pairing = new PairingLink(link, localNat);
+        PairingLink? previous;
+        lock (_gate)
+        {
+            _pairingLinks.Remove(device.Id, out previous);
+            _pairingLinks[device.Id] = pairing;
+        }
+        if (previous is not null)
+            await previous.Link.DisposeAsync().ConfigureAwait(false);
+        link.Start(lan.AcceptAsync, options.PingInterval);
+        logger.LogInformation("Internet connection for pairing with {Name}: {Route}", device.Name, session.Route);
+        _ = ExpirePairingLinkAsync(pairing);
+        return link;
+    }
+
+    /// <summary>An invitation offer nobody answered in time is dropped.</summary>
+    private async Task ExpirePairingOfferAsync(string key, WebRtcSession session, DateTime expiresAtUtc)
+    {
+        try
+        {
+            var remaining = expiresAtUtc - time.GetUtcNow().UtcDateTime;
+            await Task.Delay(remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero, time, _stopping.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        lock (_gate)
+        {
+            if (!_pairingOffers.TryGetValue(key, out var offer) || !ReferenceEquals(offer.Session, session))
+                return;
+            _pairingOffers.Remove(key);
+        }
+        await session.DisposeAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>A pairing link that no pairing session took over in time is closed.</summary>
+    private async Task ExpirePairingLinkAsync(PairingLink pairing)
+    {
+        await Task.WhenAny(pairing.Link.Closed, Task.Delay(options.ConnectTimeout, time, _stopping.Token)).ConfigureAwait(false);
+        var id = pairing.Link.Device.Id;
+        lock (_gate)
+        {
+            if (!_pairingLinks.TryGetValue(id, out var current) || !ReferenceEquals(current, pairing) || (pairing.Claimed && pairing.Link.IsOpen))
+                return;
+            _pairingLinks.Remove(id);
+        }
+        await pairing.Link.DisposeAsync().ConfigureAwait(false);
+    }
+
     /// <summary>Ends the connection or attempt with this device and forgets its status.</summary>
     public async Task CloseAsync(Guid deviceId)
     {
@@ -388,22 +632,11 @@ public sealed class InternetLinkService(
         }
         catch (Exception e) when (e is TransportException or OperationCanceledException)
         {
-            var report = session.GetIceReport();
             NatHint localNat, remoteNat;
             bool answering;
             lock (_gate)
                 (localNat, remoteNat, answering) = (entry.LocalNat, entry.RemoteNat, entry.Phase == InternetLinkPhase.WaitingForConnection);
-            var reason = ConnectFailureAnalysis.Analyze(localNat, remoteNat, ToFlags(report.LocalCandidates), ToFlags(report.RemoteCandidates));
-            // ICE got through but DTLS never started: the other side did not apply the answer. Without an ICE path the
-            // answering side cannot tell a network problem from an answer that never arrived.
-            var message = !answering ? FailureMessage(reason, device.Name)
-                : report.Selected is not null
-                    ? $"No connection with {device.Name}: the answer code was not applied in time."
-                    : reason == ConnectFailureReason.Unknown
-                        ? $"No connection with {device.Name}: the answer code was not applied in time, or the networks did not let the connection through."
-                        : FailureMessage(reason, device.Name);
-            logger.LogInformation("Internet connection to {Name} failed: {Error} ({Reason}; local {Local}, remote {Remote})",
-                device.Name, e.Message, reason, string.Join(",", report.LocalCandidates.Distinct()), string.Join(",", report.RemoteCandidates.Distinct()));
+            var (message, reason) = DescribeFailure(session, localNat, remoteNat, answering, device.Name, e);
             if (TryFail(entry, session, null, message, reason))
                 await session.DisposeAsync().ConfigureAwait(false);
             return;
@@ -434,6 +667,25 @@ public sealed class InternetLinkService(
         _ = WatchAsync(entry, link);
         Changed?.Invoke();
         LinkEstablished?.Invoke(device);
+    }
+
+    /// <summary>Why ICE or DTLS did not come up, for the user; logs the details.</summary>
+    private (string Message, ConnectFailureReason Reason) DescribeFailure(
+        WebRtcSession session, NatHint localNat, NatHint remoteNat, bool answering, string deviceName, Exception e)
+    {
+        var report = session.GetIceReport();
+        var reason = ConnectFailureAnalysis.Analyze(localNat, remoteNat, ToFlags(report.LocalCandidates), ToFlags(report.RemoteCandidates));
+        // ICE got through but DTLS never started: the other side did not apply the answer. Without an ICE path the
+        // answering side cannot tell a network problem from an answer that never arrived.
+        var message = !answering ? FailureMessage(reason, deviceName)
+            : report.Selected is not null
+                ? $"No connection with {deviceName}: the answer code was not applied in time."
+                : reason == ConnectFailureReason.Unknown
+                    ? $"No connection with {deviceName}: the answer code was not applied in time, or the networks did not let the connection through."
+                    : FailureMessage(reason, deviceName);
+        logger.LogInformation("Internet connection to {Name} failed: {Error} ({Reason}; local {Local}, remote {Remote})",
+            deviceName, e.Message, reason, string.Join(",", report.LocalCandidates.Distinct()), string.Join(",", report.RemoteCandidates.Distinct()));
+        return (message, reason);
     }
 
     private async Task WatchAsync(Entry entry, InternetLink link)
@@ -519,13 +771,23 @@ public sealed class InternetLinkService(
             return;
         await _stopping.CancelAsync().ConfigureAwait(false);
         Entry[] entries;
+        PairingOffer[] offers;
+        PairingLink[] pairings;
         lock (_gate)
         {
             entries = [.. _entries.Values];
             _entries.Clear();
+            offers = [.. _pairingOffers.Values];
+            _pairingOffers.Clear();
+            pairings = [.. _pairingLinks.Values];
+            _pairingLinks.Clear();
         }
         foreach (var entry in entries)
             await DisposeEntryAsync(entry).ConfigureAwait(false);
+        foreach (var offer in offers)
+            await offer.Session.DisposeAsync().ConfigureAwait(false);
+        foreach (var pairing in pairings)
+            await pairing.Link.DisposeAsync().ConfigureAwait(false);
         _stopping.Dispose();
     }
 }

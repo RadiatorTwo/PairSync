@@ -10,6 +10,9 @@ namespace PairSync.Application.Pairing;
 /// <summary>Pairing did not complete: connection lost, protocol error, or the invitation was not accepted.</summary>
 public class PairingException(string message, Exception? inner = null) : Exception(message, inner);
 
+/// <summary>The other device could not be reached, so nothing of the pairing was sent yet.</summary>
+internal sealed class PairingUnreachableException(string message, Exception inner) : PairingException(message, inner);
+
 /// <summary>A user canceled (e.g. "Codes differ"), or nobody confirmed in time. Nothing was stored.</summary>
 public sealed class PairingCanceledException(string reason, bool byOtherDevice)
     : PairingException(byOtherDevice ? $"The other device canceled the pairing: {reason}" : $"Pairing canceled: {reason}")
