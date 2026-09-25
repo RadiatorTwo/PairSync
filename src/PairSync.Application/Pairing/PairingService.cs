@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PairSync.Application.Connections;
 using PairSync.Application.Presence;
+using PairSync.Discovery.Lan;
 using PairSync.Domain;
 using PairSync.Protocol;
 using PairSync.Storage;
@@ -101,8 +102,16 @@ public sealed class PairingService(
 
     /// <summary>Connects to the inviting device and starts pairing; returns once both sides can show the code.</summary>
     /// <exception cref="PairingException">Not reachable, invitation refused, or the other device answered with another key.</exception>
-    public Task<PairingSession> PairAsync(ReceivedInvitation invitation, CancellationToken cancellationToken) =>
-        PairAsync(invitation.DeviceId, invitation.Addresses, invitation.Port, invitation.PublicKey, invitation.Nonce, cancellationToken);
+    public async Task<PairingSession> PairAsync(ReceivedInvitation invitation, CancellationToken cancellationToken)
+    {
+        var session = await PairAsync(invitation.DeviceId, invitation.Addresses, invitation.Port, invitation.PublicKey, invitation.Nonce,
+            cancellationToken).ConfigureAwait(false);
+        // The invitation says where the device listens; that also works where mDNS is blocked.
+        _ = session.Completion.ContinueWith(_ => presence.AddKnownEndpoint(new LanServiceInfo(
+                invitation.DeviceId, ProtocolVersion.Current, invitation.Port, invitation.Addresses, time.GetUtcNow().UtcDateTime)),
+            CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+        return session;
+    }
 
     /// <summary>"Pair…" on a device found on the LAN.</summary>
     /// <exception cref="PairingException">Not reachable, or it refused.</exception>
@@ -301,8 +310,13 @@ public sealed class PairingService(
         }
     }
 
+    private int _disposed;
+
     public async ValueTask DisposeAsync()
     {
+        // Called by PairSyncCore while the service provider still works, and again when the provider is disposed.
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            return;
         await _stopping.CancelAsync().ConfigureAwait(false);
         PairingSession[] sessions;
         lock (_gate)

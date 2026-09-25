@@ -44,7 +44,9 @@ public sealed class ControlChannel(IMessageChannel channel)
                 case T expected:
                     return expected;
                 case Cancel cancel:
-                    throw new TransferCanceledException(cancel.Reason ?? "canceled by the other device");
+                    throw TransferCanceledException.From(cancel, "canceled by the other device");
+                case JobControl control when control.Action != JobAction.Resume:
+                    throw new JobInterruptedException(control);
             }
         }
         throw new TransportException($"Control channel closed while waiting for {typeof(T).Name}.");
@@ -64,9 +66,25 @@ public sealed class ControlChannel(IMessageChannel channel)
     }
 }
 
-public sealed class TransferCanceledException(string reason) : Exception($"Transfer canceled: {reason}")
+public class TransferCanceledException(string reason, bool pauseJob = false) : Exception($"Transfer canceled: {reason}")
 {
     public string Reason { get; } = reason;
+
+    /// <summary>The receiver kept its progress and asks to pause the job (target disk full).</summary>
+    public bool PauseJob { get; } = pauseJob;
+
+    public static TransferCanceledException From(Cancel cancel, string fallbackReason) =>
+        new(cancel.Reason ?? fallbackReason, cancel.PauseJob);
+}
+
+/// <summary>The target has not enough free space; the temporary file and journal stay for a later resume (plan §12).</summary>
+public sealed class TargetFullException(string reason) : TransferCanceledException(reason, pauseJob: true);
+
+/// <summary>The other device paused or canceled the job while this side waited or transferred.</summary>
+public sealed class JobInterruptedException(JobControl control)
+    : Exception($"The other device {(control.Action == JobAction.Pause ? "paused" : "canceled")} the transfer{(control.Reason is null ? "" : $": {control.Reason}")}.")
+{
+    public JobControl Control { get; } = control;
 }
 
 /// <summary>Raised by the sender's abort switch to simulate a lost connection in resume tests.</summary>

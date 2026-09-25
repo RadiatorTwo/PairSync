@@ -138,6 +138,12 @@ public sealed class PresenceService(
         Changed?.Invoke();
     }
 
+    /// <summary>
+    /// Marks a device as reachable at a known endpoint without mDNS, e.g. the addresses of an invitation when mDNS is
+    /// blocked. It stays online until mDNS reports it gone; failed connections keep its jobs waiting.
+    /// </summary>
+    public void AddKnownEndpoint(LanServiceInfo info) => OnSeen(info);
+
     /// <summary>Announces again and queries now, e.g. when the user opens the device list.</summary>
     public void Refresh() => _discovery?.Refresh();
 
@@ -196,8 +202,13 @@ public sealed class PresenceService(
         }
     }
 
+    private int _disposed;
+
     public async ValueTask DisposeAsync()
     {
+        // Called by PairSyncCore while the service provider still works, and again when the provider is disposed.
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            return;
         if (_discovery is null)
             return;
         _discovery.Seen -= OnSeen;

@@ -16,9 +16,18 @@ public sealed record ReceiverOptions
     /// progress; the final state is always saved when the transfer stops.
     /// </summary>
     public TimeSpan JournalSaveInterval { get; init; } = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>Free bytes on the volume of a path; replaced in tests to simulate a full disk.</summary>
+    public Func<string, long> AvailableFreeSpace { get; init; } = DefaultFreeSpace;
+
+    public static long DefaultFreeSpace(string path) =>
+        Path.GetPathRoot(Path.GetFullPath(path)) is { } root ? new DriveInfo(root).AvailableFreeSpace : long.MaxValue;
 }
 
-public sealed record ReceiveOutcome(bool Success, string? FinalPath, string Message);
+public sealed record ReceiveOutcome(bool Success, string? FinalPath, string Message, bool Skipped = false);
+
+/// <summary>Where a received file goes and what happens if something is already there.</summary>
+public sealed record ReceiveTarget(string TargetPath, ExistingFileAction Policy);
 
 /// <summary>
 /// Receives one file: writes verified chunks into a temporary file in the target directory,
@@ -31,26 +40,57 @@ public sealed class ChunkedFileReceiver(string targetDirectory, IChunkJournal jo
 
     public TransferStats Stats { get; } = new();
 
+    /// <summary>Waits for one <see cref="TransferPlan"/> and receives that file into the target directory ("Keep both").</summary>
     /// <param name="channels">A session after <see cref="SessionHandshake"/>.</param>
     public async Task<ReceiveOutcome> ReceiveAsync(PeerChannels channels, CancellationToken cancellationToken)
     {
-        var (control, data) = (channels.Control, channels.Data);
-
+        var control = channels.Control;
         var plan = await control.ExpectAsync<TransferPlan>(cancellationToken).ConfigureAwait(false);
         string targetPath;
         try
         {
             targetPath = Path.Combine(targetDirectory, ValidatePlan(plan));
-            EnsureFreeSpace(targetPath, plan);
         }
         catch (ProtocolException e)
         {
             await control.SendAsync(new Cancel { TransferId = plan.TransferId, Reason = e.Message }, cancellationToken).ConfigureAwait(false);
             throw;
         }
+        return await ReceiveAsync(channels, plan, new ReceiveTarget(targetPath, ExistingFileAction.KeepBoth), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>Receives the file of a plan the caller has read and checked (<see cref="ValidatePlan"/>) and answers it.</summary>
+    /// <exception cref="TargetFullException">Not enough space; the sender was told to pause.</exception>
+    /// <exception cref="TransferCanceledException">The sender canceled, or the target folder cannot be created.</exception>
+    /// <exception cref="JobInterruptedException">The sender paused or canceled the job.</exception>
+    public async Task<ReceiveOutcome> ReceiveAsync(PeerChannels channels, TransferPlan plan, ReceiveTarget target, CancellationToken cancellationToken)
+    {
+        var (control, data) = (channels.Control, channels.Data);
+        var targetPath = target.TargetPath;
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+            EnsureFreeSpace(targetPath, plan);
+        }
+        catch (TargetFullException e)
+        {
+            await control.SendAsync(new Cancel { TransferId = plan.TransferId, Reason = e.Reason, PauseJob = true }, cancellationToken)
+                .ConfigureAwait(false);
+            throw;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            var reason = $"the target folder cannot be created: {e.Message}";
+            await control.SendAsync(new Cancel { TransferId = plan.TransferId, Reason = reason }, cancellationToken).ConfigureAwait(false);
+            throw new TransferCanceledException(reason);
+        }
 
         var tempPath = TempPathFor(targetPath);
         var confirmed = await OpenJournalAsync(plan, tempPath, cancellationToken).ConfigureAwait(false);
+        // Phase 0 finding 7: hash while writing when chunks arrive in order, so the final check need not read the
+        // file again. A resumed file is read again, because earlier chunks were written in another run.
+        using var runningHash = confirmed.SetCount == 0 ? new InOrderHash() : null;
 
         Stats.FileName = plan.FileName!;
         Stats.FileSize = plan.FileSize;
@@ -67,7 +107,7 @@ public sealed class ChunkedFileReceiver(string targetDirectory, IChunkJournal jo
 
             using var loops = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var finishSignal = new TaskCompletionSource<TransferFinish>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var dataTask = ReceiveChunksAsync(data, control, plan, stream.SafeFileHandle, tempPath, confirmed, loops.Token);
+            var dataTask = ReceiveChunksAsync(data, control, plan, stream.SafeFileHandle, tempPath, confirmed, runningHash, loops.Token);
             var controlTask = WatchControlAsync(control, plan, finishSignal, loops.Token);
 
             var first = await Task.WhenAny(finishSignal.Task, dataTask, controlTask).ConfigureAwait(false);
@@ -83,7 +123,7 @@ public sealed class ChunkedFileReceiver(string targetDirectory, IChunkJournal jo
                     await first.ConfigureAwait(false); // surfaces the failure
                     throw new TransportException("The connection closed before the transfer finished.");
                 }
-                catch (Exception e) when (e is not TransferCanceledException && !cancellationToken.IsCancellationRequested)
+                catch (Exception e) when (e is not TransferCanceledException and not JobInterruptedException && !cancellationToken.IsCancellationRequested)
                 {
                     await TryCancelAsync(control, plan, e.Message).ConfigureAwait(false);
                     throw;
@@ -98,7 +138,7 @@ public sealed class ChunkedFileReceiver(string targetDirectory, IChunkJournal jo
             stream.Flush(flushToDisk: true);
         }
 
-        var outcome = await CompleteAsync(plan, finish, confirmed, targetPath, tempPath, cancellationToken).ConfigureAwait(false);
+        var outcome = await CompleteAsync(plan, finish, confirmed, target, tempPath, runningHash, cancellationToken).ConfigureAwait(false);
         await control.SendAsync(new TransferResult { TransferId = plan.TransferId, Success = outcome.Success, Message = outcome.Message }, cancellationToken)
             .ConfigureAwait(false);
         return outcome;
@@ -106,7 +146,7 @@ public sealed class ChunkedFileReceiver(string targetDirectory, IChunkJournal jo
 
     private async Task ReceiveChunksAsync(
         IMessageChannel data, ControlChannel control, TransferPlan plan, SafeFileHandle file,
-        string tempPath, ChunkBitmap confirmed, CancellationToken cancellationToken)
+        string tempPath, ChunkBitmap confirmed, InOrderHash? runningHash, CancellationToken cancellationToken)
     {
         var sinceSave = Stopwatch.StartNew();
         var transferKey = DataFrameCodec.TransferKey(plan.TransferId);
@@ -121,8 +161,10 @@ public sealed class ChunkedFileReceiver(string targetDirectory, IChunkJournal jo
         await foreach (var message in data.ReadAllAsync(cancellationToken).ConfigureAwait(false))
         {
             var frame = DataFrameCodec.Read(message);
-            if (frame.TransferKey != transferKey || frame.ChunkIndex >= plan.ChunkCount)
-                throw new ProtocolException($"Data frame for an unknown transfer or chunk {frame.ChunkIndex}.");
+            if (frame.TransferKey != transferKey)
+                continue; // left over from a file the sender canceled just before this one
+            if (frame.ChunkIndex >= plan.ChunkCount)
+                throw new ProtocolException($"Data frame for chunk {frame.ChunkIndex}, the file has {plan.ChunkCount}.");
 
             var index = frame.ChunkIndex;
             var chunkLength = ChunkLength(plan, index);
@@ -190,10 +232,12 @@ public sealed class ChunkedFileReceiver(string targetDirectory, IChunkJournal jo
                 catch (IOException e) when (IsDiskFull(e))
                 {
                     // Plan §12: keep the temporary file and journal so the transfer can resume later.
-                    await control.SendAsync(new Cancel { TransferId = plan.TransferId, Reason = "target disk is full; progress kept, resume after freeing space" }, CancellationToken.None)
+                    const string reason = "the target disk is full; progress is kept, resume after freeing space";
+                    await control.SendAsync(new Cancel { TransferId = plan.TransferId, Reason = reason, PauseJob = true }, CancellationToken.None)
                         .ConfigureAwait(false);
-                    throw;
+                    throw new TargetFullException(reason);
                 }
+                runningHash?.Add(index, chunk.Span);
                 confirmed.Set(index);
                 Stats.ChunkConfirmed();
                 if (sinceSave.Elapsed >= options.JournalSaveInterval)
@@ -239,7 +283,9 @@ public sealed class ChunkedFileReceiver(string targetDirectory, IChunkJournal jo
                     finish.TrySetResult(done);
                     return;
                 case Cancel cancel:
-                    throw new TransferCanceledException(cancel.Reason ?? "canceled by the sender");
+                    throw TransferCanceledException.From(cancel, "canceled by the sender");
+                case JobControl jobControl when jobControl.Action != JobAction.Resume:
+                    throw new JobInterruptedException(jobControl);
                 case Ping ping:
                     await control.SendAsync(new Pong { Timestamp = ping.Timestamp }, cancellationToken).ConfigureAwait(false);
                     break;
@@ -249,15 +295,23 @@ public sealed class ChunkedFileReceiver(string targetDirectory, IChunkJournal jo
     }
 
     private async Task<ReceiveOutcome> CompleteAsync(
-        TransferPlan plan, TransferFinish finish, ChunkBitmap confirmed, string targetPath, string tempPath,
-        CancellationToken cancellationToken)
+        TransferPlan plan, TransferFinish finish, ChunkBitmap confirmed, ReceiveTarget target, string tempPath,
+        InOrderHash? runningHash, CancellationToken cancellationToken)
     {
         if (!confirmed.IsComplete)
             return new ReceiveOutcome(false, null, $"Only {confirmed.SetCount} of {plan.ChunkCount} chunks were received.");
 
         byte[] actual;
-        await using (var read = new FileStream(tempPath, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 20, FileOptions.SequentialScan | FileOptions.Asynchronous))
+        if (runningHash?.TryGetHash(plan.ChunkCount) is { } hashed)
+        {
+            actual = hashed;
+        }
+        else
+        {
+            await using var read = new FileStream(tempPath, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 20,
+                FileOptions.SequentialScan | FileOptions.Asynchronous);
             actual = await SHA256.HashDataAsync(read, cancellationToken).ConfigureAwait(false);
+        }
 
         if (finish.FileSha256 is null || !actual.AsSpan().SequenceEqual(finish.FileSha256))
         {
@@ -267,10 +321,36 @@ public sealed class ChunkedFileReceiver(string targetDirectory, IChunkJournal jo
             return new ReceiveOutcome(false, null, "Whole-file SHA-256 does not match; the temporary file was discarded.");
         }
 
-        // Default policy "Keep both": never overwrite an existing file.
-        var finalPath = UniquePath(targetPath);
-        File.Move(tempPath, finalPath, overwrite: false);
-        File.SetLastWriteTimeUtc(finalPath, plan.LastWriteTimeUtc);
+        var targetPath = target.TargetPath;
+        if (target.Policy == ExistingFileAction.Skip && Path.Exists(targetPath))
+        {
+            // Appeared while the file was on its way; "Skip" still means the existing one stays.
+            File.Delete(tempPath);
+            await journal.DeleteAsync(plan.TransferId, CancellationToken.None).ConfigureAwait(false);
+            return new ReceiveOutcome(true, targetPath, "Skipped: a file with this name exists.", Skipped: true);
+        }
+
+        File.SetLastWriteTimeUtc(tempPath, plan.LastWriteTimeUtc);
+        string finalPath;
+        try
+        {
+            if (target.Policy == ExistingFileAction.Replace)
+            {
+                // Plan §12: replace only now, after the whole file was verified, in one rename.
+                finalPath = targetPath;
+                File.Move(tempPath, finalPath, overwrite: true);
+            }
+            else
+            {
+                finalPath = UniquePath(targetPath);
+                File.Move(tempPath, finalPath, overwrite: false);
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Target locked or read-only: nothing is applied; the verified temporary file stays for a retry.
+            return new ReceiveOutcome(false, null, $"The target file cannot be written: {e.Message}");
+        }
         await journal.DeleteAsync(plan.TransferId, CancellationToken.None).ConfigureAwait(false);
         return new ReceiveOutcome(true, finalPath, $"Received and verified {Convert.ToHexStringLower(actual)}.");
     }
@@ -328,16 +408,17 @@ public sealed class ChunkedFileReceiver(string targetDirectory, IChunkJournal jo
         return name;
     }
 
-    private static void EnsureFreeSpace(string targetPath, TransferPlan plan)
+    private void EnsureFreeSpace(string targetPath, TransferPlan plan)
     {
         var temp = new FileInfo(TempPathFor(targetPath));
         var needed = plan.FileSize - (temp.Exists ? temp.Length : 0);
-        var root = Path.GetPathRoot(Path.GetFullPath(targetPath));
-        if (root is null || needed <= 0)
+        if (needed <= 0)
             return;
-        var free = new DriveInfo(root).AvailableFreeSpace;
+        var free = options.AvailableFreeSpace(targetPath);
         if (free < needed)
-            throw new ProtocolException($"Target has {free / (1024 * 1024)} MiB free, the file needs {needed / (1024 * 1024)} MiB.");
+            throw new TargetFullException(
+                $"the target has {free / (1024 * 1024)} MiB free, the file needs {needed / (1024 * 1024)} MiB; " +
+                "progress is kept, resume after freeing space");
     }
 
     private static int ChunkLength(TransferPlan plan, int index) =>
@@ -361,4 +442,26 @@ public sealed class ChunkedFileReceiver(string targetDirectory, IChunkJournal jo
     private static bool IsDiskFull(IOException e) =>
         (e.HResult & 0xFFFF) is 0x70 or 0x27 // ERROR_DISK_FULL, ERROR_HANDLE_DISK_FULL
         || e.HResult == 28;                   // ENOSPC
+}
+
+/// <summary>SHA-256 over chunks as long as they are written in order; gives up at the first gap.</summary>
+internal sealed class InOrderHash : IDisposable
+{
+    private readonly IncrementalHash _hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+    private int _next;
+
+    public void Add(int index, ReadOnlySpan<byte> chunk)
+    {
+        if (index != _next)
+        {
+            _next = -1;
+            return;
+        }
+        _hash.AppendData(chunk);
+        _next++;
+    }
+
+    public byte[]? TryGetHash(int chunkCount) => _next == chunkCount ? _hash.GetHashAndReset() : null;
+
+    public void Dispose() => _hash.Dispose();
 }

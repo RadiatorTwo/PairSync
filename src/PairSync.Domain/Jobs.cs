@@ -70,7 +70,15 @@ public sealed class TransferJob
 
     public string? LastError { get; set; }
 
+    /// <summary>
+    /// Paused because the other device asked for it (its user, or its disk is full). Such a pause ends when the other
+    /// device resumes; a pause by the local user only ends when the local user resumes.
+    /// </summary>
+    public bool PausedByPeer { get; set; }
+
     public List<JobItem> Items { get; set; } = [];
+
+    public bool IsFinished => State is JobState.Completed or JobState.Canceled or JobState.Declined or JobState.Failed;
 }
 
 /// <summary>One file of a job, addressed by a normalized relative path.</summary>
@@ -94,4 +102,13 @@ public sealed class JobItem
     public Guid TransferId { get; set; }
 
     public JobItemState State { get; set; }
+
+    /// <summary>An empty folder: created on the receiver, nothing to transfer.</summary>
+    public bool IsDirectory { get; set; }
+
+    /// <summary>Receiver side: where the file ended up (differs from the relative path with "Keep both").</summary>
+    public string? ResultPath { get; set; }
+
+    /// <summary>Why the item failed or was skipped.</summary>
+    public string? Message { get; set; }
 }

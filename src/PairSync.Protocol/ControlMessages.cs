@@ -65,6 +65,12 @@ public sealed record TransferPlan : IControlMessage
     [Key(4)] public int ChunkCount { get; init; }
 
     [Key(5)] public DateTime LastWriteTimeUtc { get; init; }
+
+    /// <summary>The job the file belongs to; empty for a single file outside a job (spike tools).</summary>
+    [Key(6)] public Guid JobId { get; init; }
+
+    /// <summary>Path in the job, forward slashes; <see cref="FileName"/> is its last segment.</summary>
+    [Key(7)] public string? RelativePath { get; init; }
 }
 
 /// <summary>The receiver accepts a plan and reports chunks it already holds (bitmap, bit i = chunk i).</summary>
@@ -74,6 +80,9 @@ public sealed record TransferPlanAck : IControlMessage
     [Key(0)] public Guid TransferId { get; init; }
 
     [Key(1)] public byte[]? ConfirmedChunks { get; init; }
+
+    /// <summary>The receiver does not want this file (policy "Skip", or it has it already); the sender moves on.</summary>
+    [Key(2)] public bool Skip { get; init; }
 }
 
 [MessagePackObject]
@@ -132,6 +141,104 @@ public sealed record Cancel : IControlMessage
     [Key(0)] public Guid TransferId { get; init; }
 
     [Key(1)] public string? Reason { get; init; }
+
+    /// <summary>The receiver keeps its progress and pauses the job (e.g. target disk full, plan §12).</summary>
+    [Key(2)] public bool PauseJob { get; init; }
+}
+
+/// <summary>Policy for files that already exist at the target; same values as the domain enum.</summary>
+public enum ExistingFileAction
+{
+    KeepBoth = 0,
+    Replace = 1,
+    Skip = 2,
+}
+
+/// <summary>
+/// Starts or resumes a job (plan §8): the sender offers files and folders; the manifest follows in
+/// <see cref="JobManifest"/> parts. A job the receiver already accepted is resumed without asking again.
+/// </summary>
+[MessagePackObject]
+public sealed record JobOffer : IControlMessage
+{
+    [Key(0)] public Guid JobId { get; init; }
+
+    [Key(1)] public int ItemCount { get; init; }
+
+    [Key(2)] public int FileCount { get; init; }
+
+    [Key(3)] public long TotalBytes { get; init; }
+
+    /// <summary>Folder name the sender proposes below the receiver's download folder.</summary>
+    [Key(4)] public string? SuggestedFolder { get; init; }
+
+    [Key(5)] public ExistingFileAction Policy { get; init; }
+}
+
+[MessagePackObject]
+public sealed record JobOfferItem
+{
+    [Key(0)] public string? RelativePath { get; init; }
+
+    [Key(1)] public long Size { get; init; }
+
+    [Key(2)] public DateTime LastWriteTimeUtc { get; init; }
+
+    [Key(3)] public bool IsDirectory { get; init; }
+}
+
+/// <summary>Part of the item list of a <see cref="JobOffer"/>; parts stay below the control message limit.</summary>
+[MessagePackObject]
+public sealed record JobManifest : IControlMessage
+{
+    [Key(0)] public Guid JobId { get; init; }
+
+    [Key(1)] public JobOfferItem[]? Items { get; init; }
+}
+
+/// <summary>The receiving user confirmed target and policy; transfers may start.</summary>
+[MessagePackObject]
+public sealed record JobAccept : IControlMessage
+{
+    [Key(0)] public Guid JobId { get; init; }
+
+    [Key(1)] public ExistingFileAction Policy { get; init; }
+}
+
+[MessagePackObject]
+public sealed record JobDecline : IControlMessage
+{
+    [Key(0)] public Guid JobId { get; init; }
+
+    [Key(1)] public string? Reason { get; init; }
+}
+
+public enum JobAction
+{
+    Pause = 0,
+    Resume = 1,
+    Cancel = 2,
+}
+
+/// <summary>Pause, resume or cancel a job from either side; also the answer to an offer for a paused or canceled job.</summary>
+[MessagePackObject]
+public sealed record JobControl : IControlMessage
+{
+    [Key(0)] public Guid JobId { get; init; }
+
+    [Key(1)] public JobAction Action { get; init; }
+
+    [Key(2)] public string? Reason { get; init; }
+}
+
+/// <summary>Sender: every item was handled. Receiver: answers with the same message once it recorded the job as done.</summary>
+[MessagePackObject]
+public sealed record JobComplete : IControlMessage
+{
+    [Key(0)] public Guid JobId { get; init; }
+
+    /// <summary>Items that failed on the answering side.</summary>
+    [Key(1)] public int FailedItems { get; init; }
 }
 
 [MessagePackObject]

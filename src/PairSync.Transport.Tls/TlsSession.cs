@@ -135,8 +135,15 @@ internal sealed class TlsSession : ITransportSession
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
             return;
         await _closing.CancelAsync().ConfigureAwait(false);
-        _socket.Shutdown(SocketShutdown.Both);
-        await _stream.DisposeAsync().ConfigureAwait(false);
+        try
+        {
+            _socket.Shutdown(SocketShutdown.Both);
+            await _stream.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is SocketException or IOException)
+        {
+            // The other side reset the connection already; closing is all that is left to do.
+        }
         _socket.Dispose();
         await _reader.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
         Close(TransportState.Closed, null);

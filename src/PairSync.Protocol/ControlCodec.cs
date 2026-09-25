@@ -41,6 +41,12 @@ public static class ControlCodec
         Register<PairNonce>(41);
         Register<PairReveal>(42);
         Register<PairConfirm>(43);
+        Register<JobOffer>(50);
+        Register<JobManifest>(51);
+        Register<JobAccept>(52);
+        Register<JobDecline>(53);
+        Register<JobControl>(54);
+        Register<JobComplete>(55);
     }
 
     private static void Register<T>(ushort code) where T : IControlMessage

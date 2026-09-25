@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using PairSync.Application.Connections;
 using PairSync.Application.Pairing;
 using PairSync.Application.Presence;
+using PairSync.Application.Transfers;
 using PairSync.Protocol;
 using PairSync.Storage;
 using PairSync.Storage.Identity;
@@ -65,16 +66,18 @@ public sealed class PairSyncCore : IAsyncDisposable
             core.Identity = await services.GetRequiredService<DeviceIdentityStore>().LoadOrCreateAsync(cancellationToken).ConfigureAwait(false);
             services.GetRequiredService<CurrentIdentity>().Set(core.Identity);
 
-            // Unpaired devices only get to pair; sessions of paired devices are for transfers (work package F).
+            // Unpaired devices only get to pair; sessions of paired devices are for transfers.
             var lan = services.GetRequiredService<LanConnectionService>();
             var pairing = services.GetRequiredService<PairingService>();
+            var transfers = services.GetRequiredService<TransferService>();
             lan.IncomingConnectionHandler = connection => connection.Access == PeerAccess.PairingOnly
                 ? pairing.HandleIncomingAsync(connection)
-                : connection.DisposeAsync().AsTask();
+                : transfers.HandleIncomingAsync(connection);
 
             // A busy port is not fatal: the app still works as a sender and Settings shows the error.
             await lan.StartAsync(cancellationToken).ConfigureAwait(false);
             await services.GetRequiredService<PresenceService>().StartAsync(cancellationToken).ConfigureAwait(false);
+            await transfers.StartAsync(cancellationToken).ConfigureAwait(false);
 
             services.GetRequiredService<ILogger<PairSyncCore>>()
                 .LogInformation("PairSync core started, data directory {DataDirectory}", dataDirectory.Root);
@@ -93,9 +96,18 @@ public sealed class PairSyncCore : IAsyncDisposable
 
     public PairingService Pairing => _services.GetRequiredService<PairingService>();
 
+    public TransferService Transfers => _services.GetRequiredService<TransferService>();
+
     public async ValueTask DisposeAsync()
     {
-        // Services first: the listener still uses the identity until it stops.
+        // Stop the active services in order while the provider still works: a disposing ServiceProvider refuses to
+        // create anything, so a transfer could not save its last journal entry and presence not its last-seen times.
+        // Services before the provider: the listener still uses the identity until it stops.
+        if (_services.GetService<TransferService>() is { } transfers)
+            await transfers.DisposeAsync().ConfigureAwait(false);
+        await _services.GetRequiredService<PairingService>().DisposeAsync().ConfigureAwait(false);
+        await _services.GetRequiredService<PresenceService>().DisposeAsync().ConfigureAwait(false);
+        await _services.GetRequiredService<LanConnectionService>().DisposeAsync().ConfigureAwait(false);
         await _services.DisposeAsync().ConfigureAwait(false);
         Identity?.Identity.Dispose();
     }

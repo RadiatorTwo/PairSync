@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using PairSync.Application;
 using PairSync.Application.Connections;
 using PairSync.Application.Pairing;
+using PairSync.Application.Transfers;
+using PairSync.Discovery.Lan;
 using PairSync.Application.Presence;
 using PairSync.Domain;
 using PairSync.Storage;
@@ -15,14 +17,28 @@ internal static class TestCores
 {
     /// <param name="presence">mDNS settings; off unless given, so tests do not announce themselves on the network.</param>
     /// <param name="pairing">Pairing settings; invitations point to loopback unless given.</param>
+    /// <param name="transfers">Transfer settings; downloads go below the data directory and retries are fast unless given.</param>
     public static Task<PairSyncCore> StartAsync(
-        DataDirectory data, CancellationToken cancellationToken, PresenceOptions? presence = null, PairingOptions? pairing = null) =>
+        DataDirectory data, CancellationToken cancellationToken, PresenceOptions? presence = null, PairingOptions? pairing = null,
+        TransferOptions? transfers = null) =>
         PairSyncCore.StartAsync(data, cancellationToken, services =>
         {
             services.AddSingleton(new LanOptions { Port = 0 });
             services.AddSingleton(presence ?? new PresenceOptions { Enabled = false });
             services.AddSingleton(pairing ?? new PairingOptions { InvitationAddresses = [IPAddress.Loopback] });
+            services.AddSingleton(transfers ?? ForTests(data));
         });
+
+    public static TransferOptions ForTests(DataDirectory data) => new()
+    {
+        DownloadsFolder = Path.Combine(data.Root, "downloads"),
+        RetryInterval = TimeSpan.FromSeconds(1),
+    };
+
+    /// <summary>Lets <paramref name="owner"/> reach <paramref name="other"/> on loopback without mDNS.</summary>
+    public static void MakeReachable(PairSyncCore owner, PairSyncCore other) =>
+        owner.Presence.AddKnownEndpoint(new LanServiceInfo(
+            other.Identity.Identity.Id, PairSync.Protocol.ProtocolVersion.Current, other.Lan.Port, [IPAddress.Loopback], DateTime.UtcNow));
 
     /// <summary>How <paramref name="other"/> is recorded in the device list of <paramref name="owner"/>.</summary>
     public static PairedDevice DeviceEntryFor(PairSyncCore other) => new()

@@ -107,6 +107,7 @@ public sealed class TlsListener : IDisposable
     private async Task<ITransportSession> AuthenticateAsync(Socket socket, IReadOnlyList<string> channelLabels, CancellationToken cancellationToken)
     {
         socket.NoDelay = true;
+        TcpKeepAlive.Enable(socket);
         var stream = new SslStream(new NetworkStream(socket, ownsSocket: false), leaveInnerStreamOpen: false);
         try
         {
@@ -162,6 +163,7 @@ public static class TlsConnector
         foreach (var address in addresses)
         {
             var socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+            TcpKeepAlive.Enable(socket);
             try
             {
                 using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
@@ -218,5 +220,20 @@ public static class TlsConnector
             }
         }
         throw new TransportException($"No address was reachable on port {port}: {string.Join("; ", errors)}");
+    }
+}
+
+/// <summary>
+/// Detects a vanished peer (cable pulled, sleep, Wi-Fi gone) on an idle or blocked connection within about 25 s,
+/// so waiting sides fail and jobs resume later instead of hanging (plan §12).
+/// </summary>
+internal static class TcpKeepAlive
+{
+    public static void Enable(Socket socket)
+    {
+        socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+        socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, 10);
+        socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, 5);
+        socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, 3);
     }
 }

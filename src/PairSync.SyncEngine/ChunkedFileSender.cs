@@ -17,7 +17,13 @@ public sealed record SenderOptions
 
     /// <summary>Test switch: corrupt the first transmission of this chunk to exercise Nack and retransmission.</summary>
     public int? CorruptChunkOnce { get; init; }
+
+    /// <summary>Upload limit shared by all senders of this device.</summary>
+    public UploadThrottle Throttle { get; init; } = UploadThrottle.Unlimited;
 }
+
+/// <summary>Where a file belongs when it is sent as part of a job.</summary>
+public sealed record JobFileContext(Guid JobId, string RelativePath);
 
 /// <summary>
 /// Sends one file in 4 MiB chunks. Each chunk is hashed, split into data messages ≤ 256 KiB and
@@ -27,6 +33,9 @@ public sealed class ChunkedFileSender(SenderOptions options)
 {
     public TransferStats Stats { get; } = new();
 
+    /// <summary>The receiver answered the plan with "skip" (it keeps its own copy).</summary>
+    public bool WasSkipped { get; private set; }
+
     /// <summary>A stable id per file version, so a restarted sender resumes the same transfer.</summary>
     public static Guid TransferIdFor(FileInfo file)
     {
@@ -35,7 +44,11 @@ public sealed class ChunkedFileSender(SenderOptions options)
     }
 
     /// <param name="channels">A session after <see cref="SessionHandshake"/>.</param>
-    public async Task<TransferResult> SendAsync(PeerChannels channels, FileInfo file, CancellationToken cancellationToken)
+    /// <param name="job">The job and path of the file; null sends it on its own under its file name.</param>
+    /// <exception cref="TransferCanceledException">The receiver canceled, or the source changed or became unreadable (the receiver was told).</exception>
+    /// <exception cref="JobInterruptedException">The receiver paused or canceled the job.</exception>
+    public async Task<TransferResult> SendAsync(
+        PeerChannels channels, FileInfo file, CancellationToken cancellationToken, JobFileContext? job = null)
     {
         file.Refresh();
         var (control, data, maxMessage) = (channels.Control, channels.Data, channels.MaxMessageSize);
@@ -49,9 +62,16 @@ public sealed class ChunkedFileSender(SenderOptions options)
             ChunkSize = ProtocolLimits.ChunkSize,
             ChunkCount = chunkCount,
             LastWriteTimeUtc = file.LastWriteTimeUtc,
+            JobId = job?.JobId ?? Guid.Empty,
+            RelativePath = job?.RelativePath,
         };
         await control.SendAsync(plan, cancellationToken).ConfigureAwait(false);
         var planAck = await control.ExpectAsync<TransferPlanAck>(cancellationToken).ConfigureAwait(false);
+        if (planAck.Skip)
+        {
+            WasSkipped = true;
+            return new TransferResult { TransferId = plan.TransferId, Success = true, Message = "skipped by the receiver" };
+        }
         var confirmed = ChunkBitmap.FromBytes(planAck.ConfirmedChunks ?? [], chunkCount);
 
         Stats.FileName = file.Name;
@@ -65,7 +85,17 @@ public sealed class ChunkedFileSender(SenderOptions options)
         var reader = PumpControlAsync(control, events.Writer, readerCts.Token);
         try
         {
-            await SendChunksAsync(file, plan, confirmed, control, data, maxMessage, events.Reader, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await SendChunksAsync(file, plan, confirmed, control, data, maxMessage, events.Reader, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or SourceChangedException)
+            {
+                // The receiver would otherwise wait for chunks or the finish forever.
+                var reason = e is SourceChangedException ? e.Message : $"the source file cannot be read: {e.Message}";
+                await TryCancelAsync(control, plan.TransferId, reason).ConfigureAwait(false);
+                throw new TransferCanceledException(reason);
+            }
             return await AwaitResultAsync(events.Reader, cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -156,7 +186,7 @@ public sealed class ChunkedFileSender(SenderOptions options)
         // Plan §12: a file that changed during the transfer is not delivered.
         file.Refresh();
         if (file.Length != plan.FileSize || file.LastWriteTimeUtc != plan.LastWriteTimeUtc)
-            throw new TransferCanceledException("the source file changed during the transfer");
+            throw new SourceChangedException();
 
         await control.SendAsync(new TransferFinish { TransferId = plan.TransferId, FileSha256 = fileHash.GetHashAndReset() }, cancellationToken)
             .ConfigureAwait(false);
@@ -191,7 +221,9 @@ public sealed class ChunkedFileSender(SenderOptions options)
                     paused = false;
                     break;
                 case Cancel cancel:
-                    throw new TransferCanceledException(cancel.Reason ?? "canceled by the receiver");
+                    throw TransferCanceledException.From(cancel, "canceled by the receiver");
+                case JobControl jobControl when jobControl.Action != JobAction.Resume:
+                    throw new JobInterruptedException(jobControl);
             }
         }
 
@@ -204,11 +236,27 @@ public sealed class ChunkedFileSender(SenderOptions options)
                 var length = DataFrameCodec.Write(frame, transferKey, index, (ushort)f, (ushort)fragments, hash, payload.Span);
                 if (corrupt && f == fragments - 1)
                     frame[length - 1] ^= 0xFF;
+                await options.Throttle.WaitAsync(length, cancellationToken).ConfigureAwait(false);
                 await data.SendAsync(frame.AsMemory(0, length), cancellationToken).ConfigureAwait(false);
                 Stats.AddBytes(payload.Length);
             }
         }
     }
+
+    private static async Task TryCancelAsync(ControlChannel control, Guid transferId, string reason)
+    {
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await control.SendAsync(new Cancel { TransferId = transferId, Reason = reason }, timeout.Token).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is TransportException or OperationCanceledException)
+        {
+            // gone; the receiver notices on its own
+        }
+    }
+
+    private sealed class SourceChangedException() : Exception("the source file changed during the transfer");
 
     private async Task PumpControlAsync(ControlChannel control, ChannelWriter<IControlMessage> events, CancellationToken cancellationToken)
     {
@@ -240,7 +288,9 @@ public sealed class ChunkedFileSender(SenderOptions options)
                     case TransferResult result:
                         return result;
                     case Cancel cancel:
-                        throw new TransferCanceledException(cancel.Reason ?? "canceled by the receiver");
+                        throw TransferCanceledException.From(cancel, "canceled by the receiver");
+                    case JobControl jobControl when jobControl.Action != JobAction.Resume:
+                        throw new JobInterruptedException(jobControl);
                 }
             }
         }

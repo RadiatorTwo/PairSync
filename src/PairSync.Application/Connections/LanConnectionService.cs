@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PairSync.Application.Pairing;
 using PairSync.Application.Presence;
+using PairSync.Application.Transfers;
 using PairSync.Domain;
 using PairSync.Protocol;
 using PairSync.Storage.Identity;
@@ -193,8 +194,13 @@ public sealed class LanConnectionService(
             await connection.DisposeAsync().ConfigureAwait(false);
     }
 
+    private int _disposed;
+
     public async ValueTask DisposeAsync()
     {
+        // Called by PairSyncCore while the service provider still works, and again when the provider is disposed.
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            return;
         await _stopping.CancelAsync().ConfigureAwait(false);
         _listener?.Dispose();
         await _acceptLoop.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
@@ -214,6 +220,8 @@ public static class ConnectionServices
         services.AddSingleton<PresenceService>();
         services.AddSingleton(new PairingOptions());
         services.AddSingleton<PairingService>();
+        services.AddSingleton(new TransferOptions());
+        services.AddSingleton<TransferService>();
         return services;
     }
 }
