@@ -1,12 +1,17 @@
 using System.Net;
 using PairSync.Domain;
+using PairSync.Application.Internet;
 using PairSync.Protocol;
+using PairSync.Stun;
+using PairSync.Transport;
 
 namespace PairSync.Application.Pairing;
 
 /// <summary>An invitation from another device that passed all checks; the security code still has to be compared.</summary>
+/// <param name="Offer">Internet invitation: the inviting device's WebRTC offer, to be answered with a connection answer code.</param>
 public sealed record ReceivedInvitation(
-    Guid DeviceId, string DeviceName, byte[] PublicKey, IReadOnlyList<IPAddress> Addresses, int Port, byte[] Nonce, DateTime ExpiresAtUtc)
+    Guid DeviceId, string DeviceName, byte[] PublicKey, IReadOnlyList<IPAddress> Addresses, int Port, byte[] Nonce, DateTime ExpiresAtUtc,
+    SessionDescription? Offer = null, NatHint RemoteNat = NatHint.Unknown)
 {
     public DeviceFingerprint Fingerprint => DeviceFingerprint.Of(PublicKey);
 }
@@ -23,9 +28,13 @@ public static class PairingInvitations
 {
     public const int NonceSize = 16;
 
+    /// <param name="offer">WebRTC offer for pairing over the internet; makes this a <c>PSI2</c> invitation.</param>
     public static string Create(
-        DeviceIdentity identity, string deviceName, IReadOnlyList<IPAddress> addresses, int port, byte[] nonce, DateTime expiresAtUtc)
+        DeviceIdentity identity, string deviceName, IReadOnlyList<IPAddress> addresses, int port, byte[] nonce, DateTime expiresAtUtc,
+        SessionDescription? offer = null, NatHint nat = NatHint.Unknown)
     {
+        if (offer is { Type: not SessionDescriptionType.Offer })
+            throw new ArgumentException("Expected an offer.", nameof(offer));
         var payload = InvitationCodec.SerializePayload(new PairingInvitation
         {
             DeviceId = identity.Id,
@@ -37,8 +46,10 @@ public static class PairingInvitations
             Port = port,
             Nonce = nonce,
             ExpiresAtUtc = expiresAtUtc,
+            Offer = offer is null ? null : CodeText.CompressSdp(offer.Sdp),
+            NatHint = (byte)nat,
         });
-        return InvitationCodec.Encode(payload, identity.Sign(InvitationCodec.SignedData(payload)));
+        return InvitationCodec.Encode(payload, identity.Sign(InvitationCodec.SignedData(payload)), withOffer: offer is not null);
     }
 
     /// <summary>Checks signature, protocol version, expiry and content of a pasted or loaded invitation.</summary>
@@ -75,11 +86,25 @@ public static class PairingInvitations
             .Select(a => IPAddress.TryParse(a, out var address) ? address : null)
             .OfType<IPAddress>()
             .ToArray();
-        if (addresses.Length == 0 || invitation.Port is <= 0 or > 65535)
+        SessionDescription? offer = null;
+        if (invitation.Offer is not null)
+        {
+            try
+            {
+                offer = new SessionDescription(SessionDescriptionType.Offer, ConnectCodes.ReadSdp(invitation.Offer, "invitation"));
+            }
+            catch (InvalidConnectCodeException e)
+            {
+                throw new InvalidInvitationException(e.Message, e);
+            }
+        }
+        // An internet invitation may come without LAN addresses (the inviting device is elsewhere).
+        if (offer is null && (addresses.Length == 0 || invitation.Port is <= 0 or > 65535))
             throw new InvalidInvitationException("The invitation contains no address to connect to.");
 
         return new ReceivedInvitation(invitation.DeviceId, DeviceNames.Clean(invitation.DeviceName, invitation.DeviceId), key,
-            addresses, invitation.Port, nonce, invitation.ExpiresAtUtc);
+            addresses, invitation.Port is > 0 and <= 65535 ? invitation.Port : 0, nonce, invitation.ExpiresAtUtc,
+            offer, ConnectCodes.ToHint(invitation.NatHint));
     }
 }
 

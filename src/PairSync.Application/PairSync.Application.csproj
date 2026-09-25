@@ -5,6 +5,8 @@
     <ProjectReference Include="..\PairSync.SyncEngine\PairSync.SyncEngine.csproj" />
     <ProjectReference Include="..\PairSync.Transport.Tls\PairSync.Transport.Tls.csproj" />
     <ProjectReference Include="..\PairSync.Discovery.Lan\PairSync.Discovery.Lan.csproj" />
+    <ProjectReference Include="..\PairSync.Stun\PairSync.Stun.csproj" />
+    <ProjectReference Include="..\PairSync.Transport.WebRtc\PairSync.Transport.WebRtc.csproj" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Serilog" />

@@ -5,8 +5,8 @@ public static class ProtocolVersion
     /// <summary>Incompatible changes bump the major version; peers with different majors refuse to talk.</summary>
     public const ushort Major = 0;
 
-    /// <summary>Compatible additions (new optional fields or message types) bump the minor version.</summary>
-    public const ushort Minor = 2;
+    /// <summary>Compatible additions (new optional fields or message types) bump the minor version. 0.3: internet connection codes and invitations.</summary>
+    public const ushort Minor = 3;
 
     public static string Current => $"{Major}.{Minor}";
 }
