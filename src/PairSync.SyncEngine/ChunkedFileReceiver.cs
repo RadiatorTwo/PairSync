@@ -8,8 +8,6 @@ namespace PairSync.SyncEngine;
 
 public sealed record ReceiverOptions
 {
-    public string DeviceName { get; init; } = Environment.MachineName;
-
     /// <summary>Largest file this receiver accepts (plan §11: size limits).</summary>
     public long MaxFileSize { get; init; } = 2L * 1024 * 1024 * 1024 * 1024;
 
@@ -33,14 +31,10 @@ public sealed class ChunkedFileReceiver(string targetDirectory, IChunkJournal jo
 
     public TransferStats Stats { get; } = new();
 
-    public async Task<ReceiveOutcome> ReceiveAsync(ITransportSession session, CancellationToken cancellationToken)
+    /// <param name="channels">A session after <see cref="SessionHandshake"/>.</param>
+    public async Task<ReceiveOutcome> ReceiveAsync(PeerChannels channels, CancellationToken cancellationToken)
     {
-        var control = new ControlChannel(await session.GetChannelAsync("control", cancellationToken).ConfigureAwait(false));
-        var data = await session.GetChannelAsync("data", cancellationToken).ConfigureAwait(false);
-
-        await control.ExpectAsync<Hello>(cancellationToken).ConfigureAwait(false);
-        await control.SendAsync(new HelloAck { DeviceName = options.DeviceName, MaxMessageSize = data.MaxMessageSize }, cancellationToken)
-            .ConfigureAwait(false);
+        var (control, data) = (channels.Control, channels.Data);
 
         var plan = await control.ExpectAsync<TransferPlan>(cancellationToken).ConfigureAwait(false);
         string targetPath;

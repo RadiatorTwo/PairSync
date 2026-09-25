@@ -1,4 +1,5 @@
 using System.Net;
+using PairSync.Spike;
 using PairSync.Transport;
 using PairSync.Transport.Tls;
 
@@ -10,11 +11,12 @@ public sealed class TlsTransportTests
     public async Task Connection_to_an_unexpected_certificate_is_refused()
     {
         var ct = TestContext.Current.CancellationToken;
-        using var listener = TlsListener.Start(0, LoopbackPair.Options);
+        using var listener = TlsListener.Start(0, SpikePeer.Certificate, LoopbackPair.Options);
         var accept = listener.AcceptAsync(LoopbackPair.Channels, ct);
-        var forged = listener.Endpoint with { Addresses = [IPAddress.Loopback], CertificateSha256 = new string('0', 64) };
+        var forged = listener.Endpoint with { Addresses = [IPAddress.Loopback], PublicKeySha256 = new string('0', 64) };
 
-        await Assert.ThrowsAsync<TransportException>(() => TlsConnector.ConnectAsync(forged, LoopbackPair.Channels, LoopbackPair.Options, ct));
+        await Assert.ThrowsAsync<TransportException>(() =>
+            TlsConnector.ConnectAsync(forged, SpikePeer.Certificate, LoopbackPair.Channels, LoopbackPair.Options, ct));
 
         // With TLS 1.3 the server may finish its side of the handshake before the client rejects the
         // certificate; the session must then end without delivering anything.
@@ -52,7 +54,7 @@ public sealed class TlsTransportTests
         var decoded = TlsEndpointInfo.FromCode("  " + endpoint.ToCode() + "\n");
 
         Assert.Equal(endpoint.Port, decoded.Port);
-        Assert.Equal(endpoint.CertificateSha256, decoded.CertificateSha256);
+        Assert.Equal(endpoint.PublicKeySha256, decoded.PublicKeySha256);
         Assert.Equal(endpoint.Addresses, decoded.Addresses);
     }
 

@@ -31,8 +31,9 @@ public sealed class ChunkedTransferTests : IDisposable
         SpikeTransport transport, ChunkedFileSender sender, ChunkedFileReceiver receiver, FileInfo file, CancellationToken ct)
     {
         await using var pair = await LoopbackPair.ConnectAsync(transport, ct);
-        var receive = receiver.ReceiveAsync(pair.Answerer, ct);
-        var sent = await sender.SendAsync(pair.Offerer, file, ct);
+        var (offerer, answerer) = await pair.HandshakeAsync(ct);
+        var receive = receiver.ReceiveAsync(answerer, ct);
+        var sent = await sender.SendAsync(offerer, file, ct);
         return (sent, await receive);
     }
 
@@ -74,8 +75,9 @@ public sealed class ChunkedTransferTests : IDisposable
         var firstReceiver = new ChunkedFileReceiver(TargetDirectory, _journal, new ReceiverOptions());
         await using (var pair = await LoopbackPair.ConnectAsync(transport, ct))
         {
-            var receive = firstReceiver.ReceiveAsync(pair.Answerer, ct);
-            await Assert.ThrowsAsync<SimulatedDisconnectException>(() => firstSender.SendAsync(pair.Offerer, file, ct));
+            var (offerer, answerer) = await pair.HandshakeAsync(ct);
+            var receive = firstReceiver.ReceiveAsync(answerer, ct);
+            await Assert.ThrowsAsync<SimulatedDisconnectException>(() => firstSender.SendAsync(offerer, file, ct));
             await pair.DisposeAsync();
             await Assert.ThrowsAnyAsync<Exception>(() => receive);
         }

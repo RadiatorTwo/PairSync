@@ -1,22 +1,24 @@
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 namespace PairSync.Transport.Tls;
 
 /// <summary>
-/// Where a listening device can be reached and which certificate it presents (SHA-256, pinned by the
-/// connecting side). In the product this comes from mDNS plus the paired device key; the spike
-/// passes it as a compact code.
+/// Where a listening device can be reached and the SHA-256 of its public key (SubjectPublicKeyInfo), pinned by the
+/// connecting side. The hash equals the device fingerprint. In the product this comes from mDNS plus the paired
+/// device key; the spike passes it as a compact code.
 /// </summary>
-public sealed record TlsEndpointInfo(IReadOnlyList<IPAddress> Addresses, int Port, string CertificateSha256)
+public sealed record TlsEndpointInfo(IReadOnlyList<IPAddress> Addresses, int Port, string PublicKeySha256)
 {
-    public const string CodePrefix = "PST1:";
+    public const string CodePrefix = "PST2:";
 
     public string ToCode()
     {
-        var text = $"{Port}|{CertificateSha256}|{string.Join(",", Addresses)}";
+        var text = $"{Port}|{PublicKeySha256}|{string.Join(",", Addresses)}";
         return CodePrefix + Convert.ToBase64String(Encoding.UTF8.GetBytes(text)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
     }
 
@@ -32,6 +34,19 @@ public sealed record TlsEndpointInfo(IReadOnlyList<IPAddress> Addresses, int Por
             throw new FormatException("Malformed connection code.");
         var addresses = parts[2].Split(',', StringSplitOptions.RemoveEmptyEntries).Select(IPAddress.Parse).ToArray();
         return new TlsEndpointInfo(addresses, port, parts[1].ToLowerInvariant());
+    }
+
+    /// <summary>Lower-case hex SHA-256 of the certificate's SubjectPublicKeyInfo.</summary>
+    public static string KeyHash(X509Certificate2 certificate) =>
+        Convert.ToHexStringLower(SHA256.HashData(certificate.PublicKey.ExportSubjectPublicKeyInfo()));
+
+    /// <summary>The SubjectPublicKeyInfo of a certificate presented in a TLS handshake.</summary>
+    public static byte[]? PublicKeyOf(X509Certificate? certificate)
+    {
+        if (certificate is null)
+            return null;
+        using var parsed = X509CertificateLoader.LoadCertificate(certificate.GetRawCertData());
+        return parsed.PublicKey.ExportSubjectPublicKeyInfo();
     }
 
     /// <summary>Usable unicast addresses of this machine, IPv4 first; loopback and IPv6 link-local are skipped.</summary>

@@ -47,7 +47,8 @@ receive.SetAction(async (parse, cancellationToken) =>
         session = await SpikeConnection.ConnectAsReceiverAsync(transport, parse.GetValue(portOption), options, signaling, cancellationToken);
         SpikeConsole.PrintRoute(session);
 
-        var result = await receiver.ReceiveAsync(session, cancellationToken);
+        var channels = await SpikePeer.RespondAsync(session, cancellationToken);
+        var result = await receiver.ReceiveAsync(channels, cancellationToken);
         outcome = result.Success ? "success" : result.Message;
         Console.WriteLine(result.Success ? $"Saved {result.FinalPath}. {result.Message}" : $"Failed: {result.Message}");
         // Give the final TransferResult a moment to leave before the connection is torn down.

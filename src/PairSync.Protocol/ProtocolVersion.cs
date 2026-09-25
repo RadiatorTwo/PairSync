@@ -6,7 +6,7 @@ public static class ProtocolVersion
     public const ushort Major = 0;
 
     /// <summary>Compatible additions (new optional fields or message types) bump the minor version.</summary>
-    public const ushort Minor = 1;
+    public const ushort Minor = 2;
 
     public static string Current => $"{Major}.{Minor}";
 }
@@ -24,6 +24,19 @@ public static class ProtocolLimits
 }
 
 public class ProtocolException(string message) : Exception(message);
+
+/// <summary>The peer sent a message its access level does not allow, e.g. a transfer before pairing.</summary>
+public sealed class PeerNotAuthorizedException(string message) : ProtocolException(message);
+
+/// <summary>A device refused the connection (blocked, removed, wrong identity).</summary>
+public sealed class PeerRejectedException(string reason, bool byOtherDevice)
+    : ProtocolException(byOtherDevice ? $"The other device refused the connection: {reason}" : $"Connection refused: {reason}")
+{
+    public string Reason { get; } = reason;
+
+    /// <summary>True if the other device refused, false if this one did.</summary>
+    public bool ByOtherDevice { get; } = byOtherDevice;
+}
 
 /// <summary>Raised when the peer speaks an incompatible major protocol version.</summary>
 public sealed class ProtocolVersionException(ushort remoteMajor, ushort remoteMinor)

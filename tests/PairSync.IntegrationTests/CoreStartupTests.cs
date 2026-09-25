@@ -27,7 +27,7 @@ public sealed class CoreStartupTests : IDisposable
     [Fact]
     public async Task First_start_creates_database_logs_and_default_settings()
     {
-        await using (var core = await PairSyncCore.StartAsync(Data, Ct))
+        await using (var core = await TestCores.StartAsync(Data, Ct))
         {
             var contexts = core.Services.GetRequiredService<IDbContextFactory<PairSyncDbContext>>();
             await using var db = await contexts.CreateDbContextAsync(Ct);
@@ -53,7 +53,7 @@ public sealed class CoreStartupTests : IDisposable
         var deviceId = Guid.NewGuid();
         var transferId = Guid.NewGuid();
         Guid identityId;
-        await using (var core = await PairSyncCore.StartAsync(Data, Ct))
+        await using (var core = await TestCores.StartAsync(Data, Ct))
         {
             identityId = core.Identity.Identity.Id;
             var contexts = core.Services.GetRequiredService<IDbContextFactory<PairSyncDbContext>>();
@@ -74,7 +74,7 @@ public sealed class CoreStartupTests : IDisposable
             core.Settings.Update(s => s with { DeviceName = "Studio", Port = 48000 });
         }
 
-        await using (var core = await PairSyncCore.StartAsync(Data, Ct))
+        await using (var core = await TestCores.StartAsync(Data, Ct))
         {
             var contexts = core.Services.GetRequiredService<IDbContextFactory<PairSyncDbContext>>();
             await using var db = await contexts.CreateDbContextAsync(Ct);
@@ -96,7 +96,7 @@ public sealed class CoreStartupTests : IDisposable
     [Fact]
     public async Task Journal_entries_are_replaced_and_deleted()
     {
-        await using var core = await PairSyncCore.StartAsync(Data, Ct);
+        await using var core = await TestCores.StartAsync(Data, Ct);
         var journal = core.Services.GetRequiredService<IChunkJournal>();
         var entry = new ChunkJournalEntry { TransferId = Guid.NewGuid(), TempPath = "a", FileSize = 1, ChunkSize = 1, ChunkCount = 9, Confirmed = [1, 0] };
 

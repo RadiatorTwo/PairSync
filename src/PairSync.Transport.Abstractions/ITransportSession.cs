@@ -10,6 +10,12 @@ public interface ITransportSession : IAsyncDisposable
     /// <summary>The selected candidate pair once connected, otherwise null.</summary>
     RouteInfo? Route { get; }
 
+    /// <summary>
+    /// DER SubjectPublicKeyInfo of the certificate the other side authenticated with; null if the transport
+    /// does not bind the session to a device key (yet).
+    /// </summary>
+    byte[]? RemotePublicKey { get; }
+
     /// <summary>Raised when the session leaves the connected state for good (disconnected, failed or closed).</summary>
     event EventHandler<TransportState>? StateChanged;
 

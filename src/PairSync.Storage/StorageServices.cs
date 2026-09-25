@@ -16,6 +16,7 @@ public static class StorageServices
         services.AddSingleton<SettingsStore>();
         services.AddSingleton<ISecretStoreProvider, PlatformSecretStores>();
         services.AddSingleton<DeviceIdentityStore>();
+        services.AddSingleton<CurrentIdentity>();
         return services;
     }
 }

@@ -59,7 +59,8 @@ send.SetAction(async (parse, cancellationToken) =>
         session = await SpikeConnection.ConnectAsSenderAsync(transport, options, signaling, cancellationToken);
         SpikeConsole.PrintRoute(session);
 
-        var result = await sender.SendAsync(session, file, cancellationToken);
+        var channels = await SpikePeer.InitiateAsync(session, cancellationToken);
+        var result = await sender.SendAsync(channels, file, cancellationToken);
         outcome = result.Success ? "success" : $"rejected: {result.Message}";
         Console.WriteLine(result.Success ? $"Done. Receiver: {result.Message}" : $"Receiver rejected the file: {result.Message}");
         return result.Success ? 0 : 1;

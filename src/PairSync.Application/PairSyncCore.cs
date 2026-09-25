@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using PairSync.Application.Connections;
 using PairSync.Storage;
 using PairSync.Storage.Identity;
 using PairSync.Storage.Settings;
@@ -44,7 +45,8 @@ public sealed class PairSyncCore : IAsyncDisposable
             .AddSingleton(TimeProvider.System)
             .AddSingleton(level)
             .AddPairSyncLogging(dataDirectory, level)
-            .AddPairSyncStorage(dataDirectory);
+            .AddPairSyncStorage(dataDirectory)
+            .AddPairSyncConnections();
         configure?.Invoke(collection);
         var services = collection.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
 
@@ -58,6 +60,10 @@ public sealed class PairSyncCore : IAsyncDisposable
                 .ConfigureAwait(false);
 
             core.Identity = await services.GetRequiredService<DeviceIdentityStore>().LoadOrCreateAsync(cancellationToken).ConfigureAwait(false);
+            services.GetRequiredService<CurrentIdentity>().Set(core.Identity);
+
+            // A busy port is not fatal: the app still works as a sender and Settings shows the error.
+            await services.GetRequiredService<LanConnectionService>().StartAsync(cancellationToken).ConfigureAwait(false);
 
             services.GetRequiredService<ILogger<PairSyncCore>>()
                 .LogInformation("PairSync core started, data directory {DataDirectory}", dataDirectory.Root);
@@ -70,9 +76,12 @@ public sealed class PairSyncCore : IAsyncDisposable
         }
     }
 
-    public ValueTask DisposeAsync()
+    public LanConnectionService Lan => _services.GetRequiredService<LanConnectionService>();
+
+    public async ValueTask DisposeAsync()
     {
+        // Services first: the listener still uses the identity until it stops.
+        await _services.DisposeAsync().ConfigureAwait(false);
         Identity?.Identity.Dispose();
-        return _services.DisposeAsync();
     }
 }

@@ -8,7 +8,22 @@ using PairSync.Storage.Secrets;
 namespace PairSync.Storage.Identity;
 
 /// <summary>The loaded identity and how its private key is protected (Settings warns about <see cref="SecretProtection.File"/>).</summary>
-public sealed record LocalIdentity(DeviceIdentity Identity, SecretProtection Protection);
+/// <param name="IsNew">Created in this start: first run, show the firewall hint.</param>
+public sealed record LocalIdentity(DeviceIdentity Identity, SecretProtection Protection, bool IsNew = false);
+
+/// <summary>Holds the identity once the core has loaded it, for services created by dependency injection.</summary>
+public sealed class CurrentIdentity
+{
+    private LocalIdentity? _value;
+
+    public LocalIdentity Value => _value ?? throw new InvalidOperationException("The device identity is not loaded yet.");
+
+    public void Set(LocalIdentity value)
+    {
+        if (Interlocked.CompareExchange(ref _value, value, null) is not null)
+            throw new InvalidOperationException("The device identity is already set.");
+    }
+}
 
 /// <summary>
 /// The identity exists but cannot be loaded. PairSync must not silently create a new one: every paired device
@@ -60,7 +75,7 @@ public sealed class DeviceIdentityStore(DataDirectory dataDirectory, ISecretStor
             identity.Id, identity.Fingerprint.ToShortString(), store.Protection);
         if (store.Protection == SecretProtection.File)
             logger.LogWarning("No OS keyring available; the device key is a file readable by this user only");
-        return new LocalIdentity(identity, store.Protection);
+        return new LocalIdentity(identity, store.Protection, IsNew: true);
     }
 
     private async Task<LocalIdentity> LoadAsync(IdentityRecord record, CancellationToken cancellationToken)

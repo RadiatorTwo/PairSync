@@ -1,4 +1,5 @@
 using PairSync.Spike;
+using PairSync.SyncEngine;
 using PairSync.Transport;
 
 namespace PairSync.TransportTests;
@@ -26,6 +27,14 @@ internal sealed class LoopbackPair : IAsyncDisposable
     {
         var (sender, receiver) = await ChannelBenchmark.ConnectPairAsync(transport, Options, cancellationToken);
         return new LoopbackPair(sender, receiver);
+    }
+
+    /// <summary>Runs the Hello handshake on both sessions (every peer trusted, as in the spike).</summary>
+    public async Task<(PeerChannels Offerer, PeerChannels Answerer)> HandshakeAsync(CancellationToken cancellationToken)
+    {
+        var answerer = SpikePeer.RespondAsync(Answerer, cancellationToken);
+        var offerer = await SpikePeer.InitiateAsync(Offerer, cancellationToken);
+        return (offerer, await answerer);
     }
 
     public async ValueTask DisposeAsync()

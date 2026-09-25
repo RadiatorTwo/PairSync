@@ -1,21 +1,14 @@
-using System.Net;
 using System.Security.Cryptography;
 using Microsoft.Extensions.DependencyInjection;
-using PairSync.Application;
 using PairSync.Protocol;
 using PairSync.Storage;
 using PairSync.SyncEngine;
-using PairSync.Transport;
-using PairSync.Transport.Tls;
 
 namespace PairSync.IntegrationTests;
 
 /// <summary>The receiver core is shut down mid-transfer and started again; the SQLite journal carries the progress.</summary>
 public sealed class ResumeAfterRestartTests : IDisposable
 {
-    private static readonly string[] Channels = ["control", "data"];
-    private static readonly TransportOptions Options = new() { ConnectTimeout = TimeSpan.FromSeconds(20) };
-
     private readonly DirectoryInfo _root = Directory.CreateTempSubdirectory("pairsync-resume-");
 
     public void Dispose()
@@ -38,20 +31,25 @@ public sealed class ResumeAfterRestartTests : IDisposable
         RandomNumberGenerator.Fill(content);
         await File.WriteAllBytesAsync(source.FullName, content, ct);
         var target = Directory.CreateDirectory(Path.Combine(_root.FullName, "target")).FullName;
-        var data = new DataDirectory(Path.Combine(_root.FullName, "receiver-data"));
+        var receiverData = new DataDirectory(Path.Combine(_root.FullName, "receiver-data"));
         var transferId = ChunkedFileSender.TransferIdFor(source);
+        await using var senderCore = await TestCores.StartAsync(new DataDirectory(Path.Combine(_root.FullName, "sender-data")), ct);
 
         int kept;
-        await using (var core = await PairSyncCore.StartAsync(data, ct))
+        await using (var core = await TestCores.StartAsync(receiverData, ct))
         {
+            await TestCores.PairAsync(senderCore, core, ct);
             var receiver = new ChunkedFileReceiver(target, core.Services.GetRequiredService<IChunkJournal>(), new ReceiverOptions());
             var sender = new ChunkedFileSender(new SenderOptions { AbortAfterChunks = 5 });
-            var (offerer, answerer) = await ConnectAsync(ct);
-            var receive = receiver.ReceiveAsync(answerer, ct);
-            await Assert.ThrowsAsync<SimulatedDisconnectException>(() => sender.SendAsync(offerer, source, ct));
-            await offerer.DisposeAsync();
-            await Assert.ThrowsAnyAsync<Exception>(() => receive);
-            await answerer.DisposeAsync();
+            var incoming = TestCores.NextIncomingAsync(core);
+            await using (var outgoing = await TestCores.ConnectAsync(senderCore, core, ct))
+            await using (var answerer = await incoming)
+            {
+                var receive = receiver.ReceiveAsync(answerer.Channels, ct);
+                await Assert.ThrowsAsync<SimulatedDisconnectException>(() => sender.SendAsync(outgoing.Channels, source, ct));
+                await outgoing.DisposeAsync();
+                await Assert.ThrowsAnyAsync<Exception>(() => receive);
+            }
 
             var entry = await core.Services.GetRequiredService<IChunkJournal>().LoadAsync(transferId, ct);
             Assert.NotNull(entry);
@@ -59,17 +57,18 @@ public sealed class ResumeAfterRestartTests : IDisposable
             Assert.InRange(kept, 5, chunks - 1);
         }
 
-        await using (var core = await PairSyncCore.StartAsync(data, ct))
+        // The receiver restarts (new process, new port); the device list and journal come back from SQLite.
+        await using (var core = await TestCores.StartAsync(receiverData, ct))
         {
             var journal = core.Services.GetRequiredService<IChunkJournal>();
             var receiver = new ChunkedFileReceiver(target, journal, new ReceiverOptions());
             var sender = new ChunkedFileSender(new SenderOptions());
-            var (offerer, answerer) = await ConnectAsync(ct);
-            await using (offerer)
-            await using (answerer)
+            var incoming = TestCores.NextIncomingAsync(core);
+            await using (var outgoing = await TestCores.ConnectAsync(senderCore, core, ct))
+            await using (var answerer = await incoming)
             {
-                var receive = receiver.ReceiveAsync(answerer, ct);
-                var sent = await sender.SendAsync(offerer, source, ct);
+                var receive = receiver.ReceiveAsync(answerer.Channels, ct);
+                var sent = await sender.SendAsync(outgoing.Channels, source, ct);
                 var received = await receive;
 
                 Assert.True(sent.Success, sent.Message);
@@ -80,13 +79,5 @@ public sealed class ResumeAfterRestartTests : IDisposable
             }
             Assert.Null(await journal.LoadAsync(transferId, ct));
         }
-    }
-
-    private static async Task<(ITransportSession Offerer, ITransportSession Answerer)> ConnectAsync(CancellationToken ct)
-    {
-        using var listener = TlsListener.Start(0, Options);
-        var accept = listener.AcceptAsync(Channels, ct);
-        var offerer = await TlsConnector.ConnectAsync(listener.Endpoint with { Addresses = [IPAddress.Loopback] }, Channels, Options, ct);
-        return (offerer, await accept);
     }
 }

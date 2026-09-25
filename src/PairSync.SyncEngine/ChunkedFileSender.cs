@@ -9,8 +9,6 @@ namespace PairSync.SyncEngine;
 
 public sealed record SenderOptions
 {
-    public string DeviceName { get; init; } = Environment.MachineName;
-
     /// <summary>Unacknowledged chunks allowed in flight; bounds memory to window × 4 MiB on both sides.</summary>
     public int Window { get; init; } = 16;
 
@@ -36,16 +34,11 @@ public sealed class ChunkedFileSender(SenderOptions options)
         return new Guid(SHA256.HashData(Encoding.UTF8.GetBytes(key)).AsSpan(0, 16));
     }
 
-    public async Task<TransferResult> SendAsync(ITransportSession session, FileInfo file, CancellationToken cancellationToken)
+    /// <param name="channels">A session after <see cref="SessionHandshake"/>.</param>
+    public async Task<TransferResult> SendAsync(PeerChannels channels, FileInfo file, CancellationToken cancellationToken)
     {
         file.Refresh();
-        var control = new ControlChannel(await session.GetChannelAsync("control", cancellationToken).ConfigureAwait(false));
-        var data = await session.GetChannelAsync("data", cancellationToken).ConfigureAwait(false);
-
-        await control.SendAsync(new Hello { DeviceName = options.DeviceName, MaxMessageSize = data.MaxMessageSize }, cancellationToken)
-            .ConfigureAwait(false);
-        var helloAck = await control.ExpectAsync<HelloAck>(cancellationToken).ConfigureAwait(false);
-        var maxMessage = Math.Min(data.MaxMessageSize, helloAck.MaxMessageSize > 0 ? helloAck.MaxMessageSize : data.MaxMessageSize);
+        var (control, data, maxMessage) = (channels.Control, channels.Data, channels.MaxMessageSize);
 
         var chunkCount = (int)Math.Max(1, (file.Length + ProtocolLimits.ChunkSize - 1) / ProtocolLimits.ChunkSize);
         var plan = new TransferPlan

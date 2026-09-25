@@ -53,10 +53,10 @@ public static class ChannelBenchmark
     {
         if (transport == SpikeTransport.Tls)
         {
-            using var listener = TlsListener.Start(0, options);
+            using var listener = TlsListener.Start(0, SpikePeer.Certificate, options);
             var accept = listener.AcceptAsync(SpikeConsole.ChannelLabels, cancellationToken);
             var sender = await TlsConnector.ConnectAsync(listener.Endpoint with { Addresses = [IPAddress.Loopback] },
-                SpikeConsole.ChannelLabels, options, cancellationToken).ConfigureAwait(false);
+                SpikePeer.Certificate, SpikeConsole.ChannelLabels, options, cancellationToken).ConfigureAwait(false);
             return (sender, await accept.ConfigureAwait(false));
         }
 

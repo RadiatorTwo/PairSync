@@ -37,6 +37,9 @@ internal sealed class WebRtcSession : ITransportSession
 
     public RouteInfo? Route { get; private set; }
 
+    /// <summary>Not bound to a device key yet; phase 2 checks the DTLS fingerprint against the paired key.</summary>
+    public byte[]? RemotePublicKey => null;
+
     public event EventHandler<TransportState>? StateChanged;
 
     private static readonly Lock SctpLock = new();

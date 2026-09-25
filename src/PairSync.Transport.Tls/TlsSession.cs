@@ -25,9 +25,10 @@ internal sealed class TlsSession : ITransportSession
     private readonly Task _reader;
     private int _disposed;
 
-    public TlsSession(Socket socket, SslStream stream, IReadOnlyList<string> channelLabels, TransportOptions options)
+    public TlsSession(Socket socket, SslStream stream, byte[] remotePublicKey, IReadOnlyList<string> channelLabels, TransportOptions options)
     {
         _socket = socket;
+        RemotePublicKey = remotePublicKey;
         _stream = stream;
         _options = options;
         _channels = channelLabels.Select((label, index) => new TlsMessageChannel(this, (byte)index, label)).ToArray();
@@ -39,6 +40,8 @@ internal sealed class TlsSession : ITransportSession
     public TransportState State { get; private set; }
 
     public RouteInfo? Route { get; }
+
+    public byte[]? RemotePublicKey { get; }
 
     public event EventHandler<TransportState>? StateChanged;
 

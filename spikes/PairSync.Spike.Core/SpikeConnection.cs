@@ -20,7 +20,7 @@ public static class SpikeConnection
         if (transport == SpikeTransport.Tls)
         {
             var code = await signaling.ReceiveCodeAsync(TlsEndpointFile, TlsEndpointInfo.CodePrefix, cancellationToken).ConfigureAwait(false);
-            return await TlsConnector.ConnectAsync(TlsEndpointInfo.FromCode(code), SpikeConsole.ChannelLabels, options, cancellationToken)
+            return await TlsConnector.ConnectAsync(TlsEndpointInfo.FromCode(code), SpikePeer.Certificate, SpikeConsole.ChannelLabels, options, cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -47,7 +47,7 @@ public static class SpikeConnection
     {
         if (transport == SpikeTransport.Tls)
         {
-            using var listener = TlsListener.Start(port, options);
+            using var listener = TlsListener.Start(port, SpikePeer.Certificate, options);
             Console.WriteLine($"Listening on port {listener.Endpoint.Port} ({string.Join(", ", listener.Endpoint.Addresses)})");
             await signaling.PublishCodeAsync(TlsEndpointFile, listener.Endpoint.ToCode(), cancellationToken).ConfigureAwait(false);
             return await listener.AcceptAsync(SpikeConsole.ChannelLabels, cancellationToken).ConfigureAwait(false);
