@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- mDNS/DNS-SD discovery (work package D). -->
+  <ItemGroup>
+    <ProjectReference Include="..\PairSync.Domain\PairSync.Domain.csproj" />
+  </ItemGroup>
+</Project>

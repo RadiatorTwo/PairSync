@@ -1,0 +1,11 @@
+{
+  "name": "pairsync-native",
+  "version": "0.1.0",
+  "description": "Native dependencies of PairSync (libdatachannel for the WebRTC transport).",
+  "dependencies": [
+    {
+      "name": "libdatachannel",
+      "default-features": false
+    }
+  ]
+}

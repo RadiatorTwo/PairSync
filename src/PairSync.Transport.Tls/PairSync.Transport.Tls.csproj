@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\PairSync.Transport.Abstractions\PairSync.Transport.Abstractions.csproj" />
+  </ItemGroup>
+</Project>

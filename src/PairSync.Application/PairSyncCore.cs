@@ -1,0 +1,78 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using PairSync.Storage;
+using PairSync.Storage.Identity;
+using PairSync.Storage.Settings;
+using Serilog.Core;
+
+namespace PairSync.Application;
+
+/// <summary>
+/// The application core without UI: services, database and settings for one data directory.
+/// The desktop app creates one; integration tests create two side by side.
+/// </summary>
+public sealed class PairSyncCore : IAsyncDisposable
+{
+    private readonly ServiceProvider _services;
+    private readonly SettingsStore _settings;
+
+    private PairSyncCore(ServiceProvider services)
+    {
+        _services = services;
+        _settings = services.GetRequiredService<SettingsStore>();
+    }
+
+    public IServiceProvider Services => _services;
+
+    public DataDirectory DataDirectory => _services.GetRequiredService<DataDirectory>();
+
+    public SettingsStore Settings => _settings;
+
+    /// <summary>This device. Set once <see cref="StartAsync"/> has returned.</summary>
+    public LocalIdentity Identity { get; private set; } = null!;
+
+    /// <param name="configure">Replaces services after the defaults, e.g. the secret store in tests.</param>
+    /// <exception cref="IdentityUnavailableException">The device identity exists but its private key cannot be loaded.</exception>
+    public static async Task<PairSyncCore> StartAsync(
+        DataDirectory dataDirectory, CancellationToken cancellationToken, Action<IServiceCollection>? configure = null)
+    {
+        dataDirectory.EnsureCreated();
+
+        var level = new LoggingLevelSwitch();
+        var collection = new ServiceCollection()
+            .AddSingleton(TimeProvider.System)
+            .AddSingleton(level)
+            .AddPairSyncLogging(dataDirectory, level)
+            .AddPairSyncStorage(dataDirectory);
+        configure?.Invoke(collection);
+        var services = collection.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+
+        var core = new PairSyncCore(services);
+        try
+        {
+            level.MinimumLevel = Logging.LevelFor(core.Settings.Current.VerboseLogging);
+            core.Settings.Changed += settings => level.MinimumLevel = Logging.LevelFor(settings.VerboseLogging);
+
+            await Database.MigrateAsync(services.GetRequiredService<IDbContextFactory<PairSyncDbContext>>(), cancellationToken)
+                .ConfigureAwait(false);
+
+            core.Identity = await services.GetRequiredService<DeviceIdentityStore>().LoadOrCreateAsync(cancellationToken).ConfigureAwait(false);
+
+            services.GetRequiredService<ILogger<PairSyncCore>>()
+                .LogInformation("PairSync core started, data directory {DataDirectory}", dataDirectory.Root);
+            return core;
+        }
+        catch
+        {
+            await core.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        Identity?.Identity.Dispose();
+        return _services.DisposeAsync();
+    }
+}

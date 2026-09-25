@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PairSync.SyncEngine\PairSync.SyncEngine.csproj" />
+    <ProjectReference Include="..\..\src\PairSync.Storage\PairSync.Storage.csproj" />
+    <ProjectReference Include="..\..\src\PairSync.Transport.WebRtc\PairSync.Transport.WebRtc.csproj" />
+    <ProjectReference Include="..\..\src\PairSync.Transport.Tls\PairSync.Transport.Tls.csproj" />
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+</Project>

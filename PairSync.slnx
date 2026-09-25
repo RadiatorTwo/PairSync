@@ -1,0 +1,24 @@
+<Solution>
+  <Folder Name="/spikes/">
+    <Project Path="spikes/PairSync.Spike.Core/PairSync.Spike.Core.csproj" />
+    <Project Path="spikes/PairSync.Spike.Receiver/PairSync.Spike.Receiver.csproj" />
+    <Project Path="spikes/PairSync.Spike.Sender/PairSync.Spike.Sender.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/PairSync.Application/PairSync.Application.csproj" />
+    <Project Path="src/PairSync.Desktop/PairSync.Desktop.csproj" />
+    <Project Path="src/PairSync.Discovery.Lan/PairSync.Discovery.Lan.csproj" />
+    <Project Path="src/PairSync.Domain/PairSync.Domain.csproj" />
+    <Project Path="src/PairSync.Protocol/PairSync.Protocol.csproj" />
+    <Project Path="src/PairSync.Storage/PairSync.Storage.csproj" />
+    <Project Path="src/PairSync.SyncEngine/PairSync.SyncEngine.csproj" />
+    <Project Path="src/PairSync.Transport.Abstractions/PairSync.Transport.Abstractions.csproj" />
+    <Project Path="src/PairSync.Transport.Tls/PairSync.Transport.Tls.csproj" />
+    <Project Path="src/PairSync.Transport.WebRtc/PairSync.Transport.WebRtc.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PairSync.IntegrationTests/PairSync.IntegrationTests.csproj" />
+    <Project Path="tests/PairSync.TransportTests/PairSync.TransportTests.csproj" />
+    <Project Path="tests/PairSync.UnitTests/PairSync.UnitTests.csproj" />
+  </Folder>
+</Solution>
