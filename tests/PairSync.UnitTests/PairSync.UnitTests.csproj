@@ -9,5 +9,6 @@
     <ProjectReference Include="..\..\spikes\PairSync.Spike.Core\PairSync.Spike.Core.csproj" />
     <ProjectReference Include="..\..\src\PairSync.Application\PairSync.Application.csproj" />
     <ProjectReference Include="..\..\src\PairSync.Storage\PairSync.Storage.csproj" />
+    <ProjectReference Include="..\..\src\PairSync.Stun\PairSync.Stun.csproj" />
   </ItemGroup>
 </Project>
