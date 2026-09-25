@@ -36,7 +36,7 @@ public static class Autostart
     {
         var process = Environment.ProcessPath ?? throw new InvalidOperationException("The program path is unknown.");
         return Path.GetFileNameWithoutExtension(process).Equals("dotnet", StringComparison.OrdinalIgnoreCase)
-            ? [process, typeof(Autostart).Assembly.Location, Program.TrayArgument]
+            ? [process, Path.Combine(AppContext.BaseDirectory, "PairSync.dll"), Program.TrayArgument]
             : [process, Program.TrayArgument];
     }
 
