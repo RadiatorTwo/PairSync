@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PairSync.Desktop.ViewModels"
+             xmlns:res="using:PairSync.Desktop.Resources"
+             x:Class="PairSync.Desktop.Views.PermissionsDialogView"
+             x:DataType="vm:PermissionsDialogViewModel">
+  <StackPanel Spacing="16">
+    <TextBlock Classes="h2" TextWrapping="Wrap" Text="{Binding Title}" />
+    <CheckBox IsChecked="{Binding CanSendToMe}">
+      <TextBlock TextWrapping="Wrap" Text="{x:Static res:Strings.Perm_MaySendLong}" />
+    </CheckBox>
+    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Perm_Later}" />
+    <Button Classes="primary compact" HorizontalAlignment="Right" Content="{x:Static res:Strings.Dialog_Done}" Command="{Binding DoneCommand}" />
+  </StackPanel>
+</UserControl>

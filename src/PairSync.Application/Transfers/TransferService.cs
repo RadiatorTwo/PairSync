@@ -109,6 +109,7 @@ public sealed partial class TransferService : IAsyncDisposable
             TargetPath = suggestedFolder,
             TotalBytes = draft.TotalBytes,
             FileCount = draft.FileCount,
+            Title = JobTitles.From(draft.Items.Select(i => i.RelativePath)),
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
             Items = [.. draft.Items.Select(i => new JobItem
@@ -152,7 +153,10 @@ public sealed partial class TransferService : IAsyncDisposable
         return [.. rows.Select(r =>
         {
             var view = new JobView(r.Job.Id, r.Job.Direction, r.Job.PeerDeviceId, names.GetValueOrDefault(r.Job.PeerDeviceId, "removed device"),
-                r.Job.State, r.Job.PausedByPeer, r.Job.FileCount, r.Job.TotalBytes, r.Done, null, 0, 0, 0, 0, r.Job.LastError, r.Job.CreatedAtUtc);
+                r.Job.State, r.Job.PausedByPeer, r.Job.FileCount, r.Job.TotalBytes, r.Done, null, 0, 0, 0, 0, r.Job.LastError, r.Job.CreatedAtUtc)
+            {
+                Title = r.Job.Title,
+            };
             return _runs.TryGetValue(r.Job.Id, out var run) ? run.Progress.Apply(view) : view;
         })];
     }
@@ -433,6 +437,7 @@ public sealed partial class TransferService : IAsyncDisposable
                 PeerDeviceId = job.PeerDeviceId,
                 PeerName = peerName ?? "removed device",
                 Direction = job.Direction,
+                Title = stored.Title,
                 FileCount = stored.FileCount,
                 TotalBytes = stored.TotalBytes,
                 StartedAtUtc = stored.CreatedAtUtc,

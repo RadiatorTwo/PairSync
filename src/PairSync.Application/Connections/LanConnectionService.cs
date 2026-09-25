@@ -222,6 +222,7 @@ public static class ConnectionServices
         services.AddSingleton<PairingService>();
         services.AddSingleton(new TransferOptions());
         services.AddSingleton<TransferService>();
+        services.AddSingleton<Devices.DeviceService>();
         return services;
     }
 }

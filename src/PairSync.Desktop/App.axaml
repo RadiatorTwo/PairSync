@@ -32,6 +32,24 @@
     <DataTemplate DataType="vm:SettingsViewModel">
       <views:SettingsView />
     </DataTemplate>
+    <DataTemplate DataType="vm:OverviewViewModel">
+      <views:OverviewView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:SendViewModel">
+      <views:SendView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:DevicesViewModel">
+      <views:DevicesView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:IncomingTransferViewModel">
+      <views:IncomingTransferView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:ConfirmDialogViewModel">
+      <views:ConfirmDialogView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:PermissionsDialogViewModel">
+      <views:PermissionsDialogView />
+    </DataTemplate>
   </Application.DataTemplates>
 
   <Application.Styles>

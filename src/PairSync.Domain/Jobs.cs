@@ -76,9 +76,27 @@ public sealed class TransferJob
     /// </summary>
     public bool PausedByPeer { get; set; }
 
+    /// <summary>For lists: the first top-level file or folder, "+n" for more, e.g. <c>Photos-2026 +2</c>.</summary>
+    public string Title { get; set; } = "";
+
     public List<JobItem> Items { get; set; } = [];
 
     public bool IsFinished => State is JobState.Completed or JobState.Canceled or JobState.Declined or JobState.Failed;
+}
+
+public static class JobTitles
+{
+    /// <summary>First top-level name of the relative paths, with "+n" for further top-level entries.</summary>
+    public static string From(IEnumerable<string> relativePaths)
+    {
+        var tops = relativePaths.Select(p => p.Split('/', 2)[0]).Distinct(StringComparer.Ordinal).ToList();
+        return tops.Count switch
+        {
+            0 => "",
+            1 => tops[0],
+            _ => $"{tops[0]} +{tops.Count - 1}",
+        };
+    }
 }
 
 /// <summary>One file of a job, addressed by a normalized relative path.</summary>

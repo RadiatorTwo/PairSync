@@ -1,16 +1,24 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using PairSync.Application;
 using PairSync.Desktop.Platform;
 using PairSync.Desktop.Resources;
+using PairSync.Storage.Secrets;
 using PairSync.Storage.Settings;
 
 namespace PairSync.Desktop.ViewModels;
 
-/// <summary>Settings screen (max. 640 px): close behavior, autostart and the no-tray banner.</summary>
+/// <summary>
+/// Settings screen (max. 640 px): device, close behavior, autostart, network, limits, logs. The STUN/TURN section
+/// follows in phase 2.
+/// </summary>
 public sealed partial class SettingsViewModel : PageViewModel, IDisposable
 {
     private readonly SettingsStore _settings;
     private readonly IAutostart _autostart;
+    private readonly PairSyncCore? _core;
+    private readonly IDesktopServices? _desktop;
     private bool _loading;
 
     [ObservableProperty]
@@ -23,10 +31,30 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
     [ObservableProperty]
     private string? _autostartError;
 
-    public SettingsViewModel(SettingsStore settings, IAutostart autostart, bool trayAvailable) : base(AppPage.Settings)
+    [ObservableProperty]
+    private string _deviceName = "";
+
+    [ObservableProperty]
+    private decimal? _port;
+
+    [ObservableProperty]
+    private decimal? _uploadLimitMegabytes;
+
+    [ObservableProperty]
+    private decimal? _parallelTransfers;
+
+    [ObservableProperty]
+    private bool _verboseLogging;
+
+    /// <param name="core">Null in tests that only cover close behavior and autostart.</param>
+    public SettingsViewModel(
+        SettingsStore settings, IAutostart autostart, bool trayAvailable, PairSyncCore? core = null, IDesktopServices? desktop = null)
+        : base(AppPage.Settings)
     {
         _settings = settings;
         _autostart = autostart;
+        _core = core;
+        _desktop = desktop;
         TrayAvailable = trayAvailable;
         CloseOptions =
         [
@@ -47,6 +75,55 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
     public bool ShowNoTrayBanner => !TrayAvailable;
 
     public bool AutostartSupported => _autostart.IsSupported;
+
+    public string? Fingerprint => _core?.Identity.Identity.Fingerprint.ToShortString();
+
+    /// <summary>No keyring on Linux: the key is in a 0600 file.</summary>
+    public bool KeyInFile => _core?.Identity.Protection == SecretProtection.File;
+
+    public string PortHint => string.Format(CultureInfo.CurrentCulture, Strings.Settings_PortHint, _settings.Current.Port);
+
+    public string? ListenError => _core?.Lan.ListenError is { } error
+        ? string.Format(CultureInfo.CurrentCulture, Strings.Settings_ListenError, error)
+        : null;
+
+    public string? DiscoveryError => _core?.Presence.DiscoveryError is { } error
+        ? string.Format(CultureInfo.CurrentCulture, Strings.Settings_DiscoveryError, error)
+        : null;
+
+    public bool CanOpenLogs => _core is not null && _desktop is not null;
+
+    [RelayCommand]
+    private async Task OpenLogsAsync()
+    {
+        if (_core is not null && _desktop is not null)
+            await _desktop.OpenFolderAsync(_core.DataDirectory.LogsDirectory);
+    }
+
+    partial void OnDeviceNameChanged(string value) => Save(s => s with { DeviceName = value });
+
+    partial void OnPortChanged(decimal? value)
+    {
+        if (value is { } port)
+            Save(s => s with { Port = (int)port });
+    }
+
+    partial void OnUploadLimitMegabytesChanged(decimal? value) =>
+        Save(s => s with { UploadLimitBytesPerSecond = (long)((value ?? 0) * 1_000_000) });
+
+    partial void OnParallelTransfersChanged(decimal? value)
+    {
+        if (value is { } count)
+            Save(s => s with { ParallelTransfers = (int)count });
+    }
+
+    partial void OnVerboseLoggingChanged(bool value) => Save(s => s with { VerboseLogging = value });
+
+    private void Save(Func<AppSettings, AppSettings> change)
+    {
+        if (!_loading)
+            _settings.Update(change);
+    }
 
     partial void OnSelectedCloseOptionChanged(Choice<CloseBehavior> value)
     {
@@ -80,6 +157,11 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
         {
             SelectedCloseOption = CloseOptions.First(o => o.Value == settings.CloseBehavior);
             StartWithSystem = settings.StartWithSystem;
+            DeviceName = settings.DeviceName ?? settings.EffectiveDeviceName;
+            Port = settings.Port;
+            UploadLimitMegabytes = settings.UploadLimitBytesPerSecond / 1_000_000m;
+            ParallelTransfers = settings.ParallelTransfers;
+            VerboseLogging = settings.VerboseLogging;
         }
         finally
         {

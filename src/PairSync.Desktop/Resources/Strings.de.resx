@@ -112,4 +112,427 @@
   <data name="Tray_Quit" xml:space="preserve">
     <value>PairSync beenden — stoppt alle Syncs</value>
   </data>
+  <data name="Count_PairedOne" xml:space="preserve">
+    <value>1 gekoppeltes Gerät</value>
+  </data>
+  <data name="Count_PairedMany" xml:space="preserve">
+    <value>{0} gekoppelte Geräte</value>
+  </data>
+  <data name="Count_FoundOne" xml:space="preserve">
+    <value>1 im LAN gefunden</value>
+  </data>
+  <data name="Count_FoundMany" xml:space="preserve">
+    <value>{0} im LAN gefunden</value>
+  </data>
+  <data name="Files_One" xml:space="preserve">
+    <value>1 Datei</value>
+  </data>
+  <data name="Files_Many" xml:space="preserve">
+    <value>{0} Dateien</value>
+  </data>
+  <data name="Items_One" xml:space="preserve">
+    <value>1 Element</value>
+  </data>
+  <data name="Items_Many" xml:space="preserve">
+    <value>{0} Elemente</value>
+  </data>
+  <data name="Jobs_WaitingOne" xml:space="preserve">
+    <value>1 Auftrag wartet</value>
+  </data>
+  <data name="Jobs_WaitingMany" xml:space="preserve">
+    <value>{0} Aufträge warten</value>
+  </data>
+  <data name="Time_SecondsLeft" xml:space="preserve">
+    <value>noch {0} s</value>
+  </data>
+  <data name="Time_MinutesLeft" xml:space="preserve">
+    <value>noch {0} min</value>
+  </data>
+  <data name="Time_HoursLeft" xml:space="preserve">
+    <value>noch {0} h {1} min</value>
+  </data>
+  <data name="Ago_JustNow" xml:space="preserve">
+    <value>gerade eben</value>
+  </data>
+  <data name="Ago_Minutes" xml:space="preserve">
+    <value>vor {0} min</value>
+  </data>
+  <data name="Ago_Hours" xml:space="preserve">
+    <value>vor {0} h</value>
+  </data>
+  <data name="Ago_Days" xml:space="preserve">
+    <value>vor {0} Tagen</value>
+  </data>
+  <data name="Overview_NoDevices" xml:space="preserve">
+    <value>Noch keine Geräte. Unter „Geräte“ kannst du eins koppeln.</value>
+  </data>
+  <data name="Card_Connected" xml:space="preserve">
+    <value>Verbunden</value>
+  </data>
+  <data name="Card_Offline" xml:space="preserve">
+    <value>Offline</value>
+  </data>
+  <data name="Card_Blocked" xml:space="preserve">
+    <value>Gesperrt</value>
+  </data>
+  <data name="Card_RouteLan" xml:space="preserve">
+    <value>LAN · direkt</value>
+  </data>
+  <data name="Card_RouteLanRtt" xml:space="preserve">
+    <value>LAN · direkt · {0} ms</value>
+  </data>
+  <data name="Card_Address" xml:space="preserve">
+    <value>Adresse: {0}</value>
+  </data>
+  <data name="Card_LastSeen" xml:space="preserve">
+    <value>Zuletzt gesehen {0}</value>
+  </data>
+  <data name="Card_NeverSeen" xml:space="preserve">
+    <value>Noch nicht gesehen</value>
+  </data>
+  <data name="Card_Found" xml:space="preserve">
+    <value>Im LAN gefunden. Nicht gekoppelt, kein Zugriff.</value>
+  </data>
+  <data name="Card_Pair" xml:space="preserve">
+    <value>Koppeln…</value>
+  </data>
+  <data name="Overview_Active" xml:space="preserve">
+    <value>Laufende Übertragungen</value>
+  </data>
+  <data name="Overview_NoActive" xml:space="preserve">
+    <value>Gerade wird nichts übertragen.</value>
+  </data>
+  <data name="Overview_Recent" xml:space="preserve">
+    <value>Zuletzt abgeschlossen</value>
+  </data>
+  <data name="Overview_NoRecent" xml:space="preserve">
+    <value>Noch keine abgeschlossenen Übertragungen.</value>
+  </data>
+  <data name="Transfer_Pause" xml:space="preserve">
+    <value>Pausieren</value>
+  </data>
+  <data name="Transfer_Resume" xml:space="preserve">
+    <value>Fortsetzen</value>
+  </data>
+  <data name="Transfer_Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="Transfer_Chunk" xml:space="preserve">
+    <value>{0} · Chunk {1} / {2} · jeder Chunk per Hash geprüft</value>
+  </data>
+  <data name="Transfer_Starting" xml:space="preserve">
+    <value>Startet…</value>
+  </data>
+  <data name="Transfer_Waiting" xml:space="preserve">
+    <value>Wartet, bis {0} online ist</value>
+  </data>
+  <data name="Transfer_AwaitingAcceptance" xml:space="preserve">
+    <value>Wartet auf die Bestätigung von {0}</value>
+  </data>
+  <data name="Transfer_AwaitingYou" xml:space="preserve">
+    <value>Wartet auf deine Bestätigung</value>
+  </data>
+  <data name="Transfer_Paused" xml:space="preserve">
+    <value>Pausiert</value>
+  </data>
+  <data name="Transfer_PausedByPeer" xml:space="preserve">
+    <value>Auf {0} pausiert</value>
+  </data>
+  <data name="Transfer_PausedReason" xml:space="preserve">
+    <value>Pausiert: {0}</value>
+  </data>
+  <data name="Transfer_Resumed" xml:space="preserve">
+    <value>Nach einer Unterbrechung fortgesetzt · {0} bestätigt</value>
+  </data>
+  <data name="Transfer_Rate" xml:space="preserve">
+    <value>{0}/s</value>
+  </data>
+  <data name="Outcome_Completed" xml:space="preserve">
+    <value>Fertig</value>
+  </data>
+  <data name="Outcome_Canceled" xml:space="preserve">
+    <value>Abgebrochen</value>
+  </data>
+  <data name="Outcome_Declined" xml:space="preserve">
+    <value>Abgelehnt</value>
+  </data>
+  <data name="Outcome_Failed" xml:space="preserve">
+    <value>Fehlgeschlagen</value>
+  </data>
+  <data name="Send_Drop" xml:space="preserve">
+    <value>Dateien oder Ordner hierher ziehen</value>
+  </data>
+  <data name="Send_BrowseFiles" xml:space="preserve">
+    <value>Dateien…</value>
+  </data>
+  <data name="Send_BrowseFolder" xml:space="preserve">
+    <value>Ordner…</value>
+  </data>
+  <data name="Send_ColItem" xml:space="preserve">
+    <value>Element</value>
+  </data>
+  <data name="Send_ColSize" xml:space="preserve">
+    <value>Größe</value>
+  </data>
+  <data name="Send_ColFiles" xml:space="preserve">
+    <value>Dateien</value>
+  </data>
+  <data name="Send_RemoveItem" xml:space="preserve">
+    <value>Aus der Liste entfernen</value>
+  </data>
+  <data name="Send_Hint" xml:space="preserve">
+    <value>Symlinks, die aus einem gewählten Ordner hinauszeigen, werden übersprungen. Zeitstempel bleiben erhalten, verglichen wird aber per Inhalts-Hash.</value>
+  </data>
+  <data name="Send_Skipped" xml:space="preserve">
+    <value>{0} Verknüpfungen übersprungen</value>
+  </data>
+  <data name="Send_To" xml:space="preserve">
+    <value>Senden an</value>
+  </data>
+  <data name="Send_Offline" xml:space="preserve">
+    <value>{0} · offline</value>
+  </data>
+  <data name="Send_NoDevices" xml:space="preserve">
+    <value>Koppele zuerst unter „Geräte“ ein Gerät.</value>
+  </data>
+  <data name="Send_Destination" xml:space="preserve">
+    <value>Vorgeschlagenes Ziel</value>
+  </data>
+  <data name="Send_DestinationHint" xml:space="preserve">
+    <value>Der Empfänger bestätigt Ort und Größe, bevor etwas geschrieben wird.</value>
+  </data>
+  <data name="Send_SubfolderPlaceholder" xml:space="preserve">
+    <value>optionaler Unterordner</value>
+  </data>
+  <data name="Send_Existing" xml:space="preserve">
+    <value>Wenn eine Datei schon existiert</value>
+  </data>
+  <data name="Policy_KeepBoth" xml:space="preserve">
+    <value>Beide behalten (eingehende Kopie umbenennen)</value>
+  </data>
+  <data name="Policy_Replace" xml:space="preserve">
+    <value>Ersetzen</value>
+  </data>
+  <data name="Policy_Skip" xml:space="preserve">
+    <value>Überspringen</value>
+  </data>
+  <data name="Send_Route" xml:space="preserve">
+    <value>LAN direkt · pausier- und fortsetzbar</value>
+  </data>
+  <data name="Send_RouteOffline" xml:space="preserve">
+    <value>{0} ist offline · der Auftrag wartet, bis es wieder da ist</value>
+  </data>
+  <data name="Send_Button" xml:space="preserve">
+    <value>An {0} senden</value>
+  </data>
+  <data name="Send_ButtonNoTarget" xml:space="preserve">
+    <value>Senden</value>
+  </data>
+  <data name="Send_Scanning" xml:space="preserve">
+    <value>Ordner werden gelesen…</value>
+  </data>
+  <data name="Send_Failed" xml:space="preserve">
+    <value>Die Übertragung konnte nicht gestartet werden: {0}</value>
+  </data>
+  <data name="Devices_Paired" xml:space="preserve">
+    <value>Gekoppelte Geräte</value>
+  </data>
+  <data name="Devices_None" xml:space="preserve">
+    <value>Noch keine gekoppelten Geräte.</value>
+  </data>
+  <data name="Devices_PairedOn" xml:space="preserve">
+    <value>Gekoppelt am {0}</value>
+  </data>
+  <data name="Perm_MaySend" xml:space="preserve">
+    <value>Darf mir senden</value>
+  </data>
+  <data name="Devices_Permissions" xml:space="preserve">
+    <value>Rechte</value>
+  </data>
+  <data name="Devices_Block" xml:space="preserve">
+    <value>Sperren</value>
+  </data>
+  <data name="Devices_Unblock" xml:space="preserve">
+    <value>Entsperren</value>
+  </data>
+  <data name="Devices_Remove" xml:space="preserve">
+    <value>Entfernen</value>
+  </data>
+  <data name="Confirm_RemoveTitle" xml:space="preserve">
+    <value>{0} entfernen?</value>
+  </data>
+  <data name="Confirm_RemoveText" xml:space="preserve">
+    <value>Offene Übertragungen mit diesem Gerät werden abgebrochen. Um wieder Dateien auszutauschen, müssen sich beide Geräte neu koppeln.</value>
+  </data>
+  <data name="Dialog_Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="Dialog_Done" xml:space="preserve">
+    <value>Fertig</value>
+  </data>
+  <data name="Perm_Title" xml:space="preserve">
+    <value>Rechte für {0}</value>
+  </data>
+  <data name="Perm_MaySendLong" xml:space="preserve">
+    <value>Darf Dateien an dieses Gerät senden. Jede Übertragung wird hier trotzdem bestätigt.</value>
+  </data>
+  <data name="Perm_Later" xml:space="preserve">
+    <value>Rechte für Syncs und Claude Code kommen mit Phase 3 und 4.</value>
+  </data>
+  <data name="Pair_Title" xml:space="preserve">
+    <value>Neues Gerät koppeln</value>
+  </data>
+  <data name="Pair_Step" xml:space="preserve">
+    <value>Schritt {0} von 3</value>
+  </data>
+  <data name="Pair_OnLan" xml:space="preserve">
+    <value>In diesem Netzwerk</value>
+  </data>
+  <data name="Pair_NoneFound" xml:space="preserve">
+    <value>Keine ungekoppelten Geräte im LAN gefunden.</value>
+  </data>
+  <data name="Pair_Invite" xml:space="preserve">
+    <value>Einladung erstellen</value>
+  </data>
+  <data name="Pair_InviteHint" xml:space="preserve">
+    <value>Für Geräte, die im LAN nicht auftauchen.</value>
+  </data>
+  <data name="Pair_Import" xml:space="preserve">
+    <value>Einladung vom anderen Gerät?</value>
+  </data>
+  <data name="Pair_ImportPlaceholder" xml:space="preserve">
+    <value>Einladung hier einfügen</value>
+  </data>
+  <data name="Pair_ImportButton" xml:space="preserve">
+    <value>Verbinden</value>
+  </data>
+  <data name="Pair_ImportFile" xml:space="preserve">
+    <value>Datei öffnen…</value>
+  </data>
+  <data name="Pair_QrHint" xml:space="preserve">
+    <value>Scanne diesen Code auf dem anderen Gerät oder schicke die Einladung auf beliebigem Weg.</value>
+  </data>
+  <data name="Pair_Copy" xml:space="preserve">
+    <value>Einladung kopieren</value>
+  </data>
+  <data name="Pair_Save" xml:space="preserve">
+    <value>Als Datei speichern</value>
+  </data>
+  <data name="Pair_Expires" xml:space="preserve">
+    <value>Läuft ab in {0} · einmalig · signiert</value>
+  </data>
+  <data name="Pair_Expired" xml:space="preserve">
+    <value>Die Einladung ist abgelaufen. Erstelle eine neue.</value>
+  </data>
+  <data name="Pair_Close" xml:space="preserve">
+    <value>Schließen</value>
+  </data>
+  <data name="Pair_Copied" xml:space="preserve">
+    <value>Kopiert.</value>
+  </data>
+  <data name="Pair_Connecting" xml:space="preserve">
+    <value>Verbinde mit {0}…</value>
+  </data>
+  <data name="Pair_Responded" xml:space="preserve">
+    <value>{0} hat geantwortet. Prüfe, ob beide Bildschirme diesen Code zeigen:</value>
+  </data>
+  <data name="Pair_Warning" xml:space="preserve">
+    <value>Stimmen die Codes nicht überein, könnte sich jemand dazwischen befinden. Brich ab und versuche es erneut.</value>
+  </data>
+  <data name="Pair_Match" xml:space="preserve">
+    <value>Codes stimmen — koppeln</value>
+  </data>
+  <data name="Pair_Differ" xml:space="preserve">
+    <value>Codes verschieden — abbrechen</value>
+  </data>
+  <data name="Pair_WaitingOther" xml:space="preserve">
+    <value>Warte auf die Bestätigung von {0}…</value>
+  </data>
+  <data name="Pair_Done" xml:space="preserve">
+    <value>Mit {0} gekoppelt.</value>
+  </data>
+  <data name="Pair_Canceled" xml:space="preserve">
+    <value>Kopplung abgebrochen: {0}. Es wurde nichts gespeichert.</value>
+  </data>
+  <data name="Pair_Failed" xml:space="preserve">
+    <value>Kopplung fehlgeschlagen: {0}</value>
+  </data>
+  <data name="Pair_Fingerprint" xml:space="preserve">
+    <value>Fingerprint {0}</value>
+  </data>
+  <data name="Settings_Device" xml:space="preserve">
+    <value>Dieses Gerät</value>
+  </data>
+  <data name="Settings_DeviceName" xml:space="preserve">
+    <value>Gerätename</value>
+  </data>
+  <data name="Settings_Fingerprint" xml:space="preserve">
+    <value>Fingerprint</value>
+  </data>
+  <data name="Settings_KeyFile" xml:space="preserve">
+    <value>Kein Schlüsselbund gefunden: Der private Schlüssel liegt in einer Datei, die nur du lesen kannst.</value>
+  </data>
+  <data name="Settings_Network" xml:space="preserve">
+    <value>Netzwerk</value>
+  </data>
+  <data name="Settings_Port" xml:space="preserve">
+    <value>Port für eingehende Verbindungen</value>
+  </data>
+  <data name="Settings_PortHint" xml:space="preserve">
+    <value>Änderungen gelten nach einem Neustart. Wenn andere Geräte keine Verbindung bekommen, gib TCP {0} in der Firewall frei.</value>
+  </data>
+  <data name="Settings_ListenError" xml:space="preserve">
+    <value>Für andere Geräte nicht erreichbar: {0}</value>
+  </data>
+  <data name="Settings_DiscoveryError" xml:space="preserve">
+    <value>LAN-Erkennung ist aus: {0}. Koppele stattdessen per Einladung.</value>
+  </data>
+  <data name="Settings_Limits" xml:space="preserve">
+    <value>Limits</value>
+  </data>
+  <data name="Settings_Upload" xml:space="preserve">
+    <value>Upload-Limit (MB/s)</value>
+  </data>
+  <data name="Settings_UploadHint" xml:space="preserve">
+    <value>0 = unbegrenzt</value>
+  </data>
+  <data name="Settings_Parallel" xml:space="preserve">
+    <value>Parallele Übertragungen</value>
+  </data>
+  <data name="Settings_Logs" xml:space="preserve">
+    <value>Diagnoseprotokolle</value>
+  </data>
+  <data name="Settings_LogsHint" xml:space="preserve">
+    <value>(enthalten nie Dateiinhalte oder Geheimnisse)</value>
+  </data>
+  <data name="Settings_Verbose" xml:space="preserve">
+    <value>Ausführliche Protokolle</value>
+  </data>
+  <data name="Settings_OpenFolder" xml:space="preserve">
+    <value>Ordner öffnen</value>
+  </data>
+  <data name="Incoming_Rubric" xml:space="preserve">
+    <value>Eingehende Übertragung</value>
+  </data>
+  <data name="Incoming_Title" xml:space="preserve">
+    <value>{0} möchte dir {1} senden</value>
+  </data>
+  <data name="Incoming_Target" xml:space="preserve">
+    <value>Speichern in</value>
+  </data>
+  <data name="Incoming_Change" xml:space="preserve">
+    <value>Ändern…</value>
+  </data>
+  <data name="Incoming_NoSpace" xml:space="preserve">
+    <value>An diesem Ort sind nur {0} frei.</value>
+  </data>
+  <data name="Incoming_Accept" xml:space="preserve">
+    <value>Annehmen</value>
+  </data>
+  <data name="Incoming_Decline" xml:space="preserve">
+    <value>Ablehnen</value>
+  </data>
+  <data name="Incoming_More" xml:space="preserve">
+    <value>+ {0} weitere</value>
+  </data>
 </root>

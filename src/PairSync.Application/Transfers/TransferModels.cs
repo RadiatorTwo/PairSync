@@ -39,6 +39,9 @@ public sealed record JobView(
     string? LastError,
     DateTime CreatedAtUtc)
 {
+    /// <summary>See <see cref="TransferJob.Title"/>.</summary>
+    public string Title { get; init; } = "";
+
     public double Fraction => TotalBytes > 0 ? Math.Clamp((double)TransferredBytes / TotalBytes, 0, 1) : State == JobState.Completed ? 1 : 0;
 
     public TimeSpan? Remaining => BytesPerSecond > 0 ? TimeSpan.FromSeconds((TotalBytes - TransferredBytes) / BytesPerSecond) : null;

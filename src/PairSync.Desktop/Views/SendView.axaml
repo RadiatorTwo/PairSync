@@ -1,0 +1,111 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="using:PairSync.Desktop.Controls"
+             xmlns:vm="using:PairSync.Desktop.ViewModels"
+             xmlns:res="using:PairSync.Desktop.Resources"
+             x:Class="PairSync.Desktop.Views.SendView"
+             x:DataType="vm:SendViewModel">
+  <UserControl.Styles>
+    <!-- Offline devices stay visible in "Send to" but cannot be chosen. -->
+    <Style Selector="ctl|SegmentedControl#Targets ListBoxItem" x:DataType="vm:SendTarget">
+      <Setter Property="IsEnabled" Value="{Binding IsOnline}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid Margin="{StaticResource PagePadding}" ColumnDefinitions="1.3*,1*" ColumnSpacing="28">
+    <!-- Left: what to send -->
+    <DockPanel>
+      <StackPanel DockPanel.Dock="Top" Spacing="18">
+        <TextBlock Classes="h1" Text="{Binding Title}" />
+        <ctl:Card Name="DropZone" IsDashed="True" DragDrop.AllowDrop="True" Padding="26"
+                  BorderBrush="{StaticResource AccentBrush}" Background="{StaticResource DropZoneBrush}">
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+            <TextBlock VerticalAlignment="Center" Text="{x:Static res:Strings.Send_Drop}" />
+            <TextBlock VerticalAlignment="Center" Classes="muted" Text="·" />
+            <Button Classes="link" FontSize="14" Content="{x:Static res:Strings.Send_BrowseFiles}" Command="{Binding BrowseFilesCommand}" />
+            <Button Classes="link" FontSize="14" Content="{x:Static res:Strings.Send_BrowseFolder}" Command="{Binding BrowseFolderCommand}" />
+          </StackPanel>
+        </ctl:Card>
+      </StackPanel>
+
+      <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,14,0,0">
+        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding Problems}"
+                   IsVisible="{Binding Problems, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <TextBlock Classes="problem" FontSize="13" TextWrapping="Wrap" Text="{Binding Error}"
+                   IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Send_Hint}" />
+      </StackPanel>
+
+      <!-- Table Item / Size / Files / × -->
+      <DockPanel Margin="0,18,0,0" IsVisible="{Binding HasEntries}">
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,100,80,32" Margin="0,0,0,6">
+          <ctl:Rubric Classes="head" Text="{x:Static res:Strings.Send_ColItem}" />
+          <ctl:Rubric Grid.Column="1" Classes="head" HorizontalAlignment="Right" Text="{x:Static res:Strings.Send_ColSize}" />
+          <ctl:Rubric Grid.Column="2" Classes="head" HorizontalAlignment="Right" Text="{x:Static res:Strings.Send_ColFiles}" />
+        </Grid>
+        <TextBlock DockPanel.Dock="Bottom" Classes="meta" Margin="0,6,0,0" Text="{x:Static res:Strings.Send_Scanning}"
+                   IsVisible="{Binding IsScanning}" />
+        <ScrollViewer>
+          <ItemsControl Name="Entries" ItemsSource="{Binding Entries}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:SendEntryViewModel">
+                <Border BorderBrush="{StaticResource HairlineSoftBrush}" BorderThickness="0,1,0,0" Padding="0,7">
+                  <Grid ColumnDefinitions="*,100,80,32">
+                    <TextBlock Classes="mono" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding Display}"
+                               ToolTip.Tip="{Binding Path}" />
+                    <TextBlock Grid.Column="1" Classes="mono" VerticalAlignment="Center" HorizontalAlignment="Right" Text="{Binding Size}" />
+                    <TextBlock Grid.Column="2" Classes="mono" VerticalAlignment="Center" HorizontalAlignment="Right" Text="{Binding Files}" />
+                    <Button Grid.Column="3" Classes="quiet" HorizontalAlignment="Right" Padding="6,0" Content="×"
+                            ToolTip.Tip="{x:Static res:Strings.Send_RemoveItem}" Command="{Binding RemoveCommand}" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
+    </DockPanel>
+
+    <!-- Right: where and how -->
+    <DockPanel Grid.Column="1" Margin="0,50,0,0">
+      <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,1,0,0" Padding="0,14,0,0">
+        <StackPanel Spacing="10">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Right" Classes="mono" FontSize="14" Text="{Binding SizeSummary}" />
+            <TextBlock Text="{Binding ItemsSummary}" />
+          </DockPanel>
+          <TextBlock Classes="meta" Text="{Binding RouteText}" />
+          <Button Name="SendButton" Classes="primary" HorizontalAlignment="Stretch" Content="{Binding SendLabel}"
+                  Command="{Binding SendCommand}" />
+        </StackPanel>
+      </Border>
+
+      <StackPanel Spacing="22">
+        <StackPanel Spacing="8">
+          <ctl:Rubric Text="{x:Static res:Strings.Send_To}" />
+          <ctl:SegmentedControl Name="Targets" ItemsSource="{Binding Targets}" SelectedItem="{Binding Target}"
+                                IsVisible="{Binding HasTargets}" />
+          <TextBlock Classes="muted" Text="{x:Static res:Strings.Send_NoDevices}" IsVisible="{Binding !HasTargets}" />
+        </StackPanel>
+
+        <StackPanel Spacing="8">
+          <ctl:Rubric Text="{x:Static res:Strings.Send_Destination}" />
+          <Border Classes="input" Padding="10,2">
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Left" Classes="mono" VerticalAlignment="Center" Text="{Binding DestinationPrefix}" />
+              <TextBox Classes="mono bare" Text="{Binding Subfolder}" PlaceholderText="{x:Static res:Strings.Send_SubfolderPlaceholder}" />
+            </DockPanel>
+          </Border>
+          <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Send_DestinationHint}" />
+        </StackPanel>
+
+        <StackPanel Spacing="8">
+          <ctl:Rubric Text="{x:Static res:Strings.Send_Existing}" />
+          <RadioButton Content="{x:Static res:Strings.Policy_KeepBoth}" IsChecked="{Binding IsKeepBoth}" />
+          <RadioButton Content="{x:Static res:Strings.Policy_Replace}" IsChecked="{Binding IsReplace}" />
+          <RadioButton Content="{x:Static res:Strings.Policy_Skip}" IsChecked="{Binding IsSkip}" />
+        </StackPanel>
+      </StackPanel>
+    </DockPanel>
+  </Grid>
+</UserControl>

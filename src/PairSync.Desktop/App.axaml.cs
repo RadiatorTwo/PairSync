@@ -19,6 +19,7 @@ public sealed partial class App : Avalonia.Application
     private ShellViewModel? _shell;
     private MainWindow? _window;
     private TrayController? _tray;
+    private CoreEvents? _events;
 
     /// <summary>Null in the designer.</summary>
     public PairSyncCore? Core { get; init; }
@@ -47,17 +48,45 @@ public sealed partial class App : Avalonia.Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    /// <summary>The screens of the main window, in navigation order.</summary>
+    /// <summary>The shell without a core (designer, shell tests): later screens are placeholders.</summary>
     internal static ShellViewModel CreateShell(SettingsStore settings, bool trayAvailable, IAutostart autostart, Action quit) =>
         new(settings, trayAvailable,
         [
             new PlaceholderViewModel(AppPage.Overview),
             new PlaceholderViewModel(AppPage.Send, Strings.Title_Send),
-            new PlaceholderViewModel(AppPage.Syncs, Strings.Title_Syncs, Strings.Syncs_ComingLater),
-            new PlaceholderViewModel(AppPage.ClaudeCode, message: Strings.ClaudeCode_ComingLater),
+            SyncsPage(),
+            ClaudeCodePage(),
             new PlaceholderViewModel(AppPage.Devices),
             new SettingsViewModel(settings, autostart, trayAvailable),
         ], quit);
+
+    /// <summary>The screens of the main window, in navigation order.</summary>
+    internal static ShellViewModel CreateShell(
+        PairSyncCore core, bool trayAvailable, IAutostart autostart, IDesktopServices desktop, TimeProvider time, Action quit)
+    {
+        ShellViewModel? shell = null;
+        void Navigate(AppPage page) => shell?.Navigate(page);
+        var dialogs = new DialogHost();
+        var devices = new DevicesViewModel(core, dialogs, desktop, time);
+        shell = new ShellViewModel(core.Settings, trayAvailable,
+        [
+            new OverviewViewModel(core, device =>
+            {
+                Navigate(AppPage.Devices);
+                return devices.Pairing.PairWithAsync(device);
+            }, new LatencyProbe(), time),
+            new SendViewModel(core, desktop, Navigate),
+            SyncsPage(),
+            ClaudeCodePage(),
+            devices,
+            new SettingsViewModel(core.Settings, autostart, trayAvailable, core, desktop),
+        ], quit, dialogs);
+        return shell;
+    }
+
+    private static PlaceholderViewModel SyncsPage() => new(AppPage.Syncs, Strings.Title_Syncs, Strings.Syncs_ComingLater);
+
+    private static PlaceholderViewModel ClaudeCodePage() => new(AppPage.ClaudeCode, message: Strings.ClaudeCode_ComingLater);
 
     private void StartDesktop(IClassicDesktopStyleApplicationLifetime desktop, PairSyncCore core)
     {
@@ -67,8 +96,10 @@ public sealed partial class App : Avalonia.Application
         ApplyAutostart(core, autostart);
 
         var icon = AppIcon.Create();
-        _shell = CreateShell(core.Settings, TrayAvailable, autostart, () => desktop.Shutdown());
+        var services = new WindowDesktopServices(() => _window, RevealWindow);
+        _shell = CreateShell(core, TrayAvailable, autostart, services, TimeProvider.System, () => desktop.Shutdown());
         _window = new MainWindow { DataContext = _shell, Icon = icon };
+        _events = new CoreEvents(core, _shell, services);
         if (TrayAvailable)
             _tray = new TrayController(this, core, icon, RevealWindow, RevealWindow, () => desktop.Shutdown());
 
@@ -86,6 +117,7 @@ public sealed partial class App : Avalonia.Application
         Instance?.SetActivationHandler(() => Dispatcher.UIThread.Post(RevealWindow));
         desktop.Exit += (_, _) =>
         {
+            _events?.Dispose();
             _tray?.Dispose();
             _shell?.Dispose();
         };

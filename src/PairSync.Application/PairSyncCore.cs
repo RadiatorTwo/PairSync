@@ -98,6 +98,8 @@ public sealed class PairSyncCore : IAsyncDisposable
 
     public TransferService Transfers => _services.GetRequiredService<TransferService>();
 
+    public Devices.DeviceService Devices => _services.GetRequiredService<Devices.DeviceService>();
+
     public async ValueTask DisposeAsync()
     {
         // Stop the active services in order while the provider still works: a disposing ServiceProvider refuses to

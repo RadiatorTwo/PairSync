@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PairSync.Desktop.ViewModels"
+             x:Class="PairSync.Desktop.Views.ConfirmDialogView"
+             x:DataType="vm:ConfirmDialogViewModel">
+  <StackPanel Spacing="16">
+    <TextBlock Classes="h2" TextWrapping="Wrap" Text="{Binding Title}" />
+    <TextBlock TextWrapping="Wrap" LineHeight="20.3" Text="{Binding Text}" />
+    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+      <Button Content="{Binding CancelLabel}" Command="{Binding CancelCommand}" />
+      <Button Name="Confirm" Classes="primary compact" Content="{Binding ConfirmLabel}" Command="{Binding ConfirmCommand}" />
+    </StackPanel>
+  </StackPanel>
+</UserControl>

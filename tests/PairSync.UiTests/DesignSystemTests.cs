@@ -162,7 +162,8 @@ public sealed class DesignSystemTests(HeadlessFixture ui)
         window.Show();
         Save(window.CaptureRenderedFrame()!, "shell-overview");
         shell.Navigate(AppPage.Settings);
-        shell.Dialog = new TextBlock { Classes = { "h2" }, Text = "Incoming transfer from laptop-win11" };
+        _ = shell.Dialogs.ShowAsync(new ConfirmDialogViewModel("Remove laptop-win11?",
+            "Unfinished transfers with this device are canceled. To exchange files again, both devices have to pair anew.", "Remove"));
         Save(window.CaptureRenderedFrame()!, "shell-settings-dialog");
         window.DataContext = null;
         window.Close();

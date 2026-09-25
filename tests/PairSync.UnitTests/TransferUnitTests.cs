@@ -207,3 +207,14 @@ public sealed class SendScannerTests : IDisposable
         Assert.Empty(draft.Items);
     }
 }
+
+public sealed class JobTitleTests
+{
+    [Theory]
+    [InlineData(new string[0], "")]
+    [InlineData(new[] { "Photos-2026.tar" }, "Photos-2026.tar")]
+    [InlineData(new[] { "Photos/a.jpg", "Photos/b/c.jpg" }, "Photos")]
+    [InlineData(new[] { "Photos/a.jpg", "notes.md", "Photos/b.jpg", "docs/x" }, "Photos +2")]
+    public void Title_names_the_first_top_level_entry(string[] paths, string expected) =>
+        Assert.Equal(expected, JobTitles.From(paths));
+}

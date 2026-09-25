@@ -44,6 +44,6 @@
       <ContentControl Name="PageHost" Content="{Binding ActivePage}" />
     </DockPanel>
 
-    <ctl:DialogOverlay Name="DialogHost" Content="{Binding Dialog}" />
+    <ctl:DialogOverlay Name="DialogHost" Content="{Binding Dialogs.Current}" />
   </Panel>
 </Window>

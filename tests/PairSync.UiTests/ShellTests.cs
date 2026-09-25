@@ -163,20 +163,30 @@ public sealed class ShellTests(HeadlessFixture ui) : IDisposable
     });
 
     [Fact]
-    public Task Dialog_overlay_shows_while_a_dialog_is_set() => ui.RunAsync(() =>
+    public Task Dialog_overlay_shows_dialogs_one_after_another() => ui.RunAsync(() =>
     {
         var (window, shell) = Open();
         var overlay = window.FindControl<DialogOverlay>("DialogHost")!;
         Assert.False(overlay.IsVisible);
 
-        shell.Dialog = "Incoming transfer";
+        var first = new ConfirmDialogViewModel("Remove laptop-win11?", "Unfinished transfers are canceled.", "Remove");
+        var second = new ConfirmDialogViewModel("Remove nas-box?", "…", "Remove");
+        _ = shell.Dialogs.ShowAsync(first);
+        _ = shell.Dialogs.ShowAsync(second);
         window.UpdateLayout();
 
         Assert.True(overlay.IsVisible);
-        var frame = overlay.GetVisualDescendants().OfType<Card>().Single();
+        var frame = overlay.GetVisualDescendants().OfType<Card>().First();
         Assert.Equal(680, frame.Bounds.Width);
         Assert.True(frame.ShowMarks);
-        shell.Dialog = null;
+        Assert.Contains(overlay.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Remove laptop-win11?");
+
+        first.ConfirmCommand.Execute(null);
+        UiWait.Until(() => shell.Dialogs.Current == second);
+        Assert.True(first.Confirmed);
+        second.CancelCommand.Execute(null);
+        UiWait.Until(() => shell.Dialogs.Current is null);
+        Assert.False(second.Confirmed);
         Assert.False(overlay.IsVisible);
         Discard(window);
     });

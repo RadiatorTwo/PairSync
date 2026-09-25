@@ -185,6 +185,7 @@ public sealed partial class TransferService
             TargetPath = folder,
             TotalBytes = offer.TotalBytes,
             FileCount = offer.FileCount,
+            Title = JobTitles.From(items.Select(i => i.RelativePath!)),
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
             Items = [.. items.Select(i => new JobItem

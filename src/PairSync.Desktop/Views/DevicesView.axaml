@@ -1,0 +1,134 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="using:PairSync.Desktop.Controls"
+             xmlns:vm="using:PairSync.Desktop.ViewModels"
+             xmlns:res="using:PairSync.Desktop.Resources"
+             x:Class="PairSync.Desktop.Views.DevicesView"
+             x:DataType="vm:DevicesViewModel">
+  <Grid Margin="{StaticResource PagePadding}" RowDefinitions="Auto,*" RowSpacing="18">
+    <TextBlock Classes="h1" Text="{Binding Title}" />
+
+    <Grid Grid.Row="1" ColumnDefinitions="1*,1.05*" ColumnSpacing="28">
+      <!-- Paired devices -->
+      <DockPanel>
+        <ctl:Rubric DockPanel.Dock="Top" Margin="0,0,0,10" Text="{x:Static res:Strings.Devices_Paired}" />
+        <TextBlock DockPanel.Dock="Top" Classes="muted" Text="{x:Static res:Strings.Devices_None}" IsVisible="{Binding !HasPaired}" />
+        <TextBlock DockPanel.Dock="Bottom" Classes="problem" FontSize="13" TextWrapping="Wrap" Margin="0,8,0,0" Text="{Binding Error}"
+                   IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <ScrollViewer>
+          <ItemsControl Name="PairedDevices" ItemsSource="{Binding Paired}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PairedDeviceViewModel">
+                <ctl:Card Margin="0,0,0,12" Classes.dimmed="{Binding IsBlocked}">
+                  <StackPanel Spacing="6">
+                    <DockPanel>
+                      <ctl:Chip DockPanel.Dock="Right" Classes="strong" Content="{x:Static res:Strings.Card_Blocked}"
+                                IsVisible="{Binding IsBlocked}" />
+                      <TextBlock Classes="mono" FontSize="14" TextTrimming="CharacterEllipsis" Text="{Binding Name}" />
+                    </DockPanel>
+                    <TextBlock Classes="meta" Text="{Binding PairedOn}" />
+                    <TextBlock Classes="mono accent" FontSize="12" Text="{Binding Fingerprint}" />
+                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
+                      <ctl:Chip Content="{x:Static res:Strings.Perm_MaySend}" Classes.off="{Binding !CanSendToMe}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+                      <Button Content="{x:Static res:Strings.Devices_Permissions}" Command="{Binding PermissionsCommand}" />
+                      <Button Content="{Binding BlockLabel}" Command="{Binding ToggleBlockCommand}" />
+                      <Button Classes="quiet" Content="{x:Static res:Strings.Devices_Remove}" Command="{Binding RemoveCommand}" />
+                    </StackPanel>
+                  </StackPanel>
+                </ctl:Card>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
+
+      <!-- Pairing card -->
+      <ctl:Card Grid.Column="1" Classes="marked" Padding="24,22" VerticalAlignment="Top" DataContext="{Binding Pairing}"
+                x:DataType="vm:PairingViewModel">
+        <StackPanel Spacing="16">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Right" Classes="meta" VerticalAlignment="Center" Text="{Binding StepText}" />
+            <TextBlock Classes="h3" Text="{x:Static res:Strings.Pair_Title}" />
+          </DockPanel>
+
+          <Border Classes="banner" IsVisible="{Binding Message, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <TextBlock TextWrapping="Wrap" Text="{Binding Message}" />
+          </Border>
+
+          <!-- Step 1 -->
+          <StackPanel Name="StartStep" Spacing="16" IsVisible="{Binding IsStart}">
+            <StackPanel Spacing="8">
+              <ctl:Rubric Text="{x:Static res:Strings.Pair_OnLan}" />
+              <TextBlock Classes="muted" FontSize="13" Text="{x:Static res:Strings.Pair_NoneFound}" IsVisible="{Binding !HasFound}" />
+              <ItemsControl ItemsSource="{Binding Found}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:DeviceCardViewModel">
+                    <DockPanel Margin="0,0,0,6">
+                      <Button DockPanel.Dock="Right" Classes="accent" FontSize="13" Content="{x:Static res:Strings.Card_Pair}"
+                              Command="{Binding PairCommand}" />
+                      <TextBlock Classes="mono" VerticalAlignment="Center" Text="{Binding Name}" />
+                    </DockPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+            <Separator />
+            <StackPanel Spacing="8">
+              <Button Classes="primary compact" HorizontalAlignment="Left" Content="{x:Static res:Strings.Pair_Invite}"
+                      Command="{Binding CreateInvitationCommand}" />
+              <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Pair_InviteHint}" />
+            </StackPanel>
+            <Separator />
+            <StackPanel Spacing="8">
+              <ctl:Rubric Text="{x:Static res:Strings.Pair_Import}" />
+              <TextBox Name="InvitationInput" Classes="mono" FontSize="12" Height="64" AcceptsReturn="True" TextWrapping="Wrap"
+                       Text="{Binding InvitationInput}" PlaceholderText="{x:Static res:Strings.Pair_ImportPlaceholder}" />
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Classes="accent" Content="{x:Static res:Strings.Pair_ImportButton}" Command="{Binding ImportCommand}" />
+                <Button Classes="link" FontSize="13" VerticalAlignment="Center" Content="{x:Static res:Strings.Pair_ImportFile}"
+                        Command="{Binding ImportFileCommand}" />
+              </StackPanel>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Step 2: invitation -->
+          <Grid Name="InvitationStep" ColumnDefinitions="Auto,*" ColumnSpacing="20" IsVisible="{Binding IsInvitation}">
+            <Border Width="200" Height="200" Background="{StaticResource BgBrush}" VerticalAlignment="Top">
+              <Image Source="{Binding QrCode}" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None" />
+            </Border>
+            <StackPanel Grid.Column="1" Spacing="12">
+              <TextBlock TextWrapping="Wrap" Text="{x:Static res:Strings.Pair_QrHint}" />
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="{x:Static res:Strings.Pair_Copy}" Command="{Binding CopyInvitationCommand}" />
+                <Button Content="{x:Static res:Strings.Pair_Save}" Command="{Binding SaveInvitationCommand}" />
+              </StackPanel>
+              <TextBlock Classes="meta" Text="{Binding CopiedText}" IsVisible="{Binding CopiedText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <TextBlock Classes="meta" TextWrapping="Wrap" Text="{Binding ExpiresText}" Classes.problem="{Binding IsExpired}" />
+              <Button Classes="quiet" Padding="0,4" HorizontalAlignment="Left" Content="{x:Static res:Strings.Pair_Close}" Command="{Binding CloseCommand}" />
+            </StackPanel>
+          </Grid>
+
+          <!-- Step 2: connecting -->
+          <TextBlock Classes="muted" Text="{Binding ConnectingText}" IsVisible="{Binding IsConnecting}" />
+
+          <!-- Step 3: security code -->
+          <StackPanel Name="CodeStep" Spacing="12" IsVisible="{Binding IsCode}">
+            <Separator />
+            <TextBlock TextWrapping="Wrap" Text="{Binding RespondedText}" />
+            <TextBlock Name="SecurityCode" Classes="code" Text="{Binding SecurityCode}" />
+            <TextBlock Classes="mono meta" FontSize="12" Text="{Binding RemoteFingerprint}" />
+            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Pair_Warning}" />
+            <TextBlock Classes="meta" Text="{Binding WaitingText}" IsVisible="{Binding WaitingText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+              <Button Content="{x:Static res:Strings.Pair_Differ}" Command="{Binding DifferCommand}" />
+              <Button Classes="primary compact" Content="{x:Static res:Strings.Pair_Match}" Command="{Binding ConfirmCommand}"
+                      IsEnabled="{Binding WaitingText, Converter={x:Static ObjectConverters.IsNull}}" />
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>
+      </ctl:Card>
+    </Grid>
+  </Grid>
+</UserControl>

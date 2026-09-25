@@ -16,6 +16,21 @@
         </TextBlock>
       </Border>
 
+      <StackPanel Spacing="8" IsVisible="{Binding Fingerprint, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <ctl:Rubric Text="{x:Static res:Strings.Settings_Device}" />
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{x:Static res:Strings.Settings_DeviceName}" />
+            <TextBox Name="DeviceName" Classes="mono" MaxLength="64" Text="{Binding DeviceName, UpdateSourceTrigger=LostFocus}" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Spacing="6">
+            <TextBlock Text="{x:Static res:Strings.Settings_Fingerprint}" />
+            <TextBlock Classes="mono accent" FontSize="12" Margin="0,8,0,0" Text="{Binding Fingerprint}" />
+          </StackPanel>
+        </Grid>
+        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Settings_KeyFile}" IsVisible="{Binding KeyInFile}" />
+      </StackPanel>
+
       <StackPanel Spacing="8">
         <ctl:Rubric Text="{x:Static res:Strings.Settings_WhenClosed}" />
         <ctl:SegmentedControl Name="CloseBehavior" ItemsSource="{Binding CloseOptions}"
@@ -32,6 +47,50 @@
         <TextBlock Classes="hint" Text="{Binding AutostartError}" TextWrapping="Wrap"
                    IsVisible="{Binding AutostartError, Converter={x:Static ObjectConverters.IsNotNull}}" />
       </StackPanel>
+
+      <StackPanel Spacing="8" IsVisible="{Binding Fingerprint, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <ctl:Rubric Text="{x:Static res:Strings.Settings_Network}" />
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{x:Static res:Strings.Settings_Port}" />
+            <NumericUpDown Name="Port" Minimum="1024" Maximum="65535" Increment="1" FormatString="0" Value="{Binding Port}" />
+          </StackPanel>
+        </Grid>
+        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{Binding PortHint}" />
+        <TextBlock Classes="problem" FontSize="13" TextWrapping="Wrap" Text="{Binding ListenError}"
+                   IsVisible="{Binding ListenError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <TextBlock Classes="problem" FontSize="13" TextWrapping="Wrap" Text="{Binding DiscoveryError}"
+                   IsVisible="{Binding DiscoveryError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      </StackPanel>
+
+      <StackPanel Spacing="10" IsVisible="{Binding Fingerprint, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <ctl:Rubric Text="{x:Static res:Strings.Settings_Limits}" />
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{x:Static res:Strings.Settings_Upload}" />
+            <NumericUpDown Name="UploadLimit" Minimum="0" Maximum="100000" Increment="10" FormatString="0.#" Value="{Binding UploadLimitMegabytes}" />
+            <TextBlock Classes="hint" Text="{x:Static res:Strings.Settings_UploadHint}" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Spacing="6">
+            <TextBlock Text="{x:Static res:Strings.Settings_Parallel}" />
+            <NumericUpDown Name="ParallelTransfers" Minimum="1" Maximum="8" Increment="1" FormatString="0" Value="{Binding ParallelTransfers}" />
+          </StackPanel>
+        </Grid>
+      </StackPanel>
+
+      <Border BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,1,0,0" Padding="0,14,0,0"
+              IsVisible="{Binding CanOpenLogs}">
+        <StackPanel Spacing="10">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Classes="link" Content="{x:Static res:Strings.Settings_OpenFolder}" Command="{Binding OpenLogsCommand}" />
+            <TextBlock TextWrapping="Wrap">
+              <Run Text="{x:Static res:Strings.Settings_Logs}" />
+              <Run Foreground="{StaticResource TextMutedBrush}" Text="{x:Static res:Strings.Settings_LogsHint}" />
+            </TextBlock>
+          </DockPanel>
+          <CheckBox Classes="switch" IsChecked="{Binding VerboseLogging}" Content="{x:Static res:Strings.Settings_Verbose}" />
+        </StackPanel>
+      </Border>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

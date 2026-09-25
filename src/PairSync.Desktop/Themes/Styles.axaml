@@ -80,6 +80,11 @@
   <Style Selector="TextBlock.accent">
     <Setter Property="Foreground" Value="{StaticResource Accent700Brush}" />
   </Style>
+  <!-- Outcomes that need attention ("Declined", "Review") -->
+  <Style Selector="TextBlock.problem">
+    <Setter Property="Foreground" Value="{StaticResource Accent900Brush}" />
+    <Setter Property="FontWeight" Value="Medium" />
+  </Style>
   <Style Selector="TextBlock.strong">
     <Setter Property="FontWeight" Value="Medium" />
   </Style>
@@ -97,6 +102,18 @@
     <Setter Property="FontSize" Value="40" />
     <Setter Property="LetterSpacing" Value="2.4" />
     <Setter Property="Foreground" Value="{StaticResource Accent900Brush}" />
+  </Style>
+
+  <!-- A text box inside a field that draws its own frame (e.g. the destination prefix) -->
+  <Style Selector="TextBox.bare">
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="2,5" />
+    <Setter Property="MinHeight" Value="0" />
+  </Style>
+  <Style Selector="TextBox.bare:pointerover /template/ Border#PART_BorderElement, TextBox.bare:focus /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
   </Style>
 
   <!-- Banners: info (Accent100) and warning (Accent900) -->

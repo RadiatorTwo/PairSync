@@ -31,14 +31,13 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(WindowTitle))]
     private PageViewModel _activePage;
 
-    /// <summary>View model of the modal dialog over the content; null when none is open.</summary>
-    [ObservableProperty]
-    private object? _dialog;
 
     /// <param name="trayAvailable">False without a tray host; closing then minimizes instead of hiding.</param>
     /// <param name="quit">Shuts the app down (tray and sidebar "Quit PairSync").</param>
-    public ShellViewModel(SettingsStore settings, bool trayAvailable, IReadOnlyList<PageViewModel> pages, Action quit)
+    /// <param name="dialogs">Shared with pages that open dialogs; a new host if null.</param>
+    public ShellViewModel(SettingsStore settings, bool trayAvailable, IReadOnlyList<PageViewModel> pages, Action quit, DialogHost? dialogs = null)
     {
+        Dialogs = dialogs ?? new DialogHost();
         if (pages.Count == 0)
             throw new ArgumentException("The shell needs at least one page.", nameof(pages));
         _settings = settings;
@@ -50,6 +49,9 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     }
 
     public IReadOnlyList<PageViewModel> Pages { get; }
+
+    /// <summary>The modal dialog over the content (incoming transfer, confirmations).</summary>
+    public DialogHost Dialogs { get; }
 
     public bool TrayAvailable { get; }
 

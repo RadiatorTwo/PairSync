@@ -32,6 +32,13 @@ public sealed class HeadlessFixture : IDisposable
     /// <summary>Runs on the UI thread of the headless app.</summary>
     public Task RunAsync(Action test) => _session.Dispatch(test, TestContext.Current.CancellationToken);
 
+    /// <summary>Runs an asynchronous test on the UI thread; awaits inside keep the dispatcher running.</summary>
+    public Task RunAsync(Func<Task> test) => _session.Dispatch(async () =>
+    {
+        await test();
+        return true;
+    }, TestContext.Current.CancellationToken);
+
     /// <summary>Disposing the session can block on the dispatcher thread; the process ends right after anyway.</summary>
     public void Dispose() => Task.Run(_session.Dispose).Wait(TimeSpan.FromSeconds(5));
 }
@@ -50,6 +57,36 @@ public sealed class TempSettings : IDisposable
     public SettingsStore Open() => new(Data, NullLogger<SettingsStore>.Instance);
 
     public void Dispose() => _root.Delete(recursive: true);
+}
+
+/// <summary>Keeps rendered frames when <c>PAIRSYNC_UI_SNAPSHOTS</c> names a folder, for a check against the mockups.</summary>
+public static class Snapshots
+{
+    public static void Save(Avalonia.Controls.TopLevel window, string name)
+    {
+        var frame = Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window);
+        if (frame is not null && Environment.GetEnvironmentVariable("PAIRSYNC_UI_SNAPSHOTS") is { Length: > 0 } folder)
+        {
+            Directory.CreateDirectory(folder);
+            frame.Save(Path.Combine(folder, name + ".png"), new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+        }
+    }
+}
+
+/// <summary>Waits on the UI thread, running posted work, until a condition holds.</summary>
+public static class UiWait
+{
+    public static void Until(Func<bool> condition, int seconds = 10)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(seconds);
+        while (!condition())
+        {
+            if (DateTime.UtcNow > deadline)
+                throw new TimeoutException("The UI did not reach the expected state.");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(10);
+        }
+    }
 }
 
 public sealed class FakeAutostart : IAutostart

@@ -396,6 +396,10 @@
       <Setter Property="BorderBrush" Value="{StaticResource FrameBrush}" />
       <Setter Property="ShowMarks" Value="True" />
     </Style>
+    <!-- Blocked devices -->
+    <Style Selector="^.dimmed">
+      <Setter Property="Opacity" Value="0.55" />
+    </Style>
     <Style Selector="^.dialog">
       <Setter Property="Background" Value="{StaticResource BgBrush}" />
       <Setter Property="BorderBrush" Value="{StaticResource FrameBrush}" />

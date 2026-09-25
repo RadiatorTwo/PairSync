@@ -22,6 +22,9 @@ public sealed class HistoryEntry
 
     public TransferDirection Direction { get; set; }
 
+    /// <summary>See <see cref="TransferJob.Title"/>.</summary>
+    public string Title { get; set; } = "";
+
     public int FileCount { get; set; }
 
     public long TotalBytes { get; set; }
