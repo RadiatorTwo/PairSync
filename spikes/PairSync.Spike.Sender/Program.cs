@@ -143,5 +143,29 @@ bench.SetAction(async (parse, cancellationToken) =>
     return 0;
 });
 
-var root = new RootCommand("PairSync Phase 0 spike: sender") { send, gen, bench };
+var natServersOption = new Option<string[]>("--stun")
+{
+    Description = "STUN servers to compare (at least two for the mapping check). Repeatable.",
+    DefaultValueFactory = _ => ["stun:stun.cloudflare.com:3478", "stun:stun.l.google.com:19302", "stun:stun.nextcloud.com:443"],
+};
+var nat = new Command("nat", "NAT diagnosis on this machine only: can a direct internet connection work from this network?") { natServersOption };
+nat.SetAction(async (parse, cancellationToken) =>
+{
+    var report = await new PairSync.Stun.NatDiagnostics().RunAsync(parse.GetValue(natServersOption)!, cancellationToken);
+    foreach (var server in report.Servers)
+        Console.WriteLine($"  {server.Server,-38} {server.Status,-12} {server.Ipv4?.MappedAddress?.ToString() ?? server.Detail}");
+    Console.WriteLine($"Public address: {report.PublicEndPoint?.ToString() ?? "none"}");
+    Console.WriteLine($"Mapping: {report.Mapping} · UDP blocked: {report.UdpBlocked} · DNS filter suspected: {report.DnsFilterSuspected} · CGNAT suspected: {report.CgnatSuspected}");
+    Console.WriteLine($"IPv6: global address {report.HasGlobalIpv6Address}, STUN over IPv6 {report.Ipv6StunReachable}");
+    Console.WriteLine($"Result: {report.Hint}" + report.Hint switch
+    {
+        PairSync.Stun.NatHint.Open or PairSync.Stun.NatHint.EndpointIndependent => " (direct connections should work)",
+        PairSync.Stun.NatHint.Symmetric => " (symmetric NAT: direct connections only work if the other side has an open NAT)",
+        PairSync.Stun.NatHint.UdpBlocked => " (UDP is blocked: no direct internet connection possible)",
+        _ => " (not enough answers to tell)",
+    });
+    return 0;
+});
+
+var root = new RootCommand("PairSync Phase 0 spike: sender") { send, gen, bench, nat };
 return await root.Parse(args).InvokeAsync();

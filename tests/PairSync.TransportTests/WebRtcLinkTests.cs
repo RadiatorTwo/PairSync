@@ -60,6 +60,52 @@ public sealed partial class WebRtcLinkTests
         }
     }
 
+    /// <summary>
+    /// While the answer travels back by hand, the answering side must keep sending checks, or a NAT on its
+    /// side forgets the path to the other side and drops the late checks from there. Stock libjuice gives up
+    /// after ~40 s; the bundled build keeps going every 5 s (native/vcpkg-ports/libjuice/manual-signaling.patch).
+    /// </summary>
+    [Fact]
+    public async Task Answering_side_keeps_checking_while_it_waits_for_the_other_side()
+    {
+        var ct = Timeout(90);
+        using var sink = new System.Net.Sockets.UdpClient(new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 0));
+        var port = ((System.Net.IPEndPoint)sink.Client.LocalEndPoint!).Port;
+
+        var connector = new WebRtcConnector(Options());
+        var (offerer, offer) = await connector.CreateOfferAsync(Labels, ct);
+        await using var _ = offerer;
+        // The only candidate points at the sink, which never answers: like a NAT dropping the checks.
+        var lines = offer.Sdp.Split('\n').Select(l => l.TrimEnd('\r')).Where(l => !l.StartsWith("a=candidate:", StringComparison.Ordinal)).ToList();
+        lines.Insert(lines.FindIndex(l => l.StartsWith("a=end-of-candidates", StringComparison.Ordinal)),
+            $"a=candidate:1 1 UDP 2122317823 127.0.0.1 {port} typ host");
+        var (answerer, _) = await connector.AcceptOfferAsync(offer with { Sdp = string.Join("\r\n", lines) }, ct);
+        await using var __ = answerer;
+
+        var started = DateTime.UtcNow;
+        var late = 0;
+        while (DateTime.UtcNow - started < TimeSpan.FromSeconds(55))
+        {
+            using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            wait.CancelAfter(TimeSpan.FromSeconds(2));
+            try
+            {
+                var packet = await sink.ReceiveAsync(wait.Token);
+                // STUN Binding request with the magic cookie 0x2112A442.
+                if (packet.Buffer.Length >= 20 && packet.Buffer[0] == 0 && packet.Buffer[1] == 1
+                    && packet.Buffer[4] == 0x21 && packet.Buffer[5] == 0x12 && packet.Buffer[6] == 0xA4 && packet.Buffer[7] == 0x42
+                    && DateTime.UtcNow - started > TimeSpan.FromSeconds(45))
+                    late++;
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+            }
+        }
+
+        Assert.True(late >= 1, "No ICE checks after 45 s: libjuice without manual-signaling.patch?");
+        Assert.NotEqual(TransportState.Failed, answerer.State);
+    }
+
     /// <summary>The offering side is the DTLS client, so the answering side waits as the server.</summary>
     [Fact]
     public async Task Offer_carries_active_setup_and_candidates()

@@ -4,6 +4,7 @@
     <ProjectReference Include="..\..\src\PairSync.Storage\PairSync.Storage.csproj" />
     <ProjectReference Include="..\..\src\PairSync.Transport.WebRtc\PairSync.Transport.WebRtc.csproj" />
     <ProjectReference Include="..\..\src\PairSync.Transport.Tls\PairSync.Transport.Tls.csproj" />
+    <ProjectReference Include="..\..\src\PairSync.Stun\PairSync.Stun.csproj" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
 </Project>
