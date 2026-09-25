@@ -37,6 +37,10 @@ public static class ControlCodec
         Register<Cancel>(22);
         Register<Ping>(30);
         Register<Pong>(31);
+        Register<PairCommit>(40);
+        Register<PairNonce>(41);
+        Register<PairReveal>(42);
+        Register<PairConfirm>(43);
     }
 
     private static void Register<T>(ushort code) where T : IControlMessage

@@ -65,7 +65,7 @@ public sealed class ConnectionTests : IAsyncLifetime
         var b = await StartAsync("workstation");
         var incoming = TestCores.NextIncomingAsync(b);
 
-        await using var outgoing = await stranger.Lan.ConnectForPairingAsync([IPAddress.Loopback], b.Lan.Port, Ct);
+        await using var outgoing = await stranger.Lan.ConnectForPairingAsync([IPAddress.Loopback], b.Lan.Port, expectedKey: null, Ct);
         await using var answer = await incoming;
         Assert.Equal(PeerAccess.PairingOnly, outgoing.Access);
         Assert.Equal(PeerAccess.PairingOnly, answer.Access);
@@ -86,7 +86,7 @@ public sealed class ConnectionTests : IAsyncLifetime
         var b = await StartAsync("workstation");
         var incoming = TestCores.NextIncomingAsync(b);
 
-        await using var outgoing = await stranger.Lan.ConnectForPairingAsync([IPAddress.Loopback], b.Lan.Port, Ct);
+        await using var outgoing = await stranger.Lan.ConnectForPairingAsync([IPAddress.Loopback], b.Lan.Port, expectedKey: null, Ct);
         await using var answer = await incoming;
         var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         answer.Session.StateChanged += (_, _) => closed.TrySetResult();

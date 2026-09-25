@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using PairSync.Application;
 using PairSync.Application.Connections;
+using PairSync.Application.Pairing;
 using PairSync.Application.Presence;
 using PairSync.Domain;
 using PairSync.Storage;
@@ -13,11 +14,14 @@ namespace PairSync.IntegrationTests;
 internal static class TestCores
 {
     /// <param name="presence">mDNS settings; off unless given, so tests do not announce themselves on the network.</param>
-    public static Task<PairSyncCore> StartAsync(DataDirectory data, CancellationToken cancellationToken, PresenceOptions? presence = null) =>
+    /// <param name="pairing">Pairing settings; invitations point to loopback unless given.</param>
+    public static Task<PairSyncCore> StartAsync(
+        DataDirectory data, CancellationToken cancellationToken, PresenceOptions? presence = null, PairingOptions? pairing = null) =>
         PairSyncCore.StartAsync(data, cancellationToken, services =>
         {
             services.AddSingleton(new LanOptions { Port = 0 });
             services.AddSingleton(presence ?? new PresenceOptions { Enabled = false });
+            services.AddSingleton(pairing ?? new PairingOptions { InvitationAddresses = [IPAddress.Loopback] });
         });
 
     /// <summary>How <paramref name="other"/> is recorded in the device list of <paramref name="owner"/>.</summary>
@@ -29,7 +33,7 @@ internal static class TestCores
         PairedAtUtc = DateTime.UtcNow,
     };
 
-    /// <summary>Stores <paramref name="device"/> in the device list of <paramref name="owner"/> (pairing comes with work package E).</summary>
+    /// <summary>Stores <paramref name="device"/> in the device list of <paramref name="owner"/>, skipping the pairing steps.</summary>
     public static async Task AddDeviceAsync(PairSyncCore owner, PairedDevice device, CancellationToken cancellationToken)
     {
         await using var db = await owner.Services.GetRequiredService<IDbContextFactory<PairSyncDbContext>>().CreateDbContextAsync(cancellationToken);

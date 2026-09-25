@@ -56,6 +56,7 @@ public sealed class PresenceService(
     private readonly Lock _gate = new();
     private Dictionary<Guid, PairedDevice> _paired = [];
     private readonly Dictionary<Guid, LanServiceInfo> _online = [];
+    private readonly List<Task> _lastSeenWrites = [];
     private LanDiscovery? _discovery;
 
     /// <summary>The device list changed; read <see cref="Devices"/> again.</summary>
@@ -171,7 +172,12 @@ public sealed class PresenceService(
         if (device is not null && last is not null)
         {
             _logger.LogInformation("{Name} went offline", device.Name);
-            _ = SaveLastSeenAsync(deviceId, last.LastSeenUtc);
+            var write = SaveLastSeenAsync(deviceId, last.LastSeenUtc);
+            lock (_gate)
+            {
+                _lastSeenWrites.RemoveAll(t => t.IsCompleted);
+                _lastSeenWrites.Add(write);
+            }
         }
         Changed?.Invoke();
     }
@@ -198,8 +204,13 @@ public sealed class PresenceService(
         _discovery.Lost -= OnLost;
         _discovery.Dispose(); // says goodbye on the LAN
         List<LanServiceInfo> online;
+        Task[] pending;
         lock (_gate)
+        {
             online = [.. _online.Values.Where(i => _paired.ContainsKey(i.DeviceId))];
+            pending = [.. _lastSeenWrites];
+        }
+        await Task.WhenAll(pending).ConfigureAwait(false); // the database closes right after
         foreach (var info in online)
             await SaveLastSeenAsync(info.DeviceId, info.LastSeenUtc).ConfigureAwait(false);
     }

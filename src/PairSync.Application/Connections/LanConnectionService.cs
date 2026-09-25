@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using PairSync.Application.Pairing;
 using PairSync.Application.Presence;
 using PairSync.Domain;
 using PairSync.Protocol;
@@ -119,17 +120,22 @@ public sealed class LanConnectionService(
     }
 
     /// <summary>
-    /// Connects to a device that is not paired yet (any key); the session is pairing-only unless both already know
-    /// each other. The key is verified afterwards by the security code (work package E).
+    /// Opens a pairing session: always <see cref="PeerAccess.PairingOnly"/>, also with a device that is already
+    /// known on one or both sides (pairing again after a removal). The key is verified by the security code.
     /// </summary>
-    public async Task<PeerConnection> ConnectForPairingAsync(IReadOnlyList<IPAddress> addresses, int port, CancellationToken cancellationToken)
+    /// <param name="expectedKey">The key from an invitation; null accepts any key (pairing with a device found on the LAN).</param>
+    /// <exception cref="TransportException">Not reachable, or it presented another key than <paramref name="expectedKey"/>.</exception>
+    /// <exception cref="PeerRejectedException">One side has blocked the other, or its id does not match its key.</exception>
+    public async Task<PeerConnection> ConnectForPairingAsync(
+        IReadOnlyList<IPAddress> addresses, int port, byte[]? expectedKey, CancellationToken cancellationToken)
     {
-        var session = await TlsConnector.ConnectAsync(addresses, port, Certificate, _ => true, SessionHandshake.ChannelLabels, _transport,
+        var session = await TlsConnector.ConnectAsync(addresses, port, Certificate,
+            key => expectedKey is null || key.AsSpan().SequenceEqual(expectedKey), SessionHandshake.ChannelLabels, _transport,
             cancellationToken).ConfigureAwait(false);
-        return await InitiateAsync(session, cancellationToken).ConfigureAwait(false);
+        return await InitiateAsync(session, cancellationToken, forPairing: true).ConfigureAwait(false);
     }
 
-    private async Task<PeerConnection> InitiateAsync(ITransportSession session, CancellationToken cancellationToken)
+    private async Task<PeerConnection> InitiateAsync(ITransportSession session, CancellationToken cancellationToken, bool forPairing = false)
     {
         try
         {
@@ -139,7 +145,7 @@ public sealed class LanConnectionService(
                 var result = await authorizer.AuthorizeAsync(session.RemotePublicKey, ack.DeviceId, cancellationToken).ConfigureAwait(false);
                 device = result.Decision.Access == PeerAccess.Paired ? result.Device : null;
                 return result.Decision;
-            }, cancellationToken).ConfigureAwait(false);
+            }, cancellationToken, forPairing).ConfigureAwait(false);
             logger.LogInformation("Connected to {Name} ({Access})", device?.Name ?? handshake.RemoteName, handshake.Access);
             return new PeerConnection(session, handshake, handshake.Access == PeerAccess.Paired ? device : null, isIncoming: false);
         }
@@ -159,10 +165,15 @@ public sealed class LanConnectionService(
             var handshake = await SessionHandshake.RespondAsync(session, Local, async hello =>
             {
                 var result = await authorizer.AuthorizeAsync(session.RemotePublicKey, hello.DeviceId, _stopping.Token).ConfigureAwait(false);
-                device = result.Decision.Access == PeerAccess.Paired ? result.Device : null;
                 if (result.Decision.Access is null)
+                {
                     logger.LogInformation("Refused {Name} from {Remote}: {Reason}",
                         result.Device?.Name ?? hello.DeviceName, session.Route?.RemoteAddress, result.Decision.RejectReason);
+                    return result.Decision;
+                }
+                if (hello.Pairing)
+                    return AccessDecision.Grant(PeerAccess.PairingOnly);
+                device = result.Decision.Access == PeerAccess.Paired ? result.Device : null;
                 return result.Decision;
             }, _stopping.Token).ConfigureAwait(false);
             connection = new PeerConnection(session, handshake, device, isIncoming: true);
@@ -201,6 +212,8 @@ public static class ConnectionServices
         services.AddSingleton<LanConnectionService>();
         services.AddSingleton(new PresenceOptions());
         services.AddSingleton<PresenceService>();
+        services.AddSingleton(new PairingOptions());
+        services.AddSingleton<PairingService>();
         return services;
     }
 }

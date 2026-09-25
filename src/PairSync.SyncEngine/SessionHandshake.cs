@@ -38,9 +38,11 @@ public static class SessionHandshake
     public static TimeSpan Timeout { get; } = TimeSpan.FromSeconds(10);
 
     /// <param name="authorize">Decides on the answering device; sees its <see cref="HelloAck"/> (the key is on the session).</param>
+    /// <param name="forPairing">Asks for a pairing session (<see cref="Hello.Pairing"/>); the result is then never <see cref="PeerAccess.Paired"/>.</param>
     /// <exception cref="PeerRejectedException">One of the two devices refused the connection.</exception>
     public static async Task<PeerHandshake> InitiateAsync(
-        ITransportSession session, LocalDevice local, Func<HelloAck, ValueTask<AccessDecision>> authorize, CancellationToken cancellationToken)
+        ITransportSession session, LocalDevice local, Func<HelloAck, ValueTask<AccessDecision>> authorize, CancellationToken cancellationToken,
+        bool forPairing = false)
     {
         var (control, data) = await OpenChannelsAsync(session, cancellationToken).ConfigureAwait(false);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -52,6 +54,7 @@ public static class SessionHandshake
             DeviceName = local.Name,
             MaxMessageSize = data.MaxMessageSize,
             ProtocolMinor = ProtocolVersion.Minor,
+            Pairing = forPairing,
         }, timeout.Token).ConfigureAwait(false);
 
         HelloAck ack;
@@ -72,7 +75,7 @@ public static class SessionHandshake
             throw new PeerRejectedException(reason, byOtherDevice: false);
         }
 
-        var access = granted == PeerAccess.Paired && ack.Access == PeerAccess.Paired ? PeerAccess.Paired : PeerAccess.PairingOnly;
+        var access = granted == PeerAccess.Paired && ack.Access == PeerAccess.Paired && !forPairing ? PeerAccess.Paired : PeerAccess.PairingOnly;
         return Complete(session, control, data, access, ack.DeviceId, ack.DeviceName, ack.MaxMessageSize, ack.ProtocolMinor);
     }
 

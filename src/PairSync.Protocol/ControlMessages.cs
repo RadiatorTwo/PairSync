@@ -31,6 +31,9 @@ public sealed record Hello : IControlMessage
 
     /// <summary>Minor protocol version of the sender (the major version is in every envelope).</summary>
     [Key(3)] public ushort ProtocolMinor { get; init; }
+
+    /// <summary>The session is for pairing: the answering device grants <see cref="PeerAccess.PairingOnly"/> even if it knows the key.</summary>
+    [Key(4)] public bool Pairing { get; init; }
 }
 
 [MessagePackObject]
@@ -143,11 +146,44 @@ public sealed record Pong : IControlMessage
     [Key(0)] public long Timestamp { get; init; }
 }
 
+// Pairing (plan §5): commit-reveal for the security code. The connecting device commits to its nonce, the answering
+// device replies with its own, then the connecting device reveals. Neither side can steer the code. After both users
+// compared the code, each side sends PairConfirm; a Cancel from either side ends the pairing without storing anything.
+
+/// <summary>Connecting device: SHA-256 of its nonce, and the nonce of the invitation it redeems (if any).</summary>
+[MessagePackObject]
+public sealed record PairCommit : IControlMessage
+{
+    [Key(0)] public byte[]? Commitment { get; init; }
+
+    /// <summary>Set when pairing with an invitation; the inviting device accepts each nonce only once.</summary>
+    [Key(1)] public byte[]? InvitationNonce { get; init; }
+}
+
+/// <summary>Answering device: its nonce, sent before it knows the other one.</summary>
+[MessagePackObject]
+public sealed record PairNonce : IControlMessage
+{
+    [Key(0)] public byte[]? Nonce { get; init; }
+}
+
+/// <summary>Connecting device: the nonce behind <see cref="PairCommit.Commitment"/>.</summary>
+[MessagePackObject]
+public sealed record PairReveal : IControlMessage
+{
+    [Key(0)] public byte[]? Nonce { get; init; }
+}
+
+/// <summary>The user on the sending side confirmed that both screens show the same code.</summary>
+[MessagePackObject]
+public sealed record PairConfirm : IControlMessage;
+
 public static class ControlMessageRules
 {
     /// <summary>Messages a device that is not paired may send (plan §6: unknown devices get no access).</summary>
     public static bool IsAllowedBeforePairing(IControlMessage message) =>
-        message is Hello or HelloAck or Ping or Pong or Cancel or UnknownControlMessage;
+        message is Hello or HelloAck or Ping or Pong or Cancel or UnknownControlMessage
+            or PairCommit or PairNonce or PairReveal or PairConfirm;
 }
 
 /// <summary>A message with a type code this version does not know (sent by a newer minor version).</summary>

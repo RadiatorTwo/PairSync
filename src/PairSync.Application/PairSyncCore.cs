@@ -2,7 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PairSync.Application.Connections;
+using PairSync.Application.Pairing;
 using PairSync.Application.Presence;
+using PairSync.Protocol;
 using PairSync.Storage;
 using PairSync.Storage.Identity;
 using PairSync.Storage.Settings;
@@ -63,8 +65,15 @@ public sealed class PairSyncCore : IAsyncDisposable
             core.Identity = await services.GetRequiredService<DeviceIdentityStore>().LoadOrCreateAsync(cancellationToken).ConfigureAwait(false);
             services.GetRequiredService<CurrentIdentity>().Set(core.Identity);
 
+            // Unpaired devices only get to pair; sessions of paired devices are for transfers (work package F).
+            var lan = services.GetRequiredService<LanConnectionService>();
+            var pairing = services.GetRequiredService<PairingService>();
+            lan.IncomingConnectionHandler = connection => connection.Access == PeerAccess.PairingOnly
+                ? pairing.HandleIncomingAsync(connection)
+                : connection.DisposeAsync().AsTask();
+
             // A busy port is not fatal: the app still works as a sender and Settings shows the error.
-            await services.GetRequiredService<LanConnectionService>().StartAsync(cancellationToken).ConfigureAwait(false);
+            await lan.StartAsync(cancellationToken).ConfigureAwait(false);
             await services.GetRequiredService<PresenceService>().StartAsync(cancellationToken).ConfigureAwait(false);
 
             services.GetRequiredService<ILogger<PairSyncCore>>()
@@ -81,6 +90,8 @@ public sealed class PairSyncCore : IAsyncDisposable
     public LanConnectionService Lan => _services.GetRequiredService<LanConnectionService>();
 
     public PresenceService Presence => _services.GetRequiredService<PresenceService>();
+
+    public PairingService Pairing => _services.GetRequiredService<PairingService>();
 
     public async ValueTask DisposeAsync()
     {
