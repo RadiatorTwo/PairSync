@@ -10,7 +10,7 @@ namespace PairSync.UiTests;
 public sealed class ScreenTests(HeadlessFixture ui)
 {
     [Fact]
-    public Task Send_screen_sends_and_overview_shows_the_result() => ui.RunAsync(async () =>
+    public Task Send_screen_sends_and_both_overviews_show_the_result() => ui.RunAsync(async () =>
     {
         await using var cores = new TwoCores();
         var laptop = await cores.StartAsync("laptop-win11");
@@ -33,15 +33,10 @@ public sealed class ScreenTests(HeadlessFixture ui)
         Assert.Equal("Photos-2026.tar", send.Entries.Single().Display);
         Snapshots.Save(laptop.Window, "screen-send");
 
-        // The receiver sees the offer as a dialog and accepts it.
+        // The receiver takes it without asking.
         await send.SendCommand.ExecuteAsync(null);
         Assert.Equal(AppPage.Overview, laptop.Shell.ActivePage.Page);
-        await UiAsync.UntilAsync(() => workstation.Shell.Dialogs.Current is IncomingTransferViewModel);
-        var offer = (IncomingTransferViewModel)workstation.Shell.Dialogs.Current!;
-        Assert.Equal("laptop-win11 wants to send you 1 item", offer.Title);
-        Assert.Equal(1, workstation.Desktop.Reveals);
-        Snapshots.Save(workstation.Window, "screen-incoming");
-        await offer.AcceptCommand.ExecuteAsync(null);
+        Assert.Null(workstation.Shell.Dialogs.Current);
 
         var overview = laptop.Page<OverviewViewModel>();
         await UiAsync.UntilAsync(() => overview.RecentTransfers.Count == 1);
@@ -55,6 +50,11 @@ public sealed class ScreenTests(HeadlessFixture ui)
         Assert.StartsWith("LAN · direct", card.Line1, StringComparison.Ordinal);
         Assert.Equal("1 paired device", overview.Header);
         Snapshots.Save(laptop.Window, "screen-overview");
+
+        var incoming = workstation.Page<OverviewViewModel>();
+        await UiAsync.UntilAsync(() => incoming.RecentTransfers.Count == 1);
+        Assert.StartsWith("← laptop-win11", incoming.RecentTransfers.Single().Details, StringComparison.Ordinal);
+        Assert.Equal(0, workstation.Desktop.Reveals);
 
         var received = Path.Combine(cores.Root, "workstation", "downloads", "PairSync", "laptop-win11", "Photos-2026.tar");
         await UiAsync.UntilAsync(() => File.Exists(received));

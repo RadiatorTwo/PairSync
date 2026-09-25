@@ -59,15 +59,9 @@ public sealed class TransferTests : IAsyncLifetime
         return path;
     }
 
-    private static Task<IncomingTransfer> NextOfferAsync(PairSyncCore core)
-    {
-        var next = new TaskCompletionSource<IncomingTransfer>(TaskCreationOptions.RunContinuationsAsynchronously);
-        core.Transfers.IncomingOffer += offer => next.TrySetResult(offer);
-        return next.Task.WaitAsync(TimeSpan.FromSeconds(30), Ct);
-    }
-
-    private static void AcceptAll(PairSyncCore core, string folder, ExistingFilePolicy? policy = null) =>
-        core.Transfers.IncomingOffer += offer => _ = offer.AcceptAsync(folder, policy ?? offer.ProposedPolicy);
+    /// <summary>Where the receiver puts files from "laptop": <c>Downloads/PairSync/laptop</c> of its data directory.</summary>
+    private static string TargetOf(PairSyncCore receiver, string sender = "laptop") =>
+        Path.Combine(receiver.DataDirectory.Root, "downloads", "PairSync", sender);
 
     private static async Task<HistoryEntry> WaitForHistoryAsync(PairSyncCore core, Guid jobId, int seconds = 60)
     {
@@ -106,90 +100,59 @@ public sealed class TransferTests : IAsyncLifetime
         from.Transfers.SendAsync(to.Identity.Identity.Id, SendScanner.Scan(paths, Ct), policy, suggestedFolder: null, Ct);
 
     [Fact]
-    public async Task Folder_arrives_after_the_receiver_confirms()
+    public async Task Folder_arrives_without_asking_the_receiver()
     {
         var (sender, receiver) = await StartPairAsync();
         var big = Source("Project/data/big.bin", 3 * ProtocolLimits.ChunkSize + 12345);
         var small = Source("Project/readme.md", 42);
         Directory.CreateDirectory(Path.Combine(_root.FullName, "source", "Project", "empty"));
         File.SetLastWriteTimeUtc(small, new DateTime(2024, 5, 1, 8, 30, 0, DateTimeKind.Utc));
-        var offered = NextOfferAsync(receiver);
         TestCores.MakeReachable(sender, receiver);
 
         var jobId = await SendAsync(sender, receiver, [Path.Combine(_root.FullName, "source", "Project")]);
-        var offer = await offered;
-
-        Assert.Equal("laptop", offer.PeerName);
-        Assert.Equal(2, offer.FileCount);
-        Assert.Equal(new FileInfo(big).Length + 42, offer.TotalBytes);
-        Assert.Equal("Project", Assert.Single(offer.Entries).Name);
-        Assert.EndsWith(Path.Combine("PairSync", "laptop"), offer.SuggestedFolder);
-        Assert.False(Directory.Exists(offer.SuggestedFolder), "nothing is written before the receiver confirms");
-        Assert.Single(receiver.Transfers.PendingOffers);
-        Assert.Equal(JobState.AwaitingAcceptance, (await WaitForJobAsync(sender, jobId, j => j.State == JobState.AwaitingAcceptance)).State);
-
-        await offer.AcceptAsync(offer.SuggestedFolder, ExistingFilePolicy.KeepBoth);
         var sent = await WaitForHistoryAsync(sender, jobId);
         var received = await WaitForHistoryAsync(receiver, jobId);
 
         Assert.Equal(HistoryOutcome.Completed, sent.Outcome);
         Assert.Equal(HistoryOutcome.Completed, received.Outcome);
         Assert.Equal("workstation", sent.PeerName);
+        Assert.Equal("laptop", received.PeerName);
         Assert.Equal(TransferDirection.Receive, received.Direction);
-        var target = Path.Combine(offer.SuggestedFolder, "Project");
+        Assert.Equal(2, received.FileCount);
+        Assert.Equal(new FileInfo(big).Length + 42, received.TotalBytes);
+        var target = Path.Combine(TargetOf(receiver), "Project");
         Assert.Equal(await File.ReadAllBytesAsync(big, Ct), await File.ReadAllBytesAsync(Path.Combine(target, "data", "big.bin"), Ct));
         Assert.Equal(new DateTime(2024, 5, 1, 8, 30, 0, DateTimeKind.Utc), File.GetLastWriteTimeUtc(Path.Combine(target, "readme.md")));
         Assert.True(Directory.Exists(Path.Combine(target, "empty")));
-        Assert.Empty(Directory.GetFiles(offer.SuggestedFolder, "*.pairsync-tmp", SearchOption.AllDirectories));
-        Assert.Empty(receiver.Transfers.PendingOffers);
+        Assert.Empty(Directory.GetFiles(TargetOf(receiver), "*.pairsync-tmp", SearchOption.AllDirectories));
         Assert.Empty(await sender.Transfers.GetJobsAsync(Ct));
     }
 
     [Fact]
-    public async Task Declined_offer_writes_nothing_and_is_in_both_histories()
-    {
-        var (sender, receiver) = await StartPairAsync();
-        var file = Source("a.txt", 100);
-        var offered = NextOfferAsync(receiver);
-        TestCores.MakeReachable(sender, receiver);
-
-        var jobId = await SendAsync(sender, receiver, [file]);
-        var offer = await offered;
-        await offer.DeclineAsync("not now");
-
-        Assert.Equal(HistoryOutcome.Declined, (await WaitForHistoryAsync(sender, jobId)).Outcome);
-        Assert.Equal("not now", (await WaitForHistoryAsync(sender, jobId)).Message);
-        Assert.Equal(HistoryOutcome.Declined, (await WaitForHistoryAsync(receiver, jobId)).Outcome);
-        Assert.False(Directory.Exists(offer.SuggestedFolder));
-    }
-
-    [Fact]
-    public async Task Receiver_without_a_dialog_declines()
+    public async Task Suggested_subfolder_is_used_below_the_sender_folder()
     {
         var (sender, receiver) = await StartPairAsync();
         TestCores.MakeReachable(sender, receiver);
 
-        var jobId = await SendAsync(sender, receiver, [Source("a.txt", 10)]);
+        var jobId = await sender.Transfers.SendAsync(receiver.Identity.Identity.Id, SendScanner.Scan([Source("a.txt", 10)], Ct),
+            ExistingFilePolicy.KeepBoth, "Holiday/2026", Ct);
 
-        var entry = await WaitForHistoryAsync(sender, jobId);
-        Assert.Equal(HistoryOutcome.Declined, entry.Outcome);
-        Assert.Contains("not ready", entry.Message);
+        Assert.Equal(HistoryOutcome.Completed, (await WaitForHistoryAsync(receiver, jobId)).Outcome);
+        Assert.True(File.Exists(Path.Combine(TargetOf(receiver), "Holiday", "2026", "a.txt")));
     }
 
     [Fact]
-    public async Task Device_that_may_not_send_is_declined_without_asking()
+    public async Task Device_that_may_not_send_is_declined()
     {
         var (sender, receiver) = await StartPairAsync();
         await using (var db = await receiver.Services.GetRequiredService<IDbContextFactory<PairSyncDbContext>>().CreateDbContextAsync(Ct))
             await db.Devices.ExecuteUpdateAsync(set => set.SetProperty(d => d.CanSendToMe, false), Ct);
-        var asked = false;
-        receiver.Transfers.IncomingOffer += _ => asked = true;
         TestCores.MakeReachable(sender, receiver);
 
         var jobId = await SendAsync(sender, receiver, [Source("a.txt", 10)]);
 
         Assert.Equal(HistoryOutcome.Declined, (await WaitForHistoryAsync(sender, jobId)).Outcome);
-        Assert.False(asked);
+        Assert.False(Directory.Exists(TargetOf(receiver)));
     }
 
     [Theory]
@@ -200,11 +163,10 @@ public sealed class TransferTests : IAsyncLifetime
     {
         var (sender, receiver) = await StartPairAsync();
         var file = Source("notes.txt", 64);
-        var target = Path.Combine(_root.FullName, "target");
+        var target = TargetOf(receiver);
         Directory.CreateDirectory(target);
         var existing = Path.Combine(target, "notes.txt");
         await File.WriteAllTextAsync(existing, "old", Ct);
-        AcceptAll(receiver, target, policy);
         TestCores.MakeReachable(sender, receiver);
 
         var jobId = await SendAsync(sender, receiver, [file], policy);
@@ -237,8 +199,7 @@ public sealed class TransferTests : IAsyncLifetime
     {
         var (sender, receiver) = await StartPairAsync();
         var file = Source("draft.txt", 1000);
-        var target = Path.Combine(_root.FullName, "target");
-        AcceptAll(receiver, target);
+        var target = TargetOf(receiver);
 
         var jobId = await SendAsync(sender, receiver, [file]);
         await Task.Delay(1500, Ct);
@@ -261,8 +222,7 @@ public sealed class TransferTests : IAsyncLifetime
         var receiver = await TestCores.StartAsync(receiverData, Ct);
         await TestCores.PairAsync(sender, receiver, Ct);
         await sender.Presence.ReloadPairedDevicesAsync(Ct);
-        var target = Path.Combine(_root.FullName, "target");
-        AcceptAll(receiver, target);
+        var target = TargetOf(receiver);
         var file = Source("video.bin", 24 * ProtocolLimits.ChunkSize);
         TestCores.MakeReachable(sender, receiver);
 
@@ -289,8 +249,7 @@ public sealed class TransferTests : IAsyncLifetime
     {
         var (sender, receiver) = await StartPairAsync();
         sender.Settings.Update(s => s with { UploadLimitBytesPerSecond = 16 * 1024 * 1024 });
-        var target = Path.Combine(_root.FullName, "target");
-        AcceptAll(receiver, target);
+        var target = TargetOf(receiver);
         var file = Source("big.bin", 16 * ProtocolLimits.ChunkSize);
         TestCores.MakeReachable(sender, receiver);
         TestCores.MakeReachable(receiver, sender);
@@ -315,8 +274,7 @@ public sealed class TransferTests : IAsyncLifetime
     {
         var (sender, receiver) = await StartPairAsync();
         sender.Settings.Update(s => s with { UploadLimitBytesPerSecond = 8 * 1024 * 1024 });
-        var target = Path.Combine(_root.FullName, "target");
-        AcceptAll(receiver, target);
+        var target = TargetOf(receiver);
         TestCores.MakeReachable(sender, receiver);
 
         var jobId = await SendAsync(sender, receiver, [Source("big.bin", 16 * ProtocolLimits.ChunkSize)]);
@@ -337,8 +295,7 @@ public sealed class TransferTests : IAsyncLifetime
             Receiver = new ReceiverOptions { AvailableFreeSpace = _ => Interlocked.Read(ref free) },
         };
         var (sender, receiver) = await StartPairAsync(receiverOptions);
-        var target = Path.Combine(_root.FullName, "target");
-        AcceptAll(receiver, target);
+        var target = TargetOf(receiver);
         var file = Source("big.bin", 2 * ProtocolLimits.ChunkSize);
         TestCores.MakeReachable(sender, receiver);
         TestCores.MakeReachable(receiver, sender);

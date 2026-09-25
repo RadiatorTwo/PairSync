@@ -112,10 +112,6 @@
   <data name="Tray_PauseAll" xml:space="preserve">
     <value>Pause all syncs</value>
   </data>
-  <data name="Tray_ShowIncoming" xml:space="preserve">
-    <value>Show incoming transfer ({0})</value>
-    <comment>{0} = number of waiting offers</comment>
-  </data>
   <data name="Tray_Quit" xml:space="preserve">
     <value>Quit PairSync — stops all syncing</value>
   </data>
@@ -235,9 +231,6 @@
   </data>
   <data name="Transfer_AwaitingAcceptance" xml:space="preserve">
     <value>Waiting for {0} to accept</value>
-  </data>
-  <data name="Transfer_AwaitingYou" xml:space="preserve">
-    <value>Waiting for your confirmation</value>
   </data>
   <data name="Transfer_Paused" xml:space="preserve">
     <value>Paused</value>
@@ -381,7 +374,7 @@
     <value>Permissions for {0}</value>
   </data>
   <data name="Perm_MaySendLong" xml:space="preserve">
-    <value>May send files to this device. Every transfer is still confirmed here.</value>
+    <value>May send files to this device. They are saved under Downloads/PairSync without asking.</value>
   </data>
   <data name="Perm_Later" xml:space="preserve">
     <value>Permissions for syncs and Claude Code come with phases 3 and 4.</value>
@@ -517,29 +510,5 @@
   </data>
   <data name="Settings_OpenFolder" xml:space="preserve">
     <value>Open folder</value>
-  </data>
-  <data name="Incoming_Rubric" xml:space="preserve">
-    <value>Incoming transfer</value>
-  </data>
-  <data name="Incoming_Title" xml:space="preserve">
-    <value>{0} wants to send you {1}</value>
-  </data>
-  <data name="Incoming_Target" xml:space="preserve">
-    <value>Save to</value>
-  </data>
-  <data name="Incoming_Change" xml:space="preserve">
-    <value>Change…</value>
-  </data>
-  <data name="Incoming_NoSpace" xml:space="preserve">
-    <value>Only {0} free at this location.</value>
-  </data>
-  <data name="Incoming_Accept" xml:space="preserve">
-    <value>Accept</value>
-  </data>
-  <data name="Incoming_Decline" xml:space="preserve">
-    <value>Decline</value>
-  </data>
-  <data name="Incoming_More" xml:space="preserve">
-    <value>+ {0} more</value>
   </data>
 </root>

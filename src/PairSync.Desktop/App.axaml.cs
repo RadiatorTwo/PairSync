@@ -101,7 +101,7 @@ public sealed partial class App : Avalonia.Application
         _window = new MainWindow { DataContext = _shell, Icon = icon };
         _events = new CoreEvents(core, _shell, services);
         if (TrayAvailable)
-            _tray = new TrayController(this, core, icon, RevealWindow, RevealWindow, () => desktop.Shutdown());
+            _tray = new TrayController(this, core, icon, RevealWindow, () => desktop.Shutdown());
 
         if (StartHidden && TrayAvailable)
         {

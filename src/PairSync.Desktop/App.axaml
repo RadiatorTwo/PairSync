@@ -41,9 +41,6 @@
     <DataTemplate DataType="vm:DevicesViewModel">
       <views:DevicesView />
     </DataTemplate>
-    <DataTemplate DataType="vm:IncomingTransferViewModel">
-      <views:IncomingTransferView />
-    </DataTemplate>
     <DataTemplate DataType="vm:ConfirmDialogViewModel">
       <views:ConfirmDialogView />
     </DataTemplate>

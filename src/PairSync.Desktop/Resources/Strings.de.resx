@@ -106,9 +106,6 @@
   <data name="Tray_PauseAll" xml:space="preserve">
     <value>Alle Syncs pausieren</value>
   </data>
-  <data name="Tray_ShowIncoming" xml:space="preserve">
-    <value>Eingehende Übertragung anzeigen ({0})</value>
-  </data>
   <data name="Tray_Quit" xml:space="preserve">
     <value>PairSync beenden — stoppt alle Syncs</value>
   </data>
@@ -228,9 +225,6 @@
   </data>
   <data name="Transfer_AwaitingAcceptance" xml:space="preserve">
     <value>Wartet auf die Bestätigung von {0}</value>
-  </data>
-  <data name="Transfer_AwaitingYou" xml:space="preserve">
-    <value>Wartet auf deine Bestätigung</value>
   </data>
   <data name="Transfer_Paused" xml:space="preserve">
     <value>Pausiert</value>
@@ -374,7 +368,7 @@
     <value>Rechte für {0}</value>
   </data>
   <data name="Perm_MaySendLong" xml:space="preserve">
-    <value>Darf Dateien an dieses Gerät senden. Jede Übertragung wird hier trotzdem bestätigt.</value>
+    <value>Darf Dateien an dieses Gerät senden. Sie landen ohne Nachfrage unter Downloads/PairSync.</value>
   </data>
   <data name="Perm_Later" xml:space="preserve">
     <value>Rechte für Syncs und Claude Code kommen mit Phase 3 und 4.</value>
@@ -510,29 +504,5 @@
   </data>
   <data name="Settings_OpenFolder" xml:space="preserve">
     <value>Ordner öffnen</value>
-  </data>
-  <data name="Incoming_Rubric" xml:space="preserve">
-    <value>Eingehende Übertragung</value>
-  </data>
-  <data name="Incoming_Title" xml:space="preserve">
-    <value>{0} möchte dir {1} senden</value>
-  </data>
-  <data name="Incoming_Target" xml:space="preserve">
-    <value>Speichern in</value>
-  </data>
-  <data name="Incoming_Change" xml:space="preserve">
-    <value>Ändern…</value>
-  </data>
-  <data name="Incoming_NoSpace" xml:space="preserve">
-    <value>An diesem Ort sind nur {0} frei.</value>
-  </data>
-  <data name="Incoming_Accept" xml:space="preserve">
-    <value>Annehmen</value>
-  </data>
-  <data name="Incoming_Decline" xml:space="preserve">
-    <value>Ablehnen</value>
-  </data>
-  <data name="Incoming_More" xml:space="preserve">
-    <value>+ {0} weitere</value>
   </data>
 </root>

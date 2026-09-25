@@ -59,23 +59,16 @@ public sealed partial class TransferService
         }
         else
         {
-            var decision = await AskUserAsync(control, device, offer, items, token).ConfigureAwait(false);
-            if (decision is null)
-                return;
-            job = NewReceiveJob(offer, device, items, decision.Value.Folder, decision.Value.Policy, decision.Value.Accept);
+            // Paired devices that may send are accepted without asking; the sender's policy applies.
+            job = NewReceiveJob(offer, device, items, TargetFolderFor(device, offer), offer.Policy.FromWire());
             await using (var db = await _contexts.CreateDbContextAsync(token).ConfigureAwait(false))
             {
                 db.Jobs.Add(job);
                 await db.SaveChangesAsync(token).ConfigureAwait(false);
             }
-            if (!decision.Value.Accept)
-            {
-                await control.SendAsync(new JobDecline { JobId = job.Id, Reason = decision.Value.Reason }, token).ConfigureAwait(false);
-                await FinishAsync(job, JobState.Declined, decision.Value.Reason).ConfigureAwait(false);
-                return;
-            }
             await CreateEmptyFoldersAsync(job).ConfigureAwait(false);
-            _logger.LogInformation("Accepted job {JobId} from {Name} into {Folder}", job.Id, device.Name, job.TargetPath);
+            _logger.LogInformation("Accepted job {JobId} from {Name}: {Files} files ({Bytes} bytes) into {Folder}",
+                job.Id, device.Name, offer.FileCount, offer.TotalBytes, job.TargetPath);
             Changed?.Invoke();
         }
 
@@ -83,7 +76,7 @@ public sealed partial class TransferService
         await RunReceiveLoopAsync(connection, job).ConfigureAwait(false);
     }
 
-    /// <summary>Reads the manifest parts and checks every path before the user is asked (plan §11).</summary>
+    /// <summary>Reads the manifest parts and checks every path before anything is written (plan §11).</summary>
     private async Task<(List<JobOfferItem> Items, string? Problem)> ReadManifestAsync(ControlChannel control, JobOffer offer, CancellationToken token)
     {
         if (offer.ItemCount is < 0 or > MaxItemsPerJob)
@@ -116,63 +109,17 @@ public sealed partial class TransferService
         return (items, null);
     }
 
-    /// <summary>Shows the offer to the user and waits for an answer; null if the sender withdrew it or PairSync closes.</summary>
-    private async Task<(bool Accept, string? Folder, ExistingFilePolicy Policy, string? Reason)?> AskUserAsync(
-        ControlChannel control, PairedDevice device, JobOffer offer, List<JobOfferItem> items, CancellationToken token)
+    /// <summary><c>Downloads/PairSync/{sender}</c>, below it the folder the sender suggested.</summary>
+    private string TargetFolderFor(PairedDevice device, JobOffer offer)
     {
-        if (IncomingOffer is null)
-            return (false, null, default, "the other device is not ready to receive files");
-
         var folder = Path.Combine(_options.DownloadsFolder ?? KnownFolders.Downloads(), "PairSync", FolderNameFor(device));
         if (offer.SuggestedFolder is { } suggested && RelativePaths.IsValid(suggested))
             folder = Path.Combine([folder, .. suggested.Split('/')]);
-        long? free;
-        try
-        {
-            free = _options.Receiver.AvailableFreeSpace(folder);
-        }
-        catch (Exception e) when (e is IOException or ArgumentException or UnauthorizedAccessException)
-        {
-            free = null;
-        }
-        var entries = items
-            .GroupBy(i => i.RelativePath!.Split('/')[0], StringComparer.Ordinal)
-            .Select(g => new IncomingEntry(g.Key, g.Any(i => i.IsDirectory || i.RelativePath!.Contains('/')),
-                g.Count(i => !i.IsDirectory), g.Sum(i => i.Size)))
-            .ToList();
-        var incoming = new IncomingTransfer(offer.JobId, device, entries, offer.FileCount, offer.TotalBytes, folder,
-            offer.Policy.FromWire(), free);
-
-        _offers[offer.JobId] = incoming;
-        Changed?.Invoke();
-        _logger.LogInformation("{Name} offers {Files} files ({Bytes} bytes)", device.Name, offer.FileCount, offer.TotalBytes);
-        using var watch = CancellationTokenSource.CreateLinkedTokenSource(token);
-        // The sender sends nothing until it has an answer; anything it does send (cancel, disconnect) withdraws the offer.
-        var withdrawn = control.ExpectAsync<JobAccept>(watch.Token);
-        try
-        {
-            IncomingOffer?.Invoke(incoming);
-            var first = await Task.WhenAny(incoming.Decision, withdrawn).ConfigureAwait(false);
-            await watch.CancelAsync().ConfigureAwait(false);
-            await ((Task)withdrawn).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
-            if (first != incoming.Decision || incoming.IsWithdrawn)
-            {
-                incoming.Close(withdrawn: true);
-                return null;
-            }
-            var decision = await incoming.Decision.ConfigureAwait(false);
-            return decision;
-        }
-        finally
-        {
-            _offers.TryRemove(offer.JobId, out _);
-            incoming.Close(withdrawn: incoming.IsWithdrawn);
-            Changed?.Invoke();
-        }
+        return folder;
     }
 
     private TransferJob NewReceiveJob(
-        JobOffer offer, PairedDevice device, List<JobOfferItem> items, string? folder, ExistingFilePolicy policy, bool accepted)
+        JobOffer offer, PairedDevice device, List<JobOfferItem> items, string folder, ExistingFilePolicy policy)
     {
         var now = _time.GetUtcNow().UtcDateTime;
         return new TransferJob
@@ -180,7 +127,7 @@ public sealed partial class TransferService
             Id = offer.JobId,
             PeerDeviceId = device.Id,
             Direction = TransferDirection.Receive,
-            State = accepted ? JobState.Running : JobState.AwaitingAcceptance,
+            State = JobState.Running,
             Policy = policy,
             TargetPath = folder,
             TotalBytes = offer.TotalBytes,

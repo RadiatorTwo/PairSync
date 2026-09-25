@@ -1,13 +1,12 @@
 using PairSync.Application;
 using PairSync.Application.Pairing;
-using PairSync.Application.Transfers;
 using PairSync.Desktop.Platform;
 
 namespace PairSync.Desktop.ViewModels;
 
 /// <summary>
-/// Requests from other devices that need the user: an offered transfer opens its dialog, a pairing request opens
-/// the code step on Devices. Both bring the window to the front.
+/// Requests from other devices that need the user: a pairing request opens the code step on Devices and brings the
+/// window to the front. Transfers from paired devices are accepted without asking.
 /// </summary>
 public sealed class CoreEvents : IDisposable
 {
@@ -20,15 +19,8 @@ public sealed class CoreEvents : IDisposable
         _core = core;
         _shell = shell;
         _desktop = desktop;
-        _core.Transfers.IncomingOffer += OnIncomingOffer;
         _core.Pairing.IncomingRequest += OnPairingRequest;
     }
-
-    private void OnIncomingOffer(IncomingTransfer offer) => Ui.Run(() =>
-    {
-        _desktop.RevealWindow();
-        _ = _shell.Dialogs.ShowAsync(new IncomingTransferViewModel(offer, _desktop));
-    });
 
     private void OnPairingRequest(PairingSession session) => Ui.Run(() =>
     {
@@ -37,9 +29,5 @@ public sealed class CoreEvents : IDisposable
         _shell.Page<DevicesViewModel>().Pairing.ShowIncoming(session);
     });
 
-    public void Dispose()
-    {
-        _core.Transfers.IncomingOffer -= OnIncomingOffer;
-        _core.Pairing.IncomingRequest -= OnPairingRequest;
-    }
+    public void Dispose() => _core.Pairing.IncomingRequest -= OnPairingRequest;
 }

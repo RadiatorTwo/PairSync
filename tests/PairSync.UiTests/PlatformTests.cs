@@ -117,17 +117,16 @@ public sealed class PlatformTests : IDisposable
         Strings.Culture = culture;
         NearbyDevice Device(string name, PresenceState state) => new(Guid.NewGuid(), name, state, null, null, null);
 
-        var none = TrayStatus.Describe([Device("nas-box", PresenceState.Offline)], 0, 0);
+        var none = TrayStatus.Describe([Device("nas-box", PresenceState.Offline)], 0);
         Assert.Equal("PairSync · No device online", none.Headline);
         Assert.Equal("No transfers", none.Detail);
 
-        var one = TrayStatus.Describe([Device("laptop-win11", PresenceState.Online), Device("device-7F2A", PresenceState.Found)], 1, 2);
+        var one = TrayStatus.Describe([Device("laptop-win11", PresenceState.Online), Device("device-7F2A", PresenceState.Found)], 1);
         Assert.Equal("PairSync · Connected", one.Headline);
         Assert.Equal("LAN · laptop-win11 · 1 transfer running", one.Detail);
-        Assert.Equal(2, one.IncomingOffers);
 
         var many = TrayStatus.Describe(
-            [Device("a", PresenceState.Online), Device("b", PresenceState.Online), Device("c", PresenceState.Online)], 3, 0);
+            [Device("a", PresenceState.Online), Device("b", PresenceState.Online), Device("c", PresenceState.Online)], 3);
         Assert.Equal("LAN · a, b +1 · 3 transfers running", many.Detail);
     }
 

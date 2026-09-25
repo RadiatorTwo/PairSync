@@ -1,4 +1,3 @@
-using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
@@ -9,8 +8,7 @@ using PairSync.Domain;
 namespace PairSync.Desktop.Tray;
 
 /// <summary>
-/// Tray icon with the native menu: status, Open window, Pause all syncs, Show incoming transfer (n),
-/// Quit PairSync — stops all syncing.
+/// Tray icon with the native menu: status, Open window, Pause all syncs, Quit PairSync — stops all syncing.
 /// </summary>
 internal sealed class TrayController : IDisposable
 {
@@ -20,10 +18,9 @@ internal sealed class TrayController : IDisposable
     private readonly TrayIcon _icon;
     private readonly NativeMenuItem _headline;
     private readonly NativeMenuItem _detail;
-    private readonly NativeMenuItem _incoming;
     private int _refreshQueued;
 
-    public TrayController(Avalonia.Application app, PairSyncCore core, WindowIcon icon, Action open, Action showIncoming, Action quit)
+    public TrayController(Avalonia.Application app, PairSyncCore core, WindowIcon icon, Action open, Action quit)
     {
         _app = app;
         _core = core;
@@ -37,8 +34,6 @@ internal sealed class TrayController : IDisposable
         openItem.Click += (_, _) => open();
         var pauseAll = new NativeMenuItem(Strings.Tray_PauseAll);
         pauseAll.Click += (_, _) => _ = PauseAllAsync();
-        _incoming = new NativeMenuItem(IncomingText(0)) { IsEnabled = false };
-        _incoming.Click += (_, _) => showIncoming();
         var quitItem = new NativeMenuItem(Strings.Tray_Quit);
         quitItem.Click += (_, _) => quit();
 
@@ -46,7 +41,7 @@ internal sealed class TrayController : IDisposable
         {
             Icon = icon,
             ToolTipText = Strings.Tray_Tooltip,
-            Menu = [_headline, _detail, new NativeMenuItemSeparator(), openItem, pauseAll, _incoming, new NativeMenuItemSeparator(), quitItem],
+            Menu = [_headline, _detail, new NativeMenuItemSeparator(), openItem, pauseAll, new NativeMenuItemSeparator(), quitItem],
             IsVisible = true,
         };
         _icon.Clicked += (_, _) => open();
@@ -56,8 +51,6 @@ internal sealed class TrayController : IDisposable
         _core.Transfers.Changed += QueueRefresh;
         QueueRefresh();
     }
-
-    private static string IncomingText(int count) => string.Format(CultureInfo.CurrentCulture, Strings.Tray_ShowIncoming, count);
 
     /// <summary>Several events in a row cause one refresh.</summary>
     private void QueueRefresh()
@@ -72,12 +65,9 @@ internal sealed class TrayController : IDisposable
         try
         {
             var jobs = await _core.Transfers.GetJobsAsync(CancellationToken.None);
-            var status = TrayStatus.Describe(_core.Presence.Devices, jobs.Count(j => j.State == JobState.Running),
-                _core.Transfers.PendingOffers.Count);
+            var status = TrayStatus.Describe(_core.Presence.Devices, jobs.Count(j => j.State == JobState.Running));
             _headline.Header = status.Headline;
             _detail.Header = status.Detail;
-            _incoming.Header = IncomingText(status.IncomingOffers);
-            _incoming.IsEnabled = status.IncomingOffers > 0;
             _icon.ToolTipText = status.Headline;
         }
         catch (Exception e) when (e is not OutOfMemoryException)

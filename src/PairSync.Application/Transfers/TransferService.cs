@@ -33,7 +33,6 @@ public sealed partial class TransferService : IAsyncDisposable
     private readonly SemaphoreSlim _wake = new(0);
     private readonly ConcurrentDictionary<Guid, JobRun> _runs = new();
     private readonly ConcurrentDictionary<Guid, DateTime> _notBefore = new();
-    private readonly ConcurrentDictionary<Guid, IncomingTransfer> _offers = new();
     private Task _scheduler = Task.CompletedTask;
 
     public TransferService(
@@ -51,14 +50,8 @@ public sealed partial class TransferService : IAsyncDisposable
         _throttle = new UploadThrottle(() => settings.Current.UploadLimitBytesPerSecond, time);
     }
 
-    /// <summary>A job changed state, or an offer came or went. Progress is read from <see cref="GetJobsAsync"/>.</summary>
+    /// <summary>A job was created or changed state. Progress is read from <see cref="GetJobsAsync"/>.</summary>
     public event Action? Changed;
-
-    /// <summary>A paired device offers files; raised on a background thread. Without a handler offers are declined.</summary>
-    public event Action<IncomingTransfer>? IncomingOffer;
-
-    /// <summary>Offers waiting for the user (tray: "Show incoming transfer (n)").</summary>
-    public IReadOnlyList<IncomingTransfer> PendingOffers => [.. _offers.Values];
 
     private sealed class JobRun(Guid jobId, CancellationToken stopping)
     {
@@ -470,8 +463,6 @@ public sealed partial class TransferService : IAsyncDisposable
         _presence.PairedDeviceAvailable -= OnDeviceAvailable;
         _settings.Changed -= OnSettingsChanged;
         await _stopping.CancelAsync().ConfigureAwait(false);
-        foreach (var offer in _offers.Values)
-            offer.Close(withdrawn: true);
         await _scheduler.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
         await Task.WhenAll(_runs.Values.Select(r => r.Task)).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
         _stopping.Dispose();

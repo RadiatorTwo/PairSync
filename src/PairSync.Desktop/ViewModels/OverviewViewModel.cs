@@ -114,7 +114,6 @@ public sealed partial class TransferRowViewModel(Guid id, TransferService transf
                 job.CurrentFile, Format.Count(job.CurrentChunk), Format.Count(job.CurrentChunkCount)),
             JobState.Running => Strings.Transfer_Starting,
             JobState.Waiting => string.Format(culture, Strings.Transfer_Waiting, job.PeerName),
-            JobState.AwaitingAcceptance when job.Direction == TransferDirection.Receive => Strings.Transfer_AwaitingYou,
             JobState.AwaitingAcceptance => string.Format(culture, Strings.Transfer_AwaitingAcceptance, job.PeerName),
             JobState.Paused when job.PausedByPeer => string.Format(culture, Strings.Transfer_PausedByPeer, job.PeerName),
             JobState.Paused when job.LastError is { Length: > 0 } reason => string.Format(culture, Strings.Transfer_PausedReason, reason),
