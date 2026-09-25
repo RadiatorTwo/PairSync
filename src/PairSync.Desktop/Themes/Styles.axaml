@@ -1,0 +1,135 @@
+<!-- Typography classes and global states. Text: Barlow; headings: Barlow Condensed 600; mono: JetBrains Mono. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctl="using:PairSync.Desktop.Controls">
+
+  <Style Selector="Window">
+    <Setter Property="Background" Value="{StaticResource BgBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+    <Setter Property="FontFamily" Value="{StaticResource BodyFont}" />
+    <Setter Property="FontSize" Value="{StaticResource ContentTextSize}" />
+  </Style>
+
+  <!-- Keyboard focus: 2 px Accent outline with a 2 px gap, for every focusable control. -->
+  <Style Selector=":is(Control)">
+    <Setter Property="FocusAdorner">
+      <FocusAdornerTemplate>
+        <Border BorderThickness="2" BorderBrush="{StaticResource AccentBrush}" Margin="-4" />
+      </FocusAdornerTemplate>
+    </Setter>
+  </Style>
+
+  <!-- Headings -->
+  <Style Selector="TextBlock.h1">
+    <Setter Property="FontFamily" Value="{StaticResource HeadingFont}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontSize" Value="{StaticResource ScreenTitleSize}" />
+  </Style>
+  <Style Selector="TextBlock.h2">
+    <Setter Property="FontFamily" Value="{StaticResource HeadingFont}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontSize" Value="{StaticResource DialogTitleSize}" />
+  </Style>
+  <Style Selector="TextBlock.h3">
+    <Setter Property="FontFamily" Value="{StaticResource HeadingFont}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontSize" Value="{StaticResource CardTitleSize}" />
+  </Style>
+  <Style Selector="TextBlock.brand">
+    <Setter Property="FontFamily" Value="{StaticResource HeadingFont}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontSize" Value="{StaticResource BrandSize}" />
+    <!-- 0.04 em -->
+    <Setter Property="LetterSpacing" Value="0.88" />
+  </Style>
+
+  <!-- Section labels; table heads use the class "head" -->
+  <Style Selector="ctl|Rubric">
+    <Setter Property="FontFamily" Value="{StaticResource HeadingFont}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="LetterSpacing" Value="1.4" />
+    <Setter Property="Foreground" Value="{StaticResource Accent700Brush}" />
+  </Style>
+  <Style Selector="ctl|Rubric.head">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="LetterSpacing" Value="1.04" />
+    <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+  </Style>
+  <Style Selector="ctl|Rubric.strong">
+    <Setter Property="Foreground" Value="{StaticResource Accent900Brush}" />
+  </Style>
+
+  <!-- Body text -->
+  <Style Selector="TextBlock.nav">
+    <Setter Property="FontSize" Value="{StaticResource NavTextSize}" />
+  </Style>
+  <Style Selector="TextBlock.meta">
+    <Setter Property="FontSize" Value="{StaticResource MetaTextSize}" />
+    <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+  </Style>
+  <Style Selector="TextBlock.hint">
+    <Setter Property="FontSize" Value="{StaticResource HintTextSize}" />
+    <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+  </Style>
+  <Style Selector="TextBlock.muted">
+    <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+  </Style>
+  <Style Selector="TextBlock.disabled">
+    <Setter Property="Foreground" Value="{StaticResource TextDisabledBrush}" />
+  </Style>
+  <Style Selector="TextBlock.accent">
+    <Setter Property="Foreground" Value="{StaticResource Accent700Brush}" />
+  </Style>
+  <Style Selector="TextBlock.strong">
+    <Setter Property="FontWeight" Value="Medium" />
+  </Style>
+  <Style Selector="TextBlock.mono">
+    <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+    <Setter Property="FontSize" Value="13" />
+  </Style>
+  <Style Selector="TextBox.mono">
+    <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+    <Setter Property="FontSize" Value="13" />
+  </Style>
+  <Style Selector="TextBlock.code">
+    <!-- Security code: mono 40 px, tracking 0.06 em, Accent900 -->
+    <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+    <Setter Property="FontSize" Value="40" />
+    <Setter Property="LetterSpacing" Value="2.4" />
+    <Setter Property="Foreground" Value="{StaticResource Accent900Brush}" />
+  </Style>
+
+  <!-- Banners: info (Accent100) and warning (Accent900) -->
+  <Style Selector="Border.banner">
+    <Setter Property="Background" Value="{StaticResource Accent100Brush}" />
+    <Setter Property="Padding" Value="14,12" />
+    <Setter Property="TextElement.Foreground" Value="{StaticResource Accent900Brush}" />
+  </Style>
+  <Style Selector="Border.banner.warning">
+    <Setter Property="Background" Value="{StaticResource Accent900Brush}" />
+    <Setter Property="Padding" Value="16,12" />
+    <Setter Property="TextElement.Foreground" Value="{StaticResource BgBrush}" />
+  </Style>
+
+  <!-- Panels and lines -->
+  <Style Selector="Border.panel">
+    <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="{StaticResource PanelPadding}" />
+  </Style>
+  <Style Selector="Border.input">
+    <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Background" Value="{StaticResource SurfaceInputBrush}" />
+    <Setter Property="Padding" Value="10,7" />
+  </Style>
+  <Style Selector="Border.dropzone">
+    <Setter Property="Background" Value="{StaticResource DropZoneBrush}" />
+    <Setter Property="Padding" Value="26" />
+  </Style>
+  <Style Selector="Separator">
+    <Setter Property="Background" Value="{StaticResource HairlineBrush}" />
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Margin" Value="0" />
+  </Style>
+</Styles>

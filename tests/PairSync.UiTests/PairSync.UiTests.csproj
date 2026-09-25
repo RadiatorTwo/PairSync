@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- Localized strings need real cultures. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Avalonia.Headless" />
+    <Using Include="Xunit" />
+    <ProjectReference Include="..\..\src\PairSync.Desktop\PairSync.Desktop.csproj" />
+  </ItemGroup>
+</Project>

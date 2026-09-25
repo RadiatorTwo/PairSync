@@ -1,8 +1,45 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PairSync.Desktop.ViewModels"
+             xmlns:views="using:PairSync.Desktop.Views"
              x:Class="PairSync.Desktop.App"
+             Name="PairSync"
              RequestedThemeVariant="Light">
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://PairSync/Themes/Tokens.axaml" />
+        <ResourceInclude Source="avares://PairSync/Themes/Controls.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+      <!-- Fluent controls that keep their templates (text boxes, scroll bars, menus) follow the tokens. -->
+      <CornerRadius x:Key="ControlCornerRadius">0</CornerRadius>
+      <CornerRadius x:Key="OverlayCornerRadius">0</CornerRadius>
+      <StaticResource x:Key="TextControlBackground" ResourceKey="SurfaceInputBrush" />
+      <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="SurfaceInputBrush" />
+      <StaticResource x:Key="TextControlBackgroundFocused" ResourceKey="SurfaceInputBrush" />
+      <StaticResource x:Key="TextControlBorderBrush" ResourceKey="HairlineBrush" />
+      <StaticResource x:Key="TextControlBorderBrushPointerOver" ResourceKey="FrameBrush" />
+      <StaticResource x:Key="TextControlBorderBrushFocused" ResourceKey="AccentBrush" />
+      <Thickness x:Key="TextControlBorderThemeThickness">1</Thickness>
+      <Thickness x:Key="TextControlBorderThemeThicknessFocused">1</Thickness>
+    </ResourceDictionary>
+  </Application.Resources>
+
+  <Application.DataTemplates>
+    <DataTemplate DataType="vm:PlaceholderViewModel">
+      <views:PlaceholderView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:SettingsViewModel">
+      <views:SettingsView />
+    </DataTemplate>
+  </Application.DataTemplates>
+
   <Application.Styles>
-    <FluentTheme />
+    <FluentTheme>
+      <FluentTheme.Palettes>
+        <ColorPaletteResources x:Key="Light" Accent="#5980A6" RegionColor="#F2F2F3" BaseHigh="#1D1F20" />
+      </FluentTheme.Palettes>
+    </FluentTheme>
+    <StyleInclude Source="avares://PairSync/Themes/Styles.axaml" />
   </Application.Styles>
 </Application>

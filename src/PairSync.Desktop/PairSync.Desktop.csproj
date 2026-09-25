@@ -3,12 +3,29 @@
     <OutputType>WinExe</OutputType>
     <AssemblyName>PairSync</AssemblyName>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- The UI follows the system language (.resx, English and German). -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <SatelliteResourceLanguages>en;de</SatelliteResourceLanguages>
   </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="PairSync.UiTests" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\PairSync.Application\PairSync.Application.csproj" />
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Tmds.DBus.Protocol" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\Fonts\**\*.ttf" />
+    <!-- SIL Open Font License texts ship next to the program. -->
+    <None Include="Assets\Fonts\OFL-*.txt" Link="licenses\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Update="Resources\Strings.resx" StronglyTypedLanguage="CSharp" StronglyTypedClassName="Strings"
+                      StronglyTypedNamespace="PairSync.Desktop.Resources" StronglyTypedFileName="$(IntermediateOutputPath)Strings.Designer.cs"
+                      PublicClass="true" />
   </ItemGroup>
 </Project>

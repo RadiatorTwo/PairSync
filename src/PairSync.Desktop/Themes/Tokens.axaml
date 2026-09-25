@@ -1,0 +1,64 @@
+<!-- Design tokens from the handoff (README "Design-Tokens"). Corner radius 0 everywhere, 1 px lines. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Colors -->
+  <Color x:Key="BgColor">#F2F2F3</Color>
+  <Color x:Key="SurfaceInputColor">#FBFBFB</Color>
+  <Color x:Key="TextColor">#1D1F20</Color>
+  <Color x:Key="TextMutedColor">#55595D</Color>
+  <Color x:Key="TextDisabledColor">#8A8E92</Color>
+  <Color x:Key="HairlineColor">#C9CCD0</Color>
+  <Color x:Key="HairlineSoftColor">#E3E5E8</Color>
+  <Color x:Key="FrameColor">#8AA3BD</Color>
+  <Color x:Key="AccentColor">#5980A6</Color>
+  <Color x:Key="AccentPressedColor">#4D7196</Color>
+  <Color x:Key="Accent700Color">#3B5C7C</Color>
+  <Color x:Key="Accent900Color">#1F3043</Color>
+  <Color x:Key="Accent100Color">#E3E9F0</Color>
+  <Color x:Key="DropZoneColor">#E9EEF3</Color>
+  <!-- rgba(29,31,32,.28) -->
+  <Color x:Key="ScrimColor">#471D1F20</Color>
+
+  <SolidColorBrush x:Key="BgBrush" Color="{StaticResource BgColor}" />
+  <SolidColorBrush x:Key="SurfaceInputBrush" Color="{StaticResource SurfaceInputColor}" />
+  <SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}" />
+  <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMutedColor}" />
+  <SolidColorBrush x:Key="TextDisabledBrush" Color="{StaticResource TextDisabledColor}" />
+  <SolidColorBrush x:Key="HairlineBrush" Color="{StaticResource HairlineColor}" />
+  <SolidColorBrush x:Key="HairlineSoftBrush" Color="{StaticResource HairlineSoftColor}" />
+  <SolidColorBrush x:Key="FrameBrush" Color="{StaticResource FrameColor}" />
+  <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
+  <SolidColorBrush x:Key="AccentPressedBrush" Color="{StaticResource AccentPressedColor}" />
+  <SolidColorBrush x:Key="Accent700Brush" Color="{StaticResource Accent700Color}" />
+  <SolidColorBrush x:Key="Accent900Brush" Color="{StaticResource Accent900Color}" />
+  <SolidColorBrush x:Key="Accent100Brush" Color="{StaticResource Accent100Color}" />
+  <SolidColorBrush x:Key="DropZoneBrush" Color="{StaticResource DropZoneColor}" />
+  <SolidColorBrush x:Key="ScrimBrush" Color="{StaticResource ScrimColor}" />
+  <SolidColorBrush x:Key="OnAccentBrush" Color="White" />
+
+  <!-- Shadows: only window (native), dialog and tray menu (native). -->
+  <BoxShadows x:Key="DialogShadow">0 24 60 0 #4D1D1F20</BoxShadows>
+
+  <!-- Typography (fonts are embedded, SIL Open Font License) -->
+  <FontFamily x:Key="BodyFont">avares://PairSync/Assets/Fonts/Barlow#Barlow</FontFamily>
+  <FontFamily x:Key="HeadingFont">avares://PairSync/Assets/Fonts/BarlowCondensed#Barlow Condensed</FontFamily>
+  <FontFamily x:Key="MonoFont">avares://PairSync/Assets/Fonts/JetBrainsMono#JetBrains Mono</FontFamily>
+
+  <x:Double x:Key="ScreenTitleSize">34</x:Double>
+  <x:Double x:Key="DialogTitleSize">28</x:Double>
+  <x:Double x:Key="CardTitleSize">26</x:Double>
+  <x:Double x:Key="BrandSize">22</x:Double>
+  <x:Double x:Key="NavTextSize">15</x:Double>
+  <x:Double x:Key="ContentTextSize">14</x:Double>
+  <x:Double x:Key="MetaTextSize">13</x:Double>
+  <x:Double x:Key="HintTextSize">12</x:Double>
+  <x:Double x:Key="DisabledOpacity">0.45</x:Double>
+
+  <!-- Spacing -->
+  <Thickness x:Key="PagePadding">28,24,28,24</Thickness>
+  <Thickness x:Key="PanelPadding">18,16</Thickness>
+  <Thickness x:Key="NavItemPadding">10,8</Thickness>
+  <x:Double x:Key="SidebarWidth">212</x:Double>
+  <x:Double x:Key="SettingsMaxWidth">640</x:Double>
+  <x:Double x:Key="DialogWidth">680</x:Double>
+</ResourceDictionary>

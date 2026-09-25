@@ -19,6 +19,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/PairSync.IntegrationTests/PairSync.IntegrationTests.csproj" />
     <Project Path="tests/PairSync.TransportTests/PairSync.TransportTests.csproj" />
+    <Project Path="tests/PairSync.UiTests/PairSync.UiTests.csproj" />
     <Project Path="tests/PairSync.UnitTests/PairSync.UnitTests.csproj" />
   </Folder>
 </Solution>

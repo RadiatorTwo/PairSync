@@ -1,9 +1,49 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ctl="using:PairSync.Desktop.Controls"
+        xmlns:vm="using:PairSync.Desktop.ViewModels"
+        xmlns:res="using:PairSync.Desktop.Resources"
+        mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
         x:Class="PairSync.Desktop.MainWindow"
-        Title="PairSync — Overview"
+        x:DataType="vm:ShellViewModel"
+        Title="{Binding WindowTitle}"
         Width="1280" Height="800"
-        MinWidth="1024" MinHeight="680">
-  <!-- Placeholder until the shell of work package G. -->
-  <TextBlock Text="PairSync" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="24" />
+        MinWidth="1024" MinHeight="680"
+        WindowStartupLocation="CenterScreen">
+  <Panel>
+    <DockPanel>
+      <!-- Sidebar: 212 px, 18 × 12 px padding, entries 2 px apart -->
+      <Border DockPanel.Dock="Left" Width="{StaticResource SidebarWidth}" Padding="12,18"
+              BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top">
+            <TextBlock Classes="brand" Text="PAIRSYNC" Margin="10,0" />
+            <TextBlock Classes="mono hint" FontSize="12" Text="{Binding LocalDeviceName}" Margin="10,0,10,16"
+                       TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+          <Border DockPanel.Dock="Bottom" Padding="10" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,1,0,0">
+            <StackPanel Spacing="8">
+              <TextBlock Classes="hint" Text="{Binding StatusText}" TextWrapping="Wrap" LineHeight="17.4" />
+              <Button Name="QuitButton" Classes="link" FontSize="12" FontWeight="Medium"
+                      Content="{x:Static res:Strings.Quit}" Command="{Binding QuitCommand}" />
+            </StackPanel>
+          </Border>
+          <ListBox Name="Navigation" Theme="{StaticResource NavList}" ItemContainerTheme="{StaticResource NavItem}"
+                   ItemsSource="{Binding Pages}" SelectedItem="{Binding ActivePage}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:PageViewModel">
+                <TextBlock Text="{Binding NavTitle}" />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Border>
+
+      <ContentControl Name="PageHost" Content="{Binding ActivePage}" />
+    </DockPanel>
+
+    <ctl:DialogOverlay Name="DialogHost" Content="{Binding Dialog}" />
+  </Panel>
 </Window>

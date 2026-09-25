@@ -1,0 +1,427 @@
+<!--
+  Control themes of the design system. They replace the Fluent templates for the controls the mockups define
+  (buttons, radios, check boxes, segments, navigation, progress, cards, chips, dialog); everything else keeps
+  Fluent with the token overrides from App.axaml.
+  States: hover Accent100, primary pressed #4D7196, keyboard focus 2 px Accent with 2 px gap (Styles.axaml),
+  disabled 45 %.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ctl="using:PairSync.Desktop.Controls">
+
+  <!-- Buttons. Default: outline Hairline (Pause, Browse…). Classes: primary, accent (Pair…), link, quiet (Cancel). -->
+  <ControlTheme x:Key="{x:Type Button}" TargetType="Button">
+    <!-- The marks reach 4 px beyond the corners. -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="12,4" />
+    <Setter Property="FontSize" Value="{StaticResource MetaTextSize}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            Padding="{TemplateBinding Padding}"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Foreground="{TemplateBinding Foreground}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                            RecognizesAccessKey="True" />
+          <ctl:RegistrationMarks Name="PART_Marks" IsVisible="False" Brush="{StaticResource AccentBrush}" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource Accent100Brush}" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="{StaticResource DisabledOpacity}" />
+    </Style>
+
+    <Style Selector="^.primary">
+      <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource OnAccentBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="16,12" />
+      <Setter Property="FontSize" Value="{StaticResource NavTextSize}" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Style Selector="^ /template/ ctl|RegistrationMarks#PART_Marks">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
+      <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+      </Style>
+      <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AccentPressedBrush}" />
+      </Style>
+      <Style Selector="^.compact">
+        <Setter Property="Padding" Value="16,8" />
+        <Setter Property="FontSize" Value="{StaticResource ContentTextSize}" />
+      </Style>
+    </Style>
+
+    <Style Selector="^.accent">
+      <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource Accent700Brush}" />
+      <Setter Property="Padding" Value="12,5" />
+    </Style>
+
+    <Style Selector="^.link">
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Foreground" Value="{StaticResource Accent700Brush}" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource Accent900Brush}" />
+      </Style>
+    </Style>
+
+    <Style Selector="^.quiet">
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="8,4" />
+      <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Radios: 14 px square, selected with a 6 px square inside. -->
+  <ControlTheme x:Key="{x:Type RadioButton}" TargetType="RadioButton">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource FrameBrush}" />
+    <Setter Property="FontSize" Value="{StaticResource ContentTextSize}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid ColumnDefinitions="Auto,*" Background="{TemplateBinding Background}">
+          <Border Name="PART_Box" Width="14" Height="14" VerticalAlignment="Center"
+                  BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
+            <Rectangle Name="PART_Dot" Width="6" Height="6" Fill="{StaticResource AccentBrush}" IsVisible="False" />
+          </Border>
+          <ContentPresenter Grid.Column="1" Name="PART_ContentPresenter" Margin="10,0,0,0" VerticalAlignment="Center"
+                            Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                            IsVisible="{TemplateBinding Content, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            RecognizesAccessKey="True" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:checked">
+      <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+      <Style Selector="^ /template/ Rectangle#PART_Dot">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
+    </Style>
+    <Style Selector="^:pointerover /template/ Border#PART_Box">
+      <Setter Property="Background" Value="{StaticResource Accent100Brush}" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="{StaticResource DisabledOpacity}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Check boxes: 13 px square, checked = filled Accent square. Class "switch": the settings toggle (34 × 18). -->
+  <ControlTheme x:Key="{x:Type CheckBox}" TargetType="CheckBox">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource FrameBrush}" />
+    <Setter Property="FontSize" Value="{StaticResource ContentTextSize}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid ColumnDefinitions="Auto,*" Background="{TemplateBinding Background}">
+          <Border Name="PART_Box" Width="13" Height="13" VerticalAlignment="Center"
+                  BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" />
+          <ContentPresenter Grid.Column="1" Name="PART_ContentPresenter" Margin="10,0,0,0" VerticalAlignment="Center"
+                            Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                            IsVisible="{TemplateBinding Content, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            RecognizesAccessKey="True" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:checked /template/ Border#PART_Box">
+      <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+    </Style>
+    <Style Selector="^:pointerover:unchecked /template/ Border#PART_Box">
+      <Setter Property="Background" Value="{StaticResource Accent100Brush}" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="{StaticResource DisabledOpacity}" />
+    </Style>
+
+    <Style Selector="^.switch">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Grid ColumnDefinitions="*,Auto" Background="{TemplateBinding Background}">
+            <ContentPresenter Name="PART_ContentPresenter" VerticalAlignment="Center" Margin="0,0,14,0"
+                              Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                              RecognizesAccessKey="True" />
+            <Border Grid.Column="1" Name="PART_Track" Width="34" Height="18" Padding="2" VerticalAlignment="Center"
+                    BorderBrush="{StaticResource FrameBrush}" BorderThickness="1">
+              <Rectangle Name="PART_Knob" Width="12" Height="12" HorizontalAlignment="Left"
+                         Fill="{StaticResource FrameBrush}" />
+            </Border>
+          </Grid>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:checked">
+        <Style Selector="^ /template/ Border#PART_Track">
+          <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+          <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+        </Style>
+        <Style Selector="^ /template/ Rectangle#PART_Knob">
+          <Setter Property="HorizontalAlignment" Value="Right" />
+          <Setter Property="Fill" Value="{StaticResource OnAccentBrush}" />
+        </Style>
+      </Style>
+      <Style Selector="^:pointerover:unchecked /template/ Border#PART_Track">
+        <Setter Property="Background" Value="{StaticResource Accent100Brush}" />
+      </Style>
+    </Style>
+  </ControlTheme>
+
+  <!-- Progress: 6 px, track Accent100, fill Accent; class "resumed" fills with Frame. -->
+  <ControlTheme x:Key="{x:Type ProgressBar}" TargetType="ProgressBar">
+    <Setter Property="Background" Value="{StaticResource Accent100Brush}" />
+    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+    <Setter Property="Height" Value="6" />
+    <Setter Property="MinHeight" Value="6" />
+    <Setter Property="Minimum" Value="0" />
+    <Setter Property="Maximum" Value="1" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}">
+          <Border Name="PART_Indicator" Background="{TemplateBinding Foreground}" HorizontalAlignment="Left" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^.resumed">
+      <Setter Property="Foreground" Value="{StaticResource FrameBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Navigation in the sidebar -->
+  <ControlTheme x:Key="NavList" TargetType="ListBox">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="ItemsPanel">
+      <ItemsPanelTemplate>
+        <StackPanel Spacing="2" />
+      </ItemsPanelTemplate>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <ControlTheme x:Key="NavItem" TargetType="ListBoxItem">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+    <Setter Property="Padding" Value="{StaticResource NavItemPadding}" />
+    <Setter Property="FontSize" Value="{StaticResource NavTextSize}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ContentPresenter Name="PART_ContentPresenter"
+                          Background="{TemplateBinding Background}"
+                          Padding="{TemplateBinding Padding}"
+                          Content="{TemplateBinding Content}"
+                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                          Foreground="{TemplateBinding Foreground}" />
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{StaticResource Accent100Brush}" />
+    </Style>
+    <Style Selector="^:selected">
+      <Setter Property="Background" Value="{StaticResource Accent100Brush}" />
+      <Setter Property="Foreground" Value="{StaticResource Accent900Brush}" />
+      <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Segment control -->
+  <ControlTheme x:Key="SegmentItem" TargetType="ListBoxItem">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource FrameBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="8" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ContentPresenter Name="PART_ContentPresenter"
+                          Background="{TemplateBinding Background}"
+                          BorderBrush="{TemplateBinding BorderBrush}"
+                          BorderThickness="{TemplateBinding BorderThickness}"
+                          Padding="{TemplateBinding Padding}"
+                          Content="{TemplateBinding Content}"
+                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                          Foreground="{TemplateBinding Foreground}"
+                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" />
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:nth-child(n+2)">
+      <Setter Property="BorderThickness" Value="1,0,0,0" />
+    </Style>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{StaticResource Accent100Brush}" />
+    </Style>
+    <Style Selector="^:selected">
+      <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource OnAccentBrush}" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="{StaticResource DisabledOpacity}" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="{x:Type ctl:SegmentedControl}" TargetType="ctl:SegmentedControl">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{StaticResource FrameBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="FontSize" Value="{StaticResource MetaTextSize}" />
+    <Setter Property="SelectionMode" Value="Single,AlwaysSelected" />
+    <Setter Property="ItemContainerTheme" Value="{StaticResource SegmentItem}" />
+    <Setter Property="ItemsPanel">
+      <ItemsPanelTemplate>
+        <UniformGrid Rows="1" />
+      </ItemsPanelTemplate>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}">
+          <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="{StaticResource DisabledOpacity}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Chips -->
+  <ControlTheme x:Key="{x:Type ctl:Chip}" TargetType="ctl:Chip">
+    <Setter Property="Background" Value="{StaticResource Accent100Brush}" />
+    <Setter Property="Foreground" Value="{StaticResource Accent900Brush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="7,2" />
+    <Setter Property="FontSize" Value="{StaticResource HintTextSize}" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ContentPresenter Name="PART_ContentPresenter"
+                          Background="{TemplateBinding Background}"
+                          BorderBrush="{TemplateBinding BorderBrush}"
+                          BorderThickness="{TemplateBinding BorderThickness}"
+                          Padding="{TemplateBinding Padding}"
+                          Content="{TemplateBinding Content}"
+                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                          Foreground="{TemplateBinding Foreground}" />
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^.off">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource TextDisabledBrush}" />
+    </Style>
+    <Style Selector="^.strong">
+      <Setter Property="Background" Value="{StaticResource Accent900Brush}" />
+      <Setter Property="Foreground" Value="{StaticResource BgBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Cards -->
+  <ControlTheme x:Key="{x:Type ctl:Card}" TargetType="ctl:Card">
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="14" />
+    <Setter Property="MarksBrush" Value="{StaticResource AccentBrush}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Border"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  BoxShadow="{TemplateBinding BoxShadow}"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter Name="PART_ContentPresenter"
+                              Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+          <!-- Border cannot dash; the rectangle sits on the same pixel row as the (hidden) border. -->
+          <Rectangle Name="PART_Dashes" IsVisible="{TemplateBinding IsDashed}" Margin="0.5"
+                     Stroke="{TemplateBinding BorderBrush}" StrokeThickness="1" StrokeDashArray="3,3"
+                     IsHitTestVisible="False" />
+          <ctl:RegistrationMarks IsVisible="{TemplateBinding ShowMarks}" Brush="{TemplateBinding MarksBrush}" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^[IsDashed=True] /template/ Border#PART_Border">
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="^.connected">
+      <Setter Property="BorderBrush" Value="{StaticResource FrameBrush}" />
+      <Setter Property="ShowMarks" Value="True" />
+    </Style>
+    <Style Selector="^.offline">
+      <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+    </Style>
+    <Style Selector="^.found">
+      <Setter Property="BorderBrush" Value="{StaticResource FrameBrush}" />
+      <Setter Property="IsDashed" Value="True" />
+    </Style>
+    <Style Selector="^.marked">
+      <Setter Property="BorderBrush" Value="{StaticResource FrameBrush}" />
+      <Setter Property="ShowMarks" Value="True" />
+    </Style>
+    <Style Selector="^.dialog">
+      <Setter Property="Background" Value="{StaticResource BgBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource FrameBrush}" />
+      <Setter Property="BoxShadow" Value="{StaticResource DialogShadow}" />
+      <Setter Property="Padding" Value="26,24" />
+      <Setter Property="ShowMarks" Value="True" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="{StaticResource DisabledOpacity}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Dialog with scrim -->
+  <ControlTheme x:Key="{x:Type ctl:DialogOverlay}" TargetType="ctl:DialogOverlay">
+    <Setter Property="Background" Value="{StaticResource ScrimBrush}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}">
+          <ctl:Card Classes="dialog" Width="{StaticResource DialogWidth}" MaxWidth="{StaticResource DialogWidth}"
+                    HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24">
+            <ContentPresenter Name="PART_ContentPresenter"
+                              Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}" />
+          </ctl:Card>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+</ResourceDictionary>

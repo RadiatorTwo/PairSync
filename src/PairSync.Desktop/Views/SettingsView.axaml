@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="using:PairSync.Desktop.Controls"
+             xmlns:vm="using:PairSync.Desktop.ViewModels"
+             xmlns:res="using:PairSync.Desktop.Resources"
+             x:Class="PairSync.Desktop.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+  <ScrollViewer>
+    <StackPanel Margin="{StaticResource PagePadding}" Spacing="18" MaxWidth="{StaticResource SettingsMaxWidth}"
+                HorizontalAlignment="Left">
+      <TextBlock Classes="h1" Text="{Binding Title}" />
+
+      <Border Name="NoTrayBanner" Classes="banner" IsVisible="{Binding ShowNoTrayBanner}">
+        <TextBlock TextWrapping="Wrap" LineHeight="20.3">
+          <Run Text="{x:Static res:Strings.NoTray_Before}" /><Run FontWeight="Bold" Text="{x:Static res:Strings.NoTray_Strong}" /><Run Text="{x:Static res:Strings.NoTray_After}" />
+        </TextBlock>
+      </Border>
+
+      <StackPanel Spacing="8">
+        <ctl:Rubric Text="{x:Static res:Strings.Settings_WhenClosed}" />
+        <ctl:SegmentedControl Name="CloseBehavior" ItemsSource="{Binding CloseOptions}"
+                              SelectedItem="{Binding SelectedCloseOption}" />
+        <CheckBox Name="Autostart" Classes="switch" Margin="0,4,0,0" IsChecked="{Binding StartWithSystem}"
+                  IsEnabled="{Binding AutostartSupported}">
+          <TextBlock TextWrapping="Wrap">
+            <Run Text="{x:Static res:Strings.Settings_Autostart}" />
+            <Run Foreground="{StaticResource TextMutedBrush}" Text="{x:Static res:Strings.Settings_AutostartHint}" />
+          </TextBlock>
+        </CheckBox>
+        <TextBlock Classes="hint" Text="{x:Static res:Strings.Settings_AutostartUnsupported}"
+                   IsVisible="{Binding !AutostartSupported}" />
+        <TextBlock Classes="hint" Text="{Binding AutostartError}" TextWrapping="Wrap"
+                   IsVisible="{Binding AutostartError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

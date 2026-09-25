@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="WindowTitleFormat" xml:space="preserve">
+    <value>PairSync — {0}</value>
+  </data>
+  <data name="Nav_Overview" xml:space="preserve">
+    <value>Übersicht</value>
+  </data>
+  <data name="Nav_Send" xml:space="preserve">
+    <value>Senden</value>
+  </data>
+  <data name="Nav_Syncs" xml:space="preserve">
+    <value>Syncs</value>
+  </data>
+  <data name="Nav_ClaudeCode" xml:space="preserve">
+    <value>Claude Code</value>
+  </data>
+  <data name="Nav_Devices" xml:space="preserve">
+    <value>Geräte</value>
+  </data>
+  <data name="Nav_Settings" xml:space="preserve">
+    <value>Einstellungen</value>
+  </data>
+  <data name="Title_Send" xml:space="preserve">
+    <value>Dateien senden</value>
+  </data>
+  <data name="Title_Syncs" xml:space="preserve">
+    <value>Sync-Profile</value>
+  </data>
+  <data name="Syncs_ComingLater" xml:space="preserve">
+    <value>Sync-Profile kommen in Phase 3. Bis dahin sendest du Dateien einmalig über „Senden“.</value>
+  </data>
+  <data name="ClaudeCode_ComingLater" xml:space="preserve">
+    <value>Die Übertragung der Claude-Code-Konfiguration zwischen Geräten kommt in Phase 4.</value>
+  </data>
+  <data name="Status_Tray" xml:space="preserve">
+    <value>Läuft. Beim Schließen des Fensters bleibt die App im Tray.</value>
+  </data>
+  <data name="Status_Minimize" xml:space="preserve">
+    <value>Läuft. Beim Schließen des Fensters wird die App minimiert.</value>
+  </data>
+  <data name="Status_Quit" xml:space="preserve">
+    <value>Läuft. Beim Schließen des Fensters wird PairSync beendet.</value>
+  </data>
+  <data name="Quit" xml:space="preserve">
+    <value>PairSync beenden</value>
+  </data>
+  <data name="Settings_WhenClosed" xml:space="preserve">
+    <value>Wenn das Fenster geschlossen wird</value>
+  </data>
+  <data name="Close_Tray" xml:space="preserve">
+    <value>Im Tray weiterlaufen</value>
+  </data>
+  <data name="Close_Minimize" xml:space="preserve">
+    <value>Minimieren</value>
+  </data>
+  <data name="Close_Quit" xml:space="preserve">
+    <value>Beenden</value>
+  </data>
+  <data name="Settings_Autostart" xml:space="preserve">
+    <value>Mit der Desktop-Sitzung starten</value>
+  </data>
+  <data name="Settings_AutostartHint" xml:space="preserve">
+    <value>(öffnet die App im Tray, kein Hintergrunddienst)</value>
+  </data>
+  <data name="Settings_AutostartUnsupported" xml:space="preserve">
+    <value>Auf diesem System nicht verfügbar.</value>
+  </data>
+  <data name="Settings_AutostartFailed" xml:space="preserve">
+    <value>Der Autostart-Eintrag konnte nicht geändert werden: {0}</value>
+  </data>
+  <data name="NoTray_Before" xml:space="preserve">
+    <value>Kein System-Tray gefunden. GNOME zeigt Tray-Symbole nur mit der Erweiterung AppIndicator an. Bis dahin wird PairSync beim Schließen des Fensters </value>
+  </data>
+  <data name="NoTray_Strong" xml:space="preserve">
+    <value>minimiert</value>
+  </data>
+  <data name="NoTray_After" xml:space="preserve">
+    <value>, statt es auszublenden.</value>
+  </data>
+  <data name="Tray_Tooltip" xml:space="preserve">
+    <value>PairSync</value>
+  </data>
+  <data name="Tray_Connected" xml:space="preserve">
+    <value>PairSync · Verbunden</value>
+  </data>
+  <data name="Tray_NotConnected" xml:space="preserve">
+    <value>PairSync · Kein Gerät online</value>
+  </data>
+  <data name="Tray_TransfersNone" xml:space="preserve">
+    <value>Keine Übertragungen</value>
+  </data>
+  <data name="Tray_TransfersOne" xml:space="preserve">
+    <value>1 Übertragung läuft</value>
+  </data>
+  <data name="Tray_TransfersMany" xml:space="preserve">
+    <value>{0} Übertragungen laufen</value>
+  </data>
+  <data name="Tray_Open" xml:space="preserve">
+    <value>Fenster öffnen</value>
+  </data>
+  <data name="Tray_PauseAll" xml:space="preserve">
+    <value>Alle Syncs pausieren</value>
+  </data>
+  <data name="Tray_ShowIncoming" xml:space="preserve">
+    <value>Eingehende Übertragung anzeigen ({0})</value>
+  </data>
+  <data name="Tray_Quit" xml:space="preserve">
+    <value>PairSync beenden — stoppt alle Syncs</value>
+  </data>
+</root>
