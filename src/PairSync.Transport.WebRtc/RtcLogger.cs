@@ -10,6 +10,7 @@ namespace PairSync.Transport.WebRtc;
 /// </summary>
 public static unsafe class RtcLogger
 {
+    private static readonly Lock InitLock = new();
     private static int _initialized;
 
     /// <summary>Receives native log lines; defaults to standard error.</summary>
@@ -17,9 +18,20 @@ public static unsafe class RtcLogger
 
     internal static void EnsureInitialized()
     {
-        if (Interlocked.Exchange(ref _initialized, 1) != 0)
+        if (Volatile.Read(ref _initialized) != 0)
             return;
-        var level = Environment.GetEnvironmentVariable("PAIRSYNC_RTC_LOG")?.ToLowerInvariant() switch
+        lock (InitLock)
+        {
+            if (_initialized != 0)
+                return;
+            // Throws DllNotFoundException without the native library; the next call tries again.
+            RtcNative.rtcInitLogger(ReadLevel(), &OnLog);
+            Volatile.Write(ref _initialized, 1);
+        }
+    }
+
+    private static RtcLogLevel ReadLevel() =>
+        Environment.GetEnvironmentVariable("PAIRSYNC_RTC_LOG")?.ToLowerInvariant() switch
         {
             "none" => RtcLogLevel.None,
             "error" => RtcLogLevel.Error,
@@ -28,8 +40,6 @@ public static unsafe class RtcLogger
             "verbose" => RtcLogLevel.Verbose,
             _ => RtcLogLevel.Warning,
         };
-        RtcNative.rtcInitLogger(level, &OnLog);
-    }
 
     private static readonly Lock RepeatLock = new();
     private static string? _lastLine;

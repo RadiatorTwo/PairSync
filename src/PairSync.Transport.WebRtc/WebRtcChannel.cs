@@ -16,14 +16,17 @@ internal sealed class WebRtcChannel : IMessageChannel
     private TaskCompletionSource _bufferLow = NewSignal();
     private volatile bool _open;
     private volatile bool _closed;
+    private int _deleted;
+    private int _openSignaled;
     private string? _error;
 
-    public unsafe WebRtcChannel(WebRtcSession session, int dc, string label, TransportOptions options)
+    public unsafe WebRtcChannel(WebRtcSession session, int dc, string label, bool isRemote, TransportOptions options)
     {
         _session = session;
         _options = options;
         Id = dc;
         Label = label;
+        IsRemote = isRemote;
         _self = GCHandle.Alloc(this);
 
         RtcNative.rtcSetUserPointer(dc, GCHandle.ToIntPtr(_self));
@@ -42,6 +45,9 @@ internal sealed class WebRtcChannel : IMessageChannel
     public int Id { get; }
 
     public string Label { get; }
+
+    /// <summary>True if the other side created the channel.</summary>
+    public bool IsRemote { get; }
 
     public bool IsOpen => _open && !_closed;
 
@@ -90,8 +96,11 @@ internal sealed class WebRtcChannel : IMessageChannel
             return RtcNative.rtcSendMessage(Id, p, message.Length);
     }
 
+    /// <summary>Closes the channel on both sides and releases it. Blocks on in-flight callbacks; never call from one.</summary>
     internal void Delete()
     {
+        if (Interlocked.Exchange(ref _deleted, 1) != 0)
+            return;
         MarkClosed(null);
         RtcNative.rtcDelete(Id);
         if (_self.IsAllocated)
@@ -108,8 +117,17 @@ internal sealed class WebRtcChannel : IMessageChannel
         Interlocked.Exchange(ref _bufferLow, NewSignal()).TrySetResult();
     }
 
+    private void OnRemoteClose(string? error)
+    {
+        MarkClosed(error);
+        _session.OnChannelClosed(this);
+    }
+
     private void MarkOpen()
     {
+        // Both the open callback and the rtcIsOpen check in the constructor may get here.
+        if (Interlocked.Exchange(ref _openSignaled, 1) != 0)
+            return;
         _open = true;
         _session.OnChannelOpen(this);
     }
@@ -131,11 +149,11 @@ internal sealed class WebRtcChannel : IMessageChannel
     private static void OnOpen(int id, nint ptr) => From(ptr)?.MarkOpen();
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
-    private static void OnClosed(int id, nint ptr) => From(ptr)?.MarkClosed(null);
+    private static void OnClosed(int id, nint ptr) => From(ptr)?.OnRemoteClose(null);
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
     private static unsafe void OnError(int id, byte* error, nint ptr) =>
-        From(ptr)?.MarkClosed(RtcNative.FromUtf8Z(error) ?? "unknown error");
+        From(ptr)?.OnRemoteClose(RtcNative.FromUtf8Z(error) ?? "unknown error");
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
     private static void OnBufferedAmountLow(int id, nint ptr)

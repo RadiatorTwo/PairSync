@@ -1,0 +1,16 @@
+diff --git a/src/agent.h b/src/agent.h
+--- a/src/agent.h
++++ b/src/agent.h
+@@ -40,7 +40,11 @@
+ // ICE Patiently Awaiting Connectivity timer
+ // RFC 8863: The RECOMMENDED duration for the PAC timer is equal to the agent's connectivity check
+ // transaction timeout, including all retransmissions.
+-#define ICE_PAC_TIMEOUT 39500 // msecs
++// PairSync: codes are exchanged by hand, so the answering side may wait minutes until the offering
++// side applies the answer and starts its checks (failed pairs are revived by triggered checks).
++// RFC 8863 allows a longer timer; PairSync enforces its own, shorter deadlines where it can tell
++// that both sides are ready.
++#define ICE_PAC_TIMEOUT 600000 // msecs
+ 
+ // Consent freshness
+ // RFC 7675: Consent expires after 30 seconds.
