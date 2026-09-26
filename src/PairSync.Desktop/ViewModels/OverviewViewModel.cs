@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using PairSync.Application;
 using PairSync.Application.Internet;
 using PairSync.Application.Presence;
+using PairSync.Application.Sync;
 using PairSync.Application.Transfers;
 using PairSync.Desktop.Resources;
 using PairSync.Domain;
@@ -148,6 +149,9 @@ public sealed partial class TransferRowViewModel(Guid id, TransferService transf
     }
 }
 
+/// <summary>A sync profile that is exchanging files right now: "Projects ⇄ office-pc".</summary>
+public sealed record SyncRowViewModel(string Title, string Meta, double Fraction);
+
 /// <summary>An entry under "Recently completed".</summary>
 public sealed record RecentTransferViewModel(string Title, string Details, string Outcome, bool IsProblem, string When);
 
@@ -190,6 +194,7 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
         _core.Presence.Changed += QueueRefresh;
         _core.Transfers.Changed += QueueRefresh;
         _core.Devices.Changed += QueueRefresh;
+        _core.Sync.Changed += QueueRefresh;
         _latency.Changed += QueueRefresh;
         // Progress while something runs; "last seen" texts and pings otherwise.
         _timer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => OnTick());
@@ -201,11 +206,13 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
 
     public ObservableCollection<TransferRowViewModel> ActiveTransfers { get; } = [];
 
+    public ObservableCollection<SyncRowViewModel> ActiveSyncs { get; } = [];
+
     public ObservableCollection<RecentTransferViewModel> RecentTransfers { get; } = [];
 
     public bool HasDevices => Devices.Count > 0;
 
-    public bool HasActiveTransfers => ActiveTransfers.Count > 0;
+    public bool HasActiveTransfers => ActiveTransfers.Count > 0 || ActiveSyncs.Count > 0;
 
     public bool HasRecentTransfers => RecentTransfers.Count > 0;
 
@@ -256,9 +263,11 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
         {
             var jobs = await _core.Transfers.GetJobsAsync(CancellationToken.None);
             var history = await _core.Transfers.GetHistoryAsync(8, CancellationToken.None);
+            var syncs = await _core.Sync.GetProfilesAsync(CancellationToken.None);
+            var rounds = await _core.Sync.GetRecentRoundsAsync(8, CancellationToken.None);
             if (_disposed)
                 return;
-            Apply(_core.Presence.Devices, jobs, history);
+            Apply(_core.Presence.Devices, jobs, history, syncs, rounds);
         }
         catch (Exception e) when (e is not OutOfMemoryException && !_disposed)
         {
@@ -266,7 +275,9 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
         }
     }
 
-    private void Apply(IReadOnlyList<NearbyDevice> devices, IReadOnlyList<JobView> jobs, IReadOnlyList<HistoryEntry> history)
+    private void Apply(
+        IReadOnlyList<NearbyDevice> devices, IReadOnlyList<JobView> jobs, IReadOnlyList<HistoryEntry> history,
+        IReadOnlyList<SyncProfileView> syncs, IReadOnlyList<(SyncActivity Activity, string ProfileName)> rounds)
     {
         var now = _time.GetUtcNow().UtcDateTime;
         var culture = CultureInfo.CurrentCulture;
@@ -299,15 +310,22 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
         }
         foreach (var gone in rows.Values)
             ActiveTransfers.Remove(gone);
-        _anyRunning = jobs.Any(j => j.State == JobState.Running);
+        ActiveSyncs.Clear();
+        foreach (var sync in syncs.Where(s => s.Status == SyncStatus.Syncing))
+        {
+            var total = sync.BytesDone + sync.BytesLeft;
+            ActiveSyncs.Add(new SyncRowViewModel(
+                string.Format(culture, Strings.Overview_SyncRow, sync.Profile.Name, sync.PeerName),
+                string.Format(culture, Strings.SyncStatus_Syncing, Format.Files(sync.FilesLeft),
+                    sync.BytesPerSecond > 0 ? Format.Rate(sync.BytesPerSecond) : Format.Bytes(sync.BytesLeft)),
+                total > 0 ? (double)sync.BytesDone / total : 0));
+        }
+        _anyRunning = jobs.Any(j => j.State == JobState.Running) || ActiveSyncs.Count > 0;
 
         RecentTransfers.Clear();
-        foreach (var entry in history)
-        {
-            var arrow = entry.Direction == TransferDirection.Send ? "→ " : "← ";
-            RecentTransfers.Add(new RecentTransferViewModel(
+        var recent = history.Select(entry => (entry.FinishedAtUtc, Row: new RecentTransferViewModel(
                 entry.Title,
-                $"{arrow}{entry.PeerName} · {Format.Files(entry.FileCount)} · {Format.Bytes(entry.TotalBytes)}",
+                $"{(entry.Direction == TransferDirection.Send ? "→ " : "← ")}{entry.PeerName} · {Format.Files(entry.FileCount)} · {Format.Bytes(entry.TotalBytes)}",
                 entry.Outcome switch
                 {
                     HistoryOutcome.Completed => Strings.Outcome_Completed,
@@ -316,8 +334,16 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
                     _ => Strings.Outcome_Failed,
                 },
                 entry.Outcome != HistoryOutcome.Completed,
-                Format.Ago(entry.FinishedAtUtc, now)));
-        }
+                Format.Ago(entry.FinishedAtUtc, now))))
+            .Concat(rounds.Select(round => (round.Activity.AtUtc, Row: new RecentTransferViewModel(
+                round.ProfileName,
+                $"⇄ {Format.Files(round.Activity.Files)} · {Format.Bytes(round.Activity.Bytes)}",
+                Strings.Outcome_Completed,
+                false,
+                Format.Ago(round.Activity.AtUtc, now)))))
+            .OrderByDescending(r => r.Item1).Take(8);
+        foreach (var (_, row) in recent)
+            RecentTransfers.Add(row);
 
         OnPropertyChanged(nameof(HasDevices));
         OnPropertyChanged(nameof(HasActiveTransfers));
@@ -411,6 +437,7 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
         _core.Presence.Changed -= QueueRefresh;
         _core.Transfers.Changed -= QueueRefresh;
         _core.Devices.Changed -= QueueRefresh;
+        _core.Sync.Changed -= QueueRefresh;
         _core.Internet.Changed -= QueueRefresh;
         _latency.Changed -= QueueRefresh;
     }

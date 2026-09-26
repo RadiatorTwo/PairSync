@@ -7,6 +7,7 @@ using PairSync.Application.Internet;
 using PairSync.Application.Pairing;
 using PairSync.Application.Presence;
 using PairSync.Application.Transfers;
+using PairSync.Application.Sync;
 using PairSync.Desktop;
 using PairSync.Desktop.Platform;
 using PairSync.Desktop.ViewModels;
@@ -98,6 +99,7 @@ public sealed class TwoCores : IAsyncDisposable
                 PingInterval = TimeSpan.FromMilliseconds(500),
                 ConnectTimeout = TimeSpan.FromSeconds(15),
             });
+            services.AddSingleton(new SyncOptions { WatcherSettle = TimeSpan.FromMilliseconds(300), RetryInterval = TimeSpan.FromSeconds(1) });
         });
         core.Settings.Update(s => s with { DeviceName = name, StunServers = stunServers ?? [] });
         var desktop = new FakeDesktop();

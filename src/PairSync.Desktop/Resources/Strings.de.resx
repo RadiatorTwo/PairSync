@@ -865,4 +865,229 @@
   <data name="Pair_CancelInvitation" xml:space="preserve">
     <value>Einladung abbrechen</value>
   </data>
+  <data name="Syncs_PauseAll" xml:space="preserve">
+    <value>Alle pausieren</value>
+  </data>
+  <data name="Syncs_ResumeAll" xml:space="preserve">
+    <value>Alle fortsetzen</value>
+  </data>
+  <data name="Syncs_New" xml:space="preserve">
+    <value>Neues Profil</value>
+  </data>
+  <data name="Syncs_None" xml:space="preserve">
+    <value>Noch keine Sync-Profile. Lege eines an, um einen Ordner mit einem anderen Gerät abzugleichen.</value>
+  </data>
+  <data name="Syncs_ColProfile" xml:space="preserve">
+    <value>Profil</value>
+  </data>
+  <data name="Syncs_ColFolder" xml:space="preserve">
+    <value>Lokaler Ordner</value>
+  </data>
+  <data name="Syncs_ColDevice" xml:space="preserve">
+    <value>Gerät</value>
+  </data>
+  <data name="Syncs_ColDirection" xml:space="preserve">
+    <value>Richtung</value>
+  </data>
+  <data name="Syncs_ColStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Direction_TwoWay" xml:space="preserve">
+    <value>Beide Richtungen</value>
+  </data>
+  <data name="Direction_SendOnly" xml:space="preserve">
+    <value>Nur senden</value>
+  </data>
+  <data name="Direction_ReceiveOnly" xml:space="preserve">
+    <value>Nur empfangen</value>
+  </data>
+  <data name="Mode_Automatic" xml:space="preserve">
+    <value>Automatisch</value>
+  </data>
+  <data name="Mode_Manual" xml:space="preserve">
+    <value>Manuell</value>
+  </data>
+  <data name="SyncStatus_UpToDate" xml:space="preserve">
+    <value>Aktuell</value>
+  </data>
+  <data name="SyncStatus_Scanning" xml:space="preserve">
+    <value>Wird geprüft…</value>
+  </data>
+  <data name="SyncStatus_Syncing" xml:space="preserve">
+    <value>Synchronisiert {0} · {1}</value>
+  </data>
+  <data name="SyncStatus_Waiting" xml:space="preserve">
+    <value>Wartet auf {0}</value>
+  </data>
+  <data name="SyncStatus_Paused" xml:space="preserve">
+    <value>Pausiert</value>
+  </data>
+  <data name="SyncStatus_Offer" xml:space="preserve">
+    <value>Wartet auf Zustimmung von {0}</value>
+  </data>
+  <data name="SyncStatus_Declined" xml:space="preserve">
+    <value>Von {0} abgelehnt</value>
+  </data>
+  <data name="SyncStatus_Detached" xml:space="preserve">
+    <value>Getrennt</value>
+  </data>
+  <data name="SyncStatus_ConflictOne" xml:space="preserve">
+    <value>1 Konflikt</value>
+  </data>
+  <data name="SyncStatus_ConflictMany" xml:space="preserve">
+    <value>{0} Konflikte</value>
+  </data>
+  <data name="Syncs_Settings" xml:space="preserve">
+    <value>Einstellungen</value>
+  </data>
+  <data name="Syncs_Direction" xml:space="preserve">
+    <value>Richtung</value>
+  </data>
+  <data name="Syncs_Mode" xml:space="preserve">
+    <value>Modus</value>
+  </data>
+  <data name="Syncs_SyncNow" xml:space="preserve">
+    <value>Jetzt synchronisieren</value>
+  </data>
+  <data name="Syncs_Excludes" xml:space="preserve">
+    <value>Ausschlussmuster</value>
+  </data>
+  <data name="Syncs_ExcludesHint" xml:space="preserve">
+    <value>Ein Muster pro Zeile wie bei .gitignore: *.tmp, node_modules/, /build</value>
+  </data>
+  <data name="Syncs_Rights" xml:space="preserve">
+    <value>{0} darf</value>
+  </data>
+  <data name="Right_Read" xml:space="preserve">
+    <value>Lesen</value>
+  </data>
+  <data name="Right_Write" xml:space="preserve">
+    <value>Schreiben</value>
+  </data>
+  <data name="Right_Delete" xml:space="preserve">
+    <value>Löschen</value>
+  </data>
+  <data name="Right_ReadLong" xml:space="preserve">
+    <value>Lesen: Dateien aus diesem Ordner holen</value>
+  </data>
+  <data name="Right_WriteLong" xml:space="preserve">
+    <value>Schreiben: Dateien hier anlegen und ändern</value>
+  </data>
+  <data name="Right_DeleteLong" xml:space="preserve">
+    <value>Löschen: Dateien hier löschen (sie bleiben 30 Tage im Papierkorb)</value>
+  </data>
+  <data name="Syncs_Note" xml:space="preserve">
+    <value>Änderungen findet ein Ordner-Watcher, dazu alle 30 Minuten ein vollständiger Rescan. Gelöschte und ersetzte Dateien bleiben 30 Tage in .pairsync/trash.</value>
+  </data>
+  <data name="Syncs_OpenFolder" xml:space="preserve">
+    <value>Ordner öffnen</value>
+  </data>
+  <data name="Syncs_Remove" xml:space="preserve">
+    <value>Profil entfernen</value>
+  </data>
+  <data name="Syncs_Pause" xml:space="preserve">
+    <value>Pausieren</value>
+  </data>
+  <data name="Syncs_Resume" xml:space="preserve">
+    <value>Fortsetzen</value>
+  </data>
+  <data name="Syncs_Conflicts" xml:space="preserve">
+    <value>Konflikte</value>
+  </data>
+  <data name="Syncs_NoConflicts" xml:space="preserve">
+    <value>Keine Konflikte.</value>
+  </data>
+  <data name="Syncs_Resolve" xml:space="preserve">
+    <value>Lösen</value>
+  </data>
+  <data name="Syncs_ConflictCause" xml:space="preserve">
+    <value>auf beiden Geräten geändert</value>
+  </data>
+  <data name="Syncs_ConflictNote" xml:space="preserve">
+    <value>Standard: beide Kopien behalten. Der neueste Zeitstempel gewinnt nie automatisch.</value>
+  </data>
+  <data name="Syncs_Activity" xml:space="preserve">
+    <value>Aktivität</value>
+  </data>
+  <data name="Syncs_NoActivity" xml:space="preserve">
+    <value>Noch nichts.</value>
+  </data>
+  <data name="Syncs_RemoveTitle" xml:space="preserve">
+    <value>{0} entfernen?</value>
+  </data>
+  <data name="Syncs_RemoveText" xml:space="preserve">
+    <value>Das Profil endet auf beiden Geräten. Die Dateien bleiben in beiden Ordnern.</value>
+  </data>
+  <data name="NewProfile_Title" xml:space="preserve">
+    <value>Neues Sync-Profil</value>
+  </data>
+  <data name="NewProfile_Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="NewProfile_Folder" xml:space="preserve">
+    <value>Lokaler Ordner</value>
+  </data>
+  <data name="NewProfile_Browse" xml:space="preserve">
+    <value>Auswählen…</value>
+  </data>
+  <data name="NewProfile_Device" xml:space="preserve">
+    <value>Gerät</value>
+  </data>
+  <data name="NewProfile_NoDevices" xml:space="preserve">
+    <value>Kopple zuerst ein Gerät.</value>
+  </data>
+  <data name="NewProfile_Create" xml:space="preserve">
+    <value>Dem Gerät anbieten</value>
+  </data>
+  <data name="NewProfile_Hint" xml:space="preserve">
+    <value>Das andere Gerät bestätigt das Angebot und wählt seinen eigenen Ordner. Ist es gerade offline, kann es später zustimmen.</value>
+  </data>
+  <data name="Offer_Title" xml:space="preserve">
+    <value>{0} möchte „{1}“ synchronisieren</value>
+  </data>
+  <data name="Offer_Folder" xml:space="preserve">
+    <value>Ordner auf diesem Gerät</value>
+  </data>
+  <data name="Offer_NotEmpty" xml:space="preserve">
+    <value>Der Ordner ist nicht leer: Seine Dateien werden mit denen des anderen Geräts zusammengeführt. Unterschiedliche Dateien mit gleichem Namen bleiben als Konfliktkopien erhalten.</value>
+  </data>
+  <data name="Offer_Accept" xml:space="preserve">
+    <value>Annehmen</value>
+  </data>
+  <data name="Offer_Decline" xml:space="preserve">
+    <value>Ablehnen</value>
+  </data>
+  <data name="Conflict_Rubric" xml:space="preserve">
+    <value>Konflikt · {0}</value>
+  </data>
+  <data name="Conflict_Title" xml:space="preserve">
+    <value>{0} wurde auf beiden Geräten geändert</value>
+  </data>
+  <data name="Conflict_Note" xml:space="preserve">
+    <value>Beide Änderungen gingen von derselben Version aus. Die Uhr keines Geräts entscheidet über einen Gewinner.</value>
+  </data>
+  <data name="Conflict_KeepThis" xml:space="preserve">
+    <value>Diese behalten</value>
+  </data>
+  <data name="Conflict_KeepOther" xml:space="preserve">
+    <value>Die von {0} behalten</value>
+  </data>
+  <data name="Conflict_KeepBoth" xml:space="preserve">
+    <value>Beide behalten</value>
+  </data>
+  <data name="Conflict_ShowFolder" xml:space="preserve">
+    <value>Im Ordner zeigen</value>
+  </data>
+  <data name="Conflict_ThisDevice" xml:space="preserve">
+    <value>Dieses Gerät</value>
+  </data>
+  <data name="Conflict_Edited" xml:space="preserve">
+    <value>Bearbeitet {0}</value>
+  </data>
+  <data name="Overview_SyncRow" xml:space="preserve">
+    <value>{0} ⇄ {1}</value>
+  </data>
+  <data name="Overview_SyncRound" xml:space="preserve">
+    <value>Abgeglichen mit {0}</value>
+  </data>
 </root>

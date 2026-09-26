@@ -85,6 +85,7 @@ internal sealed class TrayController : IDisposable
         try
         {
             await _core.Transfers.PauseAllAsync();
+            await _core.Sync.SetAllPausedAsync(true, CancellationToken.None);
         }
         catch (Exception e) when (e is not OutOfMemoryException)
         {

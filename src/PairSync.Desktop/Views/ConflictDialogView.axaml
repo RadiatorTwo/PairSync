@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="using:PairSync.Desktop.Controls"
+             xmlns:vm="using:PairSync.Desktop.ViewModels"
+             xmlns:res="using:PairSync.Desktop.Resources"
+             x:Class="PairSync.Desktop.Views.ConflictDialogView"
+             x:DataType="vm:ConflictDialogViewModel">
+  <StackPanel Spacing="16" MaxWidth="620">
+    <StackPanel Spacing="6">
+      <ctl:Rubric Text="{Binding Rubric}" />
+      <TextBlock Classes="h2" TextWrapping="Wrap" Text="{Binding Title}" />
+    </StackPanel>
+    <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+      <Border Classes="panel">
+        <StackPanel Spacing="4">
+          <TextBlock FontWeight="Medium" Text="{Binding Local.Device}" />
+          <TextBlock Classes="meta" Text="{Binding Local.Edited}" />
+          <TextBlock Classes="mono" FontSize="12" Text="{Binding Local.Size}" />
+          <TextBlock Classes="mono accent" FontSize="12" Text="{Binding Local.Hash}" />
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="1" Classes="panel">
+        <StackPanel Spacing="4">
+          <TextBlock FontWeight="Medium" Text="{Binding Remote.Device}" />
+          <TextBlock Classes="meta" Text="{Binding Remote.Edited}" />
+          <TextBlock Classes="mono" FontSize="12" Text="{Binding Remote.Size}" />
+          <TextBlock Classes="mono accent" FontSize="12" Text="{Binding Remote.Hash}" />
+        </StackPanel>
+      </Border>
+    </Grid>
+    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Conflict_Note}" />
+    <TextBlock Classes="problem" FontSize="13" TextWrapping="Wrap" Text="{Binding Error}"
+               IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+    <DockPanel>
+      <Button DockPanel.Dock="Left" Classes="link" FontSize="13" VerticalAlignment="Center" Content="{x:Static res:Strings.Conflict_ShowFolder}"
+              Command="{Binding ShowFolderCommand}" />
+      <WrapPanel HorizontalAlignment="Right" ItemSpacing="10" LineSpacing="8">
+        <Button Classes="quiet" Content="{x:Static res:Strings.Dialog_Cancel}" Command="{Binding CancelCommand}" />
+        <Button Name="KeepThis" Content="{x:Static res:Strings.Conflict_KeepThis}" Command="{Binding KeepThisCommand}" />
+        <Button Name="KeepOther" Content="{Binding KeepOtherLabel}" Command="{Binding KeepOtherCommand}" />
+        <Button Name="KeepBoth" Classes="primary compact" Content="{x:Static res:Strings.Conflict_KeepBoth}" Command="{Binding KeepBothCommand}" />
+      </WrapPanel>
+    </DockPanel>
+  </StackPanel>
+</UserControl>

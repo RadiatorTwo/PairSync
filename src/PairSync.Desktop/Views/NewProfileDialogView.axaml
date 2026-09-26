@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="using:PairSync.Desktop.Controls"
+             xmlns:vm="using:PairSync.Desktop.ViewModels"
+             xmlns:res="using:PairSync.Desktop.Resources"
+             x:Class="PairSync.Desktop.Views.NewProfileDialogView"
+             x:DataType="vm:NewProfileDialogViewModel">
+  <StackPanel Spacing="14">
+    <TextBlock Classes="h2" Text="{x:Static res:Strings.NewProfile_Title}" />
+    <StackPanel Spacing="6">
+      <TextBlock Classes="meta" Text="{x:Static res:Strings.NewProfile_Name}" />
+      <TextBox Name="ProfileName" MaxLength="128" Text="{Binding Name}" />
+    </StackPanel>
+    <StackPanel Spacing="6">
+      <TextBlock Classes="meta" Text="{x:Static res:Strings.NewProfile_Folder}" />
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Margin="8,0,0,0" Content="{x:Static res:Strings.NewProfile_Browse}" Command="{Binding BrowseCommand}" />
+        <TextBox Name="LocalPath" Classes="mono" FontSize="12" Text="{Binding LocalPath}" />
+      </DockPanel>
+    </StackPanel>
+    <StackPanel Spacing="6">
+      <TextBlock Classes="meta" Text="{x:Static res:Strings.NewProfile_Device}" />
+      <ctl:SegmentedControl Name="Device" ItemsSource="{Binding Devices}" SelectedItem="{Binding Device}" IsVisible="{Binding HasDevices}" />
+      <TextBlock Classes="muted" Text="{x:Static res:Strings.NewProfile_NoDevices}" IsVisible="{Binding !HasDevices}" />
+    </StackPanel>
+    <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+      <StackPanel Spacing="6">
+        <TextBlock Classes="meta" Text="{x:Static res:Strings.Syncs_Direction}" />
+        <ctl:SegmentedControl ItemsSource="{Binding Directions}" SelectedItem="{Binding Direction}" />
+      </StackPanel>
+      <StackPanel Grid.Column="1" Spacing="6">
+        <TextBlock Classes="meta" Text="{x:Static res:Strings.Syncs_Mode}" />
+        <ctl:SegmentedControl ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}" />
+      </StackPanel>
+    </Grid>
+    <StackPanel Spacing="6">
+      <TextBlock Classes="meta" Text="{x:Static res:Strings.Syncs_Excludes}" />
+      <TextBox Classes="mono" FontSize="12" Height="96" AcceptsReturn="True" Text="{Binding Excludes}" />
+      <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Syncs_ExcludesHint}" />
+    </StackPanel>
+    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.NewProfile_Hint}" />
+    <TextBlock Classes="problem" FontSize="13" TextWrapping="Wrap" Text="{Binding Error}"
+               IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+      <Button Content="{x:Static res:Strings.Dialog_Cancel}" Command="{Binding CancelCommand}" />
+      <Button Name="Create" Classes="primary compact" Content="{x:Static res:Strings.NewProfile_Create}" Command="{Binding CreateCommand}" />
+    </StackPanel>
+  </StackPanel>
+</UserControl>

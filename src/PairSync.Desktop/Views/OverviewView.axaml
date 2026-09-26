@@ -104,6 +104,18 @@
           <TextBlock DockPanel.Dock="Top" Classes="muted" Text="{x:Static res:Strings.Overview_NoActive}"
                      IsVisible="{Binding !HasActiveTransfers}" />
           <ScrollViewer>
+            <StackPanel Spacing="14">
+            <ItemsControl Name="ActiveSyncs" ItemsSource="{Binding ActiveSyncs}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:SyncRowViewModel">
+                  <StackPanel Spacing="8" Margin="0,0,0,14">
+                    <TextBlock FontSize="15" FontWeight="Bold" TextTrimming="CharacterEllipsis" Text="{Binding Title}" />
+                    <ProgressBar Value="{Binding Fraction}" />
+                    <TextBlock Classes="meta" TextTrimming="CharacterEllipsis" Text="{Binding Meta}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
             <ItemsControl Name="ActiveTransfers" Classes="separated" ItemsSource="{Binding ActiveTransfers}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:TransferRowViewModel">
@@ -131,6 +143,7 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            </StackPanel>
           </ScrollViewer>
         </DockPanel>
       </Border>

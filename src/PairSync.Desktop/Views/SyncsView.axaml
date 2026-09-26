@@ -1,0 +1,130 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="using:PairSync.Desktop.Controls"
+             xmlns:vm="using:PairSync.Desktop.ViewModels"
+             xmlns:res="using:PairSync.Desktop.Resources"
+             x:Class="PairSync.Desktop.Views.SyncsView"
+             x:DataType="vm:SyncsViewModel">
+  <Grid Margin="{StaticResource PagePadding}" RowDefinitions="Auto,Auto,*" RowSpacing="18">
+    <DockPanel>
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" VerticalAlignment="Bottom">
+        <Button Name="PauseAll" Content="{Binding PauseAllLabel}" Command="{Binding PauseAllCommand}" IsVisible="{Binding HasProfiles}" />
+        <Button Name="NewProfile" Classes="primary compact" Content="{x:Static res:Strings.Syncs_New}" Command="{Binding NewProfileCommand}" />
+      </StackPanel>
+      <TextBlock Classes="h1" Text="{Binding Title}" />
+    </DockPanel>
+
+    <!-- Profile table: Profile / Local folder / Device / Direction / Status -->
+    <StackPanel Grid.Row="1" Spacing="6">
+      <TextBlock Classes="muted" TextWrapping="Wrap" Text="{x:Static res:Strings.Syncs_None}" IsVisible="{Binding !HasProfiles}" />
+      <Grid ColumnDefinitions="1.1*,1.6*,1*,1*,1.1*" ColumnSpacing="12" Margin="10,0" IsVisible="{Binding HasProfiles}">
+        <ctl:Rubric Classes="head" Text="{x:Static res:Strings.Syncs_ColProfile}" />
+        <ctl:Rubric Grid.Column="1" Classes="head" Text="{x:Static res:Strings.Syncs_ColFolder}" />
+        <ctl:Rubric Grid.Column="2" Classes="head" Text="{x:Static res:Strings.Syncs_ColDevice}" />
+        <ctl:Rubric Grid.Column="3" Classes="head" Text="{x:Static res:Strings.Syncs_ColDirection}" />
+        <ctl:Rubric Grid.Column="4" Classes="head" Text="{x:Static res:Strings.Syncs_ColStatus}" />
+      </Grid>
+      <ListBox Name="ProfileTable" ItemsSource="{Binding Profiles}" SelectedItem="{Binding Selected}" MaxHeight="220"
+               ItemContainerTheme="{StaticResource NavItem}" Background="Transparent" IsVisible="{Binding HasProfiles}">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:SyncProfileRowViewModel">
+            <Grid ColumnDefinitions="1.1*,1.6*,1*,1*,1.1*" ColumnSpacing="12">
+              <TextBlock FontWeight="Medium" TextTrimming="CharacterEllipsis" Text="{Binding Name}" />
+              <TextBlock Grid.Column="1" Classes="mono" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                         Text="{Binding Folder}" ToolTip.Tip="{Binding Folder}" />
+              <TextBlock Grid.Column="2" Classes="mono" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding Device}" />
+              <TextBlock Grid.Column="3" TextTrimming="CharacterEllipsis" Text="{Binding Direction}" />
+              <TextBlock Grid.Column="4" TextTrimming="CharacterEllipsis" Text="{Binding Status}" ToolTip.Tip="{Binding Status}"
+                         Classes.problem="{Binding IsHighlighted}" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <TextBlock Classes="problem" FontSize="13" TextWrapping="Wrap" Text="{Binding Error}"
+                 IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+    </StackPanel>
+
+    <!-- Details of the selected profile -->
+    <Grid Grid.Row="2" ColumnDefinitions="1*,1*" ColumnSpacing="18" IsVisible="{Binding HasSelection}">
+      <Border Classes="panel">
+        <ScrollViewer>
+          <StackPanel Spacing="14">
+            <ctl:Rubric Text="{x:Static res:Strings.Syncs_Settings}" />
+            <Border Classes="banner warning" IsVisible="{Binding ProblemText, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <TextBlock TextWrapping="Wrap" Text="{Binding ProblemText}" />
+            </Border>
+            <StackPanel Spacing="6" IsEnabled="{Binding IsActive}">
+              <TextBlock Classes="meta" Text="{x:Static res:Strings.Syncs_Direction}" />
+              <ctl:SegmentedControl Name="Direction" ItemsSource="{Binding Directions}" SelectedItem="{Binding SelectedDirection}" />
+            </StackPanel>
+            <StackPanel Spacing="6" IsEnabled="{Binding IsActive}">
+              <TextBlock Classes="meta" Text="{x:Static res:Strings.Syncs_Mode}" />
+              <DockPanel>
+                <Button DockPanel.Dock="Right" Name="SyncNow" Margin="10,0,0,0" Content="{x:Static res:Strings.Syncs_SyncNow}" Command="{Binding SyncNowCommand}" />
+                <ctl:SegmentedControl Name="Mode" ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}" />
+              </DockPanel>
+            </StackPanel>
+            <StackPanel Spacing="6" IsEnabled="{Binding IsActive}">
+              <TextBlock Classes="meta" Text="{x:Static res:Strings.Syncs_Excludes}" />
+              <TextBox Name="Excludes" Classes="mono" FontSize="12" Height="96" AcceptsReturn="True" TextWrapping="NoWrap"
+                       Text="{Binding Excludes, UpdateSourceTrigger=LostFocus}" />
+              <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Syncs_ExcludesHint}" />
+            </StackPanel>
+            <StackPanel Spacing="6" IsEnabled="{Binding IsActive}">
+              <TextBlock Classes="meta" Text="{Binding RightsTitle}" />
+              <WrapPanel ItemSpacing="14" LineSpacing="6">
+                <CheckBox Name="AllowRead" IsChecked="{Binding AllowRead}" Content="{x:Static res:Strings.Right_Read}" ToolTip.Tip="{x:Static res:Strings.Right_ReadLong}" />
+                <CheckBox Name="AllowWrite" IsChecked="{Binding AllowWrite}" Content="{x:Static res:Strings.Right_Write}" ToolTip.Tip="{x:Static res:Strings.Right_WriteLong}" />
+                <CheckBox Name="AllowDelete" IsChecked="{Binding AllowDelete}" Content="{x:Static res:Strings.Right_Delete}" ToolTip.Tip="{x:Static res:Strings.Right_DeleteLong}" />
+              </WrapPanel>
+            </StackPanel>
+            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Syncs_Note}" />
+            <WrapPanel ItemSpacing="8" LineSpacing="6">
+              <Button Content="{Binding PauseLabel}" Command="{Binding TogglePauseCommand}" IsEnabled="{Binding IsActive}" />
+              <Button Content="{x:Static res:Strings.Syncs_OpenFolder}" Command="{Binding OpenFolderCommand}" />
+              <Button Name="RemoveProfile" Classes="quiet" Content="{x:Static res:Strings.Syncs_Remove}" Command="{Binding RemoveCommand}" />
+            </WrapPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+
+      <Border Grid.Column="1" Classes="panel">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Bottom" Classes="hint" TextWrapping="Wrap" Margin="0,12,0,0" Text="{x:Static res:Strings.Syncs_ConflictNote}" />
+          <StackPanel DockPanel.Dock="Top" Spacing="10">
+            <ctl:Rubric Text="{x:Static res:Strings.Syncs_Conflicts}" />
+            <TextBlock Classes="muted" Text="{x:Static res:Strings.Syncs_NoConflicts}" IsVisible="{Binding !HasConflicts}" />
+            <ItemsControl Name="Conflicts" ItemsSource="{Binding Conflicts}" IsVisible="{Binding HasConflicts}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:SyncConflictRowViewModel">
+                  <DockPanel Margin="0,0,0,8">
+                    <Button DockPanel.Dock="Right" Classes="link" FontSize="13" VerticalAlignment="Center"
+                            Content="{x:Static res:Strings.Syncs_Resolve}" Command="{Binding ResolveCommand}" />
+                    <StackPanel>
+                      <TextBlock Classes="mono" FontSize="13" TextTrimming="CharacterEllipsis" Text="{Binding Path}" />
+                      <TextBlock Classes="meta" Text="{Binding Cause}" />
+                    </StackPanel>
+                  </DockPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <ctl:Rubric Margin="0,8,0,0" Text="{x:Static res:Strings.Syncs_Activity}" />
+            <TextBlock Classes="muted" Text="{x:Static res:Strings.Syncs_NoActivity}" IsVisible="{Binding !HasActivity}" />
+          </StackPanel>
+          <ScrollViewer>
+            <ItemsControl Name="Activity" ItemsSource="{Binding Activity}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:SyncActivityRowViewModel">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,0,0,6">
+                    <TextBlock FontSize="13" TextWrapping="Wrap" Text="{Binding Text}" Classes.problem="{Binding IsProblem}" />
+                    <TextBlock Grid.Column="1" Classes="meta" Text="{Binding When}" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

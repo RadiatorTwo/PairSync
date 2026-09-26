@@ -871,4 +871,229 @@
   <data name="Pair_CancelInvitation" xml:space="preserve">
     <value>Cancel invitation</value>
   </data>
+  <data name="Syncs_PauseAll" xml:space="preserve">
+    <value>Pause all</value>
+  </data>
+  <data name="Syncs_ResumeAll" xml:space="preserve">
+    <value>Resume all</value>
+  </data>
+  <data name="Syncs_New" xml:space="preserve">
+    <value>New profile</value>
+  </data>
+  <data name="Syncs_None" xml:space="preserve">
+    <value>No sync profiles yet. Create one to keep a folder in sync with another device.</value>
+  </data>
+  <data name="Syncs_ColProfile" xml:space="preserve">
+    <value>Profile</value>
+  </data>
+  <data name="Syncs_ColFolder" xml:space="preserve">
+    <value>Local folder</value>
+  </data>
+  <data name="Syncs_ColDevice" xml:space="preserve">
+    <value>Device</value>
+  </data>
+  <data name="Syncs_ColDirection" xml:space="preserve">
+    <value>Direction</value>
+  </data>
+  <data name="Syncs_ColStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Direction_TwoWay" xml:space="preserve">
+    <value>Two-way</value>
+  </data>
+  <data name="Direction_SendOnly" xml:space="preserve">
+    <value>Send only</value>
+  </data>
+  <data name="Direction_ReceiveOnly" xml:space="preserve">
+    <value>Receive only</value>
+  </data>
+  <data name="Mode_Automatic" xml:space="preserve">
+    <value>Automatic</value>
+  </data>
+  <data name="Mode_Manual" xml:space="preserve">
+    <value>Manual</value>
+  </data>
+  <data name="SyncStatus_UpToDate" xml:space="preserve">
+    <value>Up to date</value>
+  </data>
+  <data name="SyncStatus_Scanning" xml:space="preserve">
+    <value>Scanning…</value>
+  </data>
+  <data name="SyncStatus_Syncing" xml:space="preserve">
+    <value>Syncing {0} · {1}</value>
+  </data>
+  <data name="SyncStatus_Waiting" xml:space="preserve">
+    <value>Waiting for {0}</value>
+  </data>
+  <data name="SyncStatus_Paused" xml:space="preserve">
+    <value>Paused</value>
+  </data>
+  <data name="SyncStatus_Offer" xml:space="preserve">
+    <value>Waiting for {0} to accept</value>
+  </data>
+  <data name="SyncStatus_Declined" xml:space="preserve">
+    <value>Declined by {0}</value>
+  </data>
+  <data name="SyncStatus_Detached" xml:space="preserve">
+    <value>Detached</value>
+  </data>
+  <data name="SyncStatus_ConflictOne" xml:space="preserve">
+    <value>1 conflict</value>
+  </data>
+  <data name="SyncStatus_ConflictMany" xml:space="preserve">
+    <value>{0} conflicts</value>
+  </data>
+  <data name="Syncs_Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Syncs_Direction" xml:space="preserve">
+    <value>Direction</value>
+  </data>
+  <data name="Syncs_Mode" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="Syncs_SyncNow" xml:space="preserve">
+    <value>Sync now</value>
+  </data>
+  <data name="Syncs_Excludes" xml:space="preserve">
+    <value>Exclude patterns</value>
+  </data>
+  <data name="Syncs_ExcludesHint" xml:space="preserve">
+    <value>One pattern per line, like .gitignore: *.tmp, node_modules/, /build</value>
+  </data>
+  <data name="Syncs_Rights" xml:space="preserve">
+    <value>{0} may</value>
+  </data>
+  <data name="Right_Read" xml:space="preserve">
+    <value>Read</value>
+  </data>
+  <data name="Right_Write" xml:space="preserve">
+    <value>Write</value>
+  </data>
+  <data name="Right_Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Right_ReadLong" xml:space="preserve">
+    <value>Read: fetch files from this folder</value>
+  </data>
+  <data name="Right_WriteLong" xml:space="preserve">
+    <value>Write: add and change files here</value>
+  </data>
+  <data name="Right_DeleteLong" xml:space="preserve">
+    <value>Delete: delete files here (they go to the trash for 30 days)</value>
+  </data>
+  <data name="Syncs_Note" xml:space="preserve">
+    <value>Changes are found by a folder watcher and a full rescan every 30 min. Deleted and replaced files stay in .pairsync/trash for 30 days.</value>
+  </data>
+  <data name="Syncs_OpenFolder" xml:space="preserve">
+    <value>Open folder</value>
+  </data>
+  <data name="Syncs_Remove" xml:space="preserve">
+    <value>Remove profile</value>
+  </data>
+  <data name="Syncs_Pause" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="Syncs_Resume" xml:space="preserve">
+    <value>Resume</value>
+  </data>
+  <data name="Syncs_Conflicts" xml:space="preserve">
+    <value>Conflicts</value>
+  </data>
+  <data name="Syncs_NoConflicts" xml:space="preserve">
+    <value>No conflicts.</value>
+  </data>
+  <data name="Syncs_Resolve" xml:space="preserve">
+    <value>Resolve</value>
+  </data>
+  <data name="Syncs_ConflictCause" xml:space="preserve">
+    <value>changed on both devices</value>
+  </data>
+  <data name="Syncs_ConflictNote" xml:space="preserve">
+    <value>Default: keep both copies. The newest timestamp never wins automatically.</value>
+  </data>
+  <data name="Syncs_Activity" xml:space="preserve">
+    <value>Activity</value>
+  </data>
+  <data name="Syncs_NoActivity" xml:space="preserve">
+    <value>Nothing yet.</value>
+  </data>
+  <data name="Syncs_RemoveTitle" xml:space="preserve">
+    <value>Remove {0}?</value>
+  </data>
+  <data name="Syncs_RemoveText" xml:space="preserve">
+    <value>The profile ends on both devices. The files stay in both folders.</value>
+  </data>
+  <data name="NewProfile_Title" xml:space="preserve">
+    <value>New sync profile</value>
+  </data>
+  <data name="NewProfile_Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="NewProfile_Folder" xml:space="preserve">
+    <value>Local folder</value>
+  </data>
+  <data name="NewProfile_Browse" xml:space="preserve">
+    <value>Browse…</value>
+  </data>
+  <data name="NewProfile_Device" xml:space="preserve">
+    <value>Device</value>
+  </data>
+  <data name="NewProfile_NoDevices" xml:space="preserve">
+    <value>Pair a device first.</value>
+  </data>
+  <data name="NewProfile_Create" xml:space="preserve">
+    <value>Offer to device</value>
+  </data>
+  <data name="NewProfile_Hint" xml:space="preserve">
+    <value>The other device confirms the offer and chooses its own folder. It can accept later if it is offline now.</value>
+  </data>
+  <data name="Offer_Title" xml:space="preserve">
+    <value>{0} wants to sync “{1}”</value>
+  </data>
+  <data name="Offer_Folder" xml:space="preserve">
+    <value>Folder on this device</value>
+  </data>
+  <data name="Offer_NotEmpty" xml:space="preserve">
+    <value>The folder is not empty: its files are merged with those of the other device. Different files with the same name are kept as conflict copies.</value>
+  </data>
+  <data name="Offer_Accept" xml:space="preserve">
+    <value>Accept</value>
+  </data>
+  <data name="Offer_Decline" xml:space="preserve">
+    <value>Decline</value>
+  </data>
+  <data name="Conflict_Rubric" xml:space="preserve">
+    <value>Conflict · {0}</value>
+  </data>
+  <data name="Conflict_Title" xml:space="preserve">
+    <value>{0} was changed on both devices</value>
+  </data>
+  <data name="Conflict_Note" xml:space="preserve">
+    <value>Both edits started from the same version. Neither device's clock is used to pick a winner.</value>
+  </data>
+  <data name="Conflict_KeepThis" xml:space="preserve">
+    <value>Keep this device's</value>
+  </data>
+  <data name="Conflict_KeepOther" xml:space="preserve">
+    <value>Keep {0}'s</value>
+  </data>
+  <data name="Conflict_KeepBoth" xml:space="preserve">
+    <value>Keep both</value>
+  </data>
+  <data name="Conflict_ShowFolder" xml:space="preserve">
+    <value>Show in folder</value>
+  </data>
+  <data name="Conflict_ThisDevice" xml:space="preserve">
+    <value>This device</value>
+  </data>
+  <data name="Conflict_Edited" xml:space="preserve">
+    <value>Edited {0}</value>
+  </data>
+  <data name="Overview_SyncRow" xml:space="preserve">
+    <value>{0} ⇄ {1}</value>
+  </data>
+  <data name="Overview_SyncRound" xml:space="preserve">
+    <value>Synced with {0}</value>
+  </data>
 </root>

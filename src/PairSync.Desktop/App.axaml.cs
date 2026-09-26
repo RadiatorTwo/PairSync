@@ -82,7 +82,7 @@ public sealed partial class App : Avalonia.Application
                 return devices.Pairing.PairWithAsync(device);
             }, new LatencyProbe(), time, internet),
             new SendViewModel(core, desktop, Navigate),
-            SyncsPage(),
+            new SyncsViewModel(core, dialogs, desktop, time),
             ClaudeCodePage(),
             devices,
             new SettingsViewModel(core.Settings, autostart, trayAvailable, core, desktop, internet),

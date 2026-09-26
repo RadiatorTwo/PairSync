@@ -44,6 +44,18 @@
     <DataTemplate DataType="vm:ConfirmDialogViewModel">
       <views:ConfirmDialogView />
     </DataTemplate>
+    <DataTemplate DataType="vm:SyncsViewModel">
+      <views:SyncsView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:NewProfileDialogViewModel">
+      <views:NewProfileDialogView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:IncomingOfferDialogViewModel">
+      <views:IncomingOfferDialogView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:ConflictDialogViewModel">
+      <views:ConflictDialogView />
+    </DataTemplate>
     <DataTemplate DataType="vm:RenameDialogViewModel">
       <views:RenameDialogView />
     </DataTemplate>

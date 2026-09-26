@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="using:PairSync.Desktop.Controls"
+             xmlns:vm="using:PairSync.Desktop.ViewModels"
+             xmlns:res="using:PairSync.Desktop.Resources"
+             x:Class="PairSync.Desktop.Views.IncomingOfferDialogView"
+             x:DataType="vm:IncomingOfferDialogViewModel">
+  <StackPanel Spacing="14">
+    <TextBlock Classes="h2" TextWrapping="Wrap" Text="{Binding Title}" />
+    <StackPanel Spacing="6">
+      <TextBlock Classes="meta" Text="{x:Static res:Strings.Offer_Folder}" />
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Margin="8,0,0,0" Content="{x:Static res:Strings.NewProfile_Browse}" Command="{Binding BrowseCommand}" />
+        <TextBox Name="LocalPath" Classes="mono" FontSize="12" Text="{Binding LocalPath}" />
+      </DockPanel>
+      <Border Classes="banner" IsVisible="{Binding FolderNotEmpty}">
+        <TextBlock TextWrapping="Wrap" Text="{x:Static res:Strings.Offer_NotEmpty}" />
+      </Border>
+    </StackPanel>
+    <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+      <StackPanel Spacing="6">
+        <TextBlock Classes="meta" Text="{x:Static res:Strings.Syncs_Direction}" />
+        <ctl:SegmentedControl ItemsSource="{Binding Directions}" SelectedItem="{Binding Direction}" />
+      </StackPanel>
+      <StackPanel Grid.Column="1" Spacing="6">
+        <TextBlock Classes="meta" Text="{x:Static res:Strings.Syncs_Mode}" />
+        <ctl:SegmentedControl ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}" />
+      </StackPanel>
+    </Grid>
+    <StackPanel Spacing="6">
+      <TextBlock Classes="meta" Text="{Binding RightsTitle}" />
+      <CheckBox IsChecked="{Binding AllowRead}" Content="{x:Static res:Strings.Right_ReadLong}" />
+      <CheckBox IsChecked="{Binding AllowWrite}" Content="{x:Static res:Strings.Right_WriteLong}" />
+      <CheckBox IsChecked="{Binding AllowDelete}" Content="{x:Static res:Strings.Right_DeleteLong}" />
+    </StackPanel>
+    <TextBlock Classes="problem" FontSize="13" TextWrapping="Wrap" Text="{Binding Error}"
+               IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+      <Button Name="Decline" Content="{x:Static res:Strings.Offer_Decline}" Command="{Binding DeclineCommand}" />
+      <Button Name="Accept" Classes="primary compact" Content="{x:Static res:Strings.Offer_Accept}" Command="{Binding AcceptCommand}" />
+    </StackPanel>
+  </StackPanel>
+</UserControl>
