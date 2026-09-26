@@ -1,17 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <PairSyncNativeRid Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</PairSyncNativeRid>
-    <PairSyncNativeRid Condition="'$(PairSyncNativeRid)' == ''">$(NETCoreSdkRuntimeIdentifier)</PairSyncNativeRid>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\PairSync.Transport.Abstractions\PairSync.Transport.Abstractions.csproj" />
   </ItemGroup>
-  <!-- libdatachannel and its dependencies for the target RID, built by native/build-win.ps1 or
-       native/build-linux.sh. Copied flat next to the app so the OS loader resolves their dependencies. -->
-  <ItemGroup>
-    <None Include="$(PairSyncNativeDir)$(PairSyncNativeRid)\native\*"
-          Link="%(Filename)%(Extension)"
-          CopyToOutputDirectory="PreserveNewest" Visible="false" />
-  </ItemGroup>
+  <!-- The native libraries are added by the executables (Directory.Build.targets). -->
 </Project>

@@ -1,0 +1,15 @@
+<Project>
+  <!-- libdatachannel and its dependencies for the target RID, built by native/build-win.ps1 or
+       native/build-linux.sh. Added in the executables (all of them use PairSync.Transport.WebRtc), because only
+       they know the RuntimeIdentifier of a publish; libraries are built without it.
+       Copied flat next to the app so the OS loader resolves their dependencies. -->
+  <PropertyGroup Condition="'$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe'">
+    <PairSyncNativeRid Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</PairSyncNativeRid>
+    <PairSyncNativeRid Condition="'$(PairSyncNativeRid)' == ''">$(NETCoreSdkRuntimeIdentifier)</PairSyncNativeRid>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(PairSyncNativeRid)' != ''">
+    <None Include="$(PairSyncNativeDir)$(PairSyncNativeRid)\native\*"
+          Link="%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+</Project>
