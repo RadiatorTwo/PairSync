@@ -183,8 +183,8 @@ public sealed class InternetLink : IAsyncDisposable
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
             return;
-        Session.StateChanged -= OnStateChanged;
         await SayGoodbyeAsync().ConfigureAwait(false);
+        Session.StateChanged -= OnStateChanged;
         await _stopping.CancelAsync().ConfigureAwait(false);
         _closed.TrySetResult();
         await Session.DisposeAsync().ConfigureAwait(false);
@@ -201,6 +201,8 @@ public sealed class InternetLink : IAsyncDisposable
         {
             using var timeout = new CancellationTokenSource(GoodbyeTimeout, _time);
             await control.SendAsync(new Goodbye(), timeout.Token).ConfigureAwait(false);
+            // The other side closes the link when it reads the Goodbye; closing first could drop the message.
+            await Task.WhenAny(_closed.Task, Task.Delay(GoodbyeTimeout, _time)).ConfigureAwait(false);
         }
         catch (Exception e) when (e is OperationCanceledException or TransportException or ProtocolException or ObjectDisposedException)
         {
