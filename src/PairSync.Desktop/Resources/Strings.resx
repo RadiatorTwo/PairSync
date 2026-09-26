@@ -377,7 +377,7 @@
     <value>May send files to this device. They are saved under Downloads/PairSync without asking.</value>
   </data>
   <data name="Perm_Later" xml:space="preserve">
-    <value>Permissions for syncs and Claude Code come with phases 3 and 4.</value>
+    <value>Folder permissions are set per profile under Syncs.</value>
   </data>
   <data name="Pair_Title" xml:space="preserve">
     <value>Pair a new device</value>
@@ -1095,5 +1095,26 @@
   </data>
   <data name="Overview_SyncRound" xml:space="preserve">
     <value>Synced with {0}</value>
+  </data>
+  <data name="Perm_ClaudeConfig" xml:space="preserve">
+    <value>Apply Claude config</value>
+  </data>
+  <data name="Perm_InstallPrograms" xml:space="preserve">
+    <value>Install programs</value>
+  </data>
+  <data name="Perm_ClaudeConfigLong" xml:space="preserve">
+    <value>May compare and apply its Claude Code configuration here: CLAUDE.md, skills, agents, commands and settings. A backup is kept of everything replaced.</value>
+  </data>
+  <data name="Perm_InstallProgramsLong" xml:space="preserve">
+    <value>May also set up things that run programs here: hooks, status line, MCP servers, plugins and marketplaces. Each one is still confirmed on that device.</value>
+  </data>
+  <data name="Settings_ClaudeCode" xml:space="preserve">
+    <value>Claude Code</value>
+  </data>
+  <data name="Settings_PathVariables" xml:space="preserve">
+    <value>Path variables</value>
+  </data>
+  <data name="Settings_PathVariablesHint" xml:space="preserve">
+    <value>One NAME=folder per line, e.g. TOOLS_ROOT=D:	ools. Commands from another device can use ${TOOLS_ROOT}; ${HOME} and ${CLAUDE_CONFIG_DIR} are always known.</value>
   </data>
 </root>

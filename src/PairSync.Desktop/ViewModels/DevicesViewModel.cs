@@ -28,6 +28,10 @@ public sealed partial class PairedDeviceViewModel(PairedDevice device, DevicesVi
 
     public bool CanSendToMe => Device.CanSendToMe;
 
+    public bool CanApplyClaudeConfig => Device.CanApplyClaudeConfig;
+
+    public bool CanInstallPrograms => Device.CanInstallPrograms;
+
     public string BlockLabel => IsBlocked ? Strings.Devices_Unblock : Strings.Devices_Block;
 
     [RelayCommand]
@@ -47,20 +51,40 @@ public sealed partial class PairedDeviceViewModel(PairedDevice device, DevicesVi
 public sealed partial class PermissionsDialogViewModel : DialogViewModel
 {
     private readonly Func<bool, Task> _setCanSend;
+    private readonly Func<bool, bool, Task> _setClaude;
 
     [ObservableProperty]
     private bool _canSendToMe;
 
-    public PermissionsDialogViewModel(string deviceName, bool canSendToMe, Func<bool, Task> setCanSend)
+    [ObservableProperty]
+    private bool _canApplyClaudeConfig;
+
+    [ObservableProperty]
+    private bool _canInstallPrograms;
+
+    public PermissionsDialogViewModel(string deviceName, PairedDevice device, Func<bool, Task> setCanSend, Func<bool, bool, Task> setClaude)
     {
         Title = string.Format(CultureInfo.CurrentCulture, Strings.Perm_Title, deviceName);
-        _canSendToMe = canSendToMe;
+        _canSendToMe = device.CanSendToMe;
+        _canApplyClaudeConfig = device.CanApplyClaudeConfig;
+        _canInstallPrograms = device.CanInstallPrograms;
         _setCanSend = setCanSend;
+        _setClaude = setClaude;
     }
 
     public string Title { get; }
 
     partial void OnCanSendToMeChanged(bool value) => _ = _setCanSend(value);
+
+    partial void OnCanApplyClaudeConfigChanged(bool value)
+    {
+        // "Install programs" only together with "Apply Claude config".
+        if (!value)
+            CanInstallPrograms = false;
+        _ = _setClaude(value, CanInstallPrograms);
+    }
+
+    partial void OnCanInstallProgramsChanged(bool value) => _ = _setClaude(CanApplyClaudeConfig, value);
 
     [RelayCommand]
     private void Done() => Close();
@@ -175,8 +199,9 @@ public sealed partial class DevicesViewModel : PageViewModel, IDisposable
         }));
 
     internal async Task ShowPermissionsAsync(PairedDeviceViewModel device) =>
-        await _dialogs.ShowAsync(new PermissionsDialogViewModel(device.Name, device.CanSendToMe,
-            allowed => RunAsync(() => _core.Devices.SetCanSendToMeAsync(device.Id, allowed, CancellationToken.None))));
+        await _dialogs.ShowAsync(new PermissionsDialogViewModel(device.Name, device.Device,
+            allowed => RunAsync(() => _core.Devices.SetCanSendToMeAsync(device.Id, allowed, CancellationToken.None)),
+            (config, programs) => RunAsync(() => _core.Devices.SetClaudePermissionsAsync(device.Id, config, programs, CancellationToken.None))));
 
     internal Task SetBlockedAsync(PairedDeviceViewModel device, bool blocked) =>
         RunAsync(() => _core.Devices.SetBlockedAsync(device.Id, blocked, CancellationToken.None));

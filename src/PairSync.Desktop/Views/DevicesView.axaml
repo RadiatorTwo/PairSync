@@ -28,9 +28,11 @@
                     </DockPanel>
                     <TextBlock Classes="meta" Text="{Binding PairedOn}" />
                     <TextBlock Classes="mono accent" FontSize="12" Text="{Binding Fingerprint}" />
-                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
+                    <WrapPanel ItemSpacing="6" LineSpacing="6" Margin="0,2,0,0">
                       <ctl:Chip Content="{x:Static res:Strings.Perm_MaySend}" Classes.off="{Binding !CanSendToMe}" />
-                    </StackPanel>
+                      <ctl:Chip Content="{x:Static res:Strings.Perm_ClaudeConfig}" Classes.off="{Binding !CanApplyClaudeConfig}" />
+                      <ctl:Chip Content="{x:Static res:Strings.Perm_InstallPrograms}" Classes.off="{Binding !CanInstallPrograms}" />
+                    </WrapPanel>
                     <WrapPanel ItemSpacing="8" LineSpacing="6" Margin="0,6,0,0">
                       <Button Content="{x:Static res:Strings.Devices_Rename}" Command="{Binding RenameCommand}" />
                       <Button Content="{x:Static res:Strings.Devices_Permissions}" Command="{Binding PermissionsCommand}" />

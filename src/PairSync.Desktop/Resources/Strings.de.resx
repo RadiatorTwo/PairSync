@@ -371,7 +371,7 @@
     <value>Darf Dateien an dieses Gerät senden. Sie landen ohne Nachfrage unter Downloads/PairSync.</value>
   </data>
   <data name="Perm_Later" xml:space="preserve">
-    <value>Rechte für Syncs und Claude Code kommen mit Phase 3 und 4.</value>
+    <value>Rechte für Ordner stehen pro Profil unter Syncs.</value>
   </data>
   <data name="Pair_Title" xml:space="preserve">
     <value>Neues Gerät koppeln</value>
@@ -1089,5 +1089,26 @@
   </data>
   <data name="Overview_SyncRound" xml:space="preserve">
     <value>Abgeglichen mit {0}</value>
+  </data>
+  <data name="Perm_ClaudeConfig" xml:space="preserve">
+    <value>Claude-Konfiguration anwenden</value>
+  </data>
+  <data name="Perm_InstallPrograms" xml:space="preserve">
+    <value>Programme installieren</value>
+  </data>
+  <data name="Perm_ClaudeConfigLong" xml:space="preserve">
+    <value>Darf seine Claude-Code-Konfiguration hier vergleichen und anwenden: CLAUDE.md, Skills, Agents, Commands und Einstellungen. Alles Ersetzte wird gesichert.</value>
+  </data>
+  <data name="Perm_InstallProgramsLong" xml:space="preserve">
+    <value>Darf zusätzlich Dinge einrichten, die hier Programme ausführen: Hooks, Statuszeile, MCP-Server, Plugins und Marketplaces. Jeder Eintrag wird dort weiterhin einzeln bestätigt.</value>
+  </data>
+  <data name="Settings_ClaudeCode" xml:space="preserve">
+    <value>Claude Code</value>
+  </data>
+  <data name="Settings_PathVariables" xml:space="preserve">
+    <value>Pfadvariablen</value>
+  </data>
+  <data name="Settings_PathVariablesHint" xml:space="preserve">
+    <value>Eine Zeile NAME=Ordner, z. B. TOOLS_ROOT=D:	ools. Befehle von einem anderen Gerät können ${TOOLS_ROOT} verwenden; ${HOME} und ${CLAUDE_CONFIG_DIR} sind immer bekannt.</value>
   </data>
 </root>

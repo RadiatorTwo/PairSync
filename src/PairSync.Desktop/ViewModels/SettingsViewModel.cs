@@ -59,6 +59,10 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
     [ObservableProperty]
     private bool _verboseLogging;
 
+    /// <summary><c>NAME=value</c> lines for Claude Code commands from other devices.</summary>
+    [ObservableProperty]
+    private string _pathVariables = "";
+
     /// <param name="core">Null in tests that only cover close behavior and autostart.</param>
     /// <param name="internet">Opens the NAT diagnostic; null leaves the button out.</param>
     public SettingsViewModel(
@@ -194,6 +198,9 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
 
     partial void OnVerboseLoggingChanged(bool value) => Save(s => s with { VerboseLogging = value });
 
+    partial void OnPathVariablesChanged(string value) =>
+        Save(s => s with { PathVariables = [.. value.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0)] });
+
     private void Save(Func<AppSettings, AppSettings> change)
     {
         if (!_loading)
@@ -237,6 +244,7 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
             UploadLimitMegabytes = settings.UploadLimitBytesPerSecond / 1_000_000m;
             ParallelTransfers = settings.ParallelTransfers;
             VerboseLogging = settings.VerboseLogging;
+            PathVariables = string.Join('\n', settings.PathVariables);
             if (!StunServers.Select(r => r.Uri).SequenceEqual(settings.StunServers))
             {
                 StunServers.Clear();

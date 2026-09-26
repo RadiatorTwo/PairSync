@@ -9,6 +9,12 @@
     <CheckBox IsChecked="{Binding CanSendToMe}">
       <TextBlock TextWrapping="Wrap" Text="{x:Static res:Strings.Perm_MaySendLong}" />
     </CheckBox>
+    <CheckBox IsChecked="{Binding CanApplyClaudeConfig}">
+      <TextBlock TextWrapping="Wrap" Text="{x:Static res:Strings.Perm_ClaudeConfigLong}" />
+    </CheckBox>
+    <CheckBox Margin="24,0,0,0" IsChecked="{Binding CanInstallPrograms}" IsEnabled="{Binding CanApplyClaudeConfig}">
+      <TextBlock TextWrapping="Wrap" Text="{x:Static res:Strings.Perm_InstallProgramsLong}" />
+    </CheckBox>
     <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Perm_Later}" />
     <Button Classes="primary compact" HorizontalAlignment="Right" Content="{x:Static res:Strings.Dialog_Done}" Command="{Binding DoneCommand}" />
   </StackPanel>

@@ -119,6 +119,14 @@
         </Grid>
       </StackPanel>
 
+      <StackPanel Spacing="10" IsVisible="{Binding Fingerprint, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <ctl:Rubric Text="{x:Static res:Strings.Settings_ClaudeCode}" />
+        <TextBlock Text="{x:Static res:Strings.Settings_PathVariables}" />
+        <TextBox Name="PathVariables" Classes="mono" AcceptsReturn="True" MinHeight="60" PlaceholderText="TOOLS_ROOT=D:	ools"
+                 Text="{Binding PathVariables, UpdateSourceTrigger=LostFocus}" />
+        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Settings_PathVariablesHint}" />
+      </StackPanel>
+
       <Border BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,1,0,0" Padding="0,14,0,0"
               IsVisible="{Binding CanOpenLogs}">
         <StackPanel Spacing="10">
