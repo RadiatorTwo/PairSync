@@ -1111,4 +1111,136 @@
   <data name="Settings_PathVariablesHint" xml:space="preserve">
     <value>Eine Zeile NAME=Ordner, z. B. TOOLS_ROOT=D:	ools. Befehle von einem anderen Gerät können ${TOOLS_ROOT} verwenden; ${HOME} und ${CLAUDE_CONFIG_DIR} sind immer bekannt.</value>
   </data>
+  <data name="Claude_Heading" xml:space="preserve">
+    <value>Claude Code → {0}</value>
+  </data>
+  <data name="Claude_Version" xml:space="preserve">
+    <value>Claude Code {0}</value>
+  </data>
+  <data name="Claude_NotInstalled" xml:space="preserve">
+    <value>Claude Code dort nicht installiert</value>
+  </data>
+  <data name="Claude_ItemsToChange" xml:space="preserve">
+    <value>{0} Änderungen</value>
+  </data>
+  <data name="Claude_RunPrograms" xml:space="preserve">
+    <value>{0} führen Programme aus</value>
+  </data>
+  <data name="Claude_Device" xml:space="preserve">
+    <value>Zielgerät</value>
+  </data>
+  <data name="Claude_Compare" xml:space="preserve">
+    <value>Neu vergleichen</value>
+  </data>
+  <data name="Claude_Loading" xml:space="preserve">
+    <value>Vergleiche mit dem anderen Gerät …</value>
+  </data>
+  <data name="Claude_NoDevices" xml:space="preserve">
+    <value>Zuerst ein Gerät koppeln. Danach lässt sich seine Claude-Code-Konfiguration von hier vergleichen und aktualisieren.</value>
+  </data>
+  <data name="Claude_Portable" xml:space="preserve">
+    <value>Portable Konfiguration</value>
+  </data>
+  <data name="Claude_Keys" xml:space="preserve">
+    <value>{0} Schlüssel</value>
+  </data>
+  <data name="Claude_NSame" xml:space="preserve">
+    <value>{0} gleich</value>
+  </data>
+  <data name="Claude_Same" xml:space="preserve">
+    <value>gleich</value>
+  </data>
+  <data name="Claude_NotHere" xml:space="preserve">
+    <value>nicht vorhanden</value>
+  </data>
+  <data name="Claude_NeverSynced" xml:space="preserve">
+    <value>Nie übertragen: Anmeldedaten, OAuth-Sitzung, Projekt-Trust, settings.local.json, Verläufe, Prompt-Historie, Caches. Dateien, die nur auf dem Ziel liegen, bleiben.</value>
+  </data>
+  <data name="Claude_PluginsMcp" xml:space="preserve">
+    <value>Plugins &amp; MCP</value>
+  </data>
+  <data name="Claude_NoCommands" xml:space="preserve">
+    <value>Plugins und MCP-Server stimmen bereits überein.</value>
+  </data>
+  <data name="Claude_SyncedSkipped" xml:space="preserve">
+    <value>Übersprungen: vom claude.ai-Konto synchronisiert</value>
+  </data>
+  <data name="Claude_McpSecrets" xml:space="preserve">
+    <value>{0}: nur die Namen {1} werden übertragen; auf dem Ziel setzen.</value>
+  </data>
+  <data name="Claude_PathsTitle" xml:space="preserve">
+    <value>Pfade auf dem Ziel</value>
+  </data>
+  <data name="Claude_PathsHint" xml:space="preserve">
+    <value>Diese Pfade liegen außerhalb des Claude- und des Benutzerordners. Pfad auf dem Ziel eintragen oder eine Variable wie ${TOOLS_ROOT}.</value>
+  </data>
+  <data name="Claude_RunsPrograms" xml:space="preserve">
+    <value>Führt Programme aus · einzeln bestätigen</value>
+  </data>
+  <data name="Claude_NoExecutables" xml:space="preserve">
+    <value>Nichts, das Programme ausführt.</value>
+  </data>
+  <data name="Claude_Confirmed" xml:space="preserve">
+    <value>{0} von {1} bestätigt. Nicht angehakte Einträge werden ausgelassen; alles andere wird trotzdem angewendet.</value>
+  </data>
+  <data name="Claude_NoPrograms" xml:space="preserve">
+    <value>{0} erlaubt diesem Gerät nicht, Programme zu installieren. Dort unter Geräte → Rechte erlauben.</value>
+  </data>
+  <data name="Claude_ShowDiff" xml:space="preserve">
+    <value>Vollständigen Vergleich zeigen</value>
+  </data>
+  <data name="Claude_Apply" xml:space="preserve">
+    <value>Anwenden</value>
+  </data>
+  <data name="Claude_ApplyOn" xml:space="preserve">
+    <value>Auf {0} anwenden</value>
+  </data>
+  <data name="Claude_CloseSessions" xml:space="preserve">
+    <value>Laufende Claude-Code-Sitzungen auf dem Ziel vor dem Anwenden schließen.</value>
+  </data>
+  <data name="Claude_Applying" xml:space="preserve">
+    <value>Wird angewendet …</value>
+  </data>
+  <data name="Claude_Applied" xml:space="preserve">
+    <value>Fertig: {0} Dateien und {1} Einstellungen geschrieben.</value>
+  </data>
+  <data name="Claude_Backup" xml:space="preserve">
+    <value>Sicherung der ersetzten Dateien: {0}</value>
+  </data>
+  <data name="Claude_StepDone" xml:space="preserve">
+    <value>erledigt</value>
+  </data>
+  <data name="Claude_StepSkipped" xml:space="preserve">
+    <value>übersprungen</value>
+  </data>
+  <data name="Claude_StepPending" xml:space="preserve">
+    <value>wartet auf Claude Code</value>
+  </data>
+  <data name="Claude_StepFailed" xml:space="preserve">
+    <value>fehlgeschlagen (Exitcode {0})</value>
+  </data>
+  <data name="Claude_Result" xml:space="preserve">
+    <value>Ergebnis</value>
+  </data>
+  <data name="Claude_Notes" xml:space="preserve">
+    <value>Hinweise</value>
+  </data>
+  <data name="Claude_NothingToChange" xml:space="preserve">
+    <value>Nichts zu ändern.</value>
+  </data>
+  <data name="Claude_Pending" xml:space="preserve">
+    <value>{0} Schritte von {1} warten, bis Claude Code auf diesem Gerät installiert ist.</value>
+  </data>
+  <data name="Claude_ApplyPending" xml:space="preserve">
+    <value>Jetzt anwenden</value>
+  </data>
+  <data name="Claude_DiscardPending" xml:space="preserve">
+    <value>Verwerfen</value>
+  </data>
+  <data name="Claude_PendingApplied" xml:space="preserve">
+    <value>Die wartenden Schritte wurden ausgeführt.</value>
+  </data>
+  <data name="Claude_OneKey" xml:space="preserve">
+    <value>1 Schlüssel</value>
+  </data>
 </root>

@@ -60,14 +60,7 @@ internal static class ClaudeWire
         Steps = [.. request.Steps.Select(s => new ClaudeStepEntry { Kind = (int)s.Kind, Name = s.Name, Value = s.Value, Title = StepTitle(s) })],
     };
 
-    public static string StepTitle(ClaudeStep step) => step.Kind switch
-    {
-        ClaudeStepKind.MarketplaceAdd => $"marketplace add {step.Value}",
-        ClaudeStepKind.PluginInstall => $"install {step.Name} · user",
-        ClaudeStepKind.PluginEnable => $"enable {step.Name}",
-        ClaudeStepKind.PluginDisable => $"disable {step.Name}",
-        _ => $"mcp add-json {step.Name}",
-    };
+    public static string StepTitle(ClaudeStep step) => ClaudeStepText.Of(step);
 
     public static JsonObject? ParseObject(string? json)
     {
@@ -82,4 +75,17 @@ internal static class ClaudeWire
             return null;
         }
     }
+}
+
+public static class ClaudeStepText
+{
+    /// <summary>The step as the page and the log show it: "marketplace add org/m#v1.2.0", "install a@m · user".</summary>
+    public static string Of(ClaudeStep step) => step.Kind switch
+    {
+        ClaudeStepKind.MarketplaceAdd => $"marketplace add {step.Value}",
+        ClaudeStepKind.PluginInstall => $"install {step.Name} · user",
+        ClaudeStepKind.PluginEnable => $"enable {step.Name}",
+        ClaudeStepKind.PluginDisable => $"disable {step.Name}",
+        _ => $"mcp add-json {step.Name}",
+    };
 }

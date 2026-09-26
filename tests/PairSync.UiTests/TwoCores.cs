@@ -100,6 +100,12 @@ public sealed class TwoCores : IAsyncDisposable
                 ConnectTimeout = TimeSpan.FromSeconds(15),
             });
             services.AddSingleton(new SyncOptions { WatcherSettle = TimeSpan.FromMilliseconds(300), RetryInterval = TimeSpan.FromSeconds(1) });
+            // Never the real Claude Code configuration of the machine running the tests.
+            var home = Path.Combine(data.Root, "home");
+            services.AddSingleton(new PairSync.Application.Claude.ClaudeOptions
+            {
+                HomeDir = home, ConfigDir = Path.Combine(home, ".claude"), GlobalConfigFile = Path.Combine(home, ".claude.json"), Executable = "",
+            });
         });
         core.Settings.Update(s => s with { DeviceName = name, StunServers = stunServers ?? [] });
         var desktop = new FakeDesktop();

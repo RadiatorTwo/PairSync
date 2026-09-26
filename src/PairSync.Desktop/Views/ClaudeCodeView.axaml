@@ -1,0 +1,185 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="using:PairSync.Desktop.Controls"
+             xmlns:vm="using:PairSync.Desktop.ViewModels"
+             xmlns:res="using:PairSync.Desktop.Resources"
+             x:Class="PairSync.Desktop.Views.ClaudeCodeView"
+             x:DataType="vm:ClaudeCodeViewModel">
+  <Grid Margin="{StaticResource PagePadding}" RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="16">
+    <!-- Heading: target, paths and version; chips on the right -->
+    <DockPanel>
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom" IsVisible="{Binding HasPlan}">
+        <ctl:Chip Content="{Binding ChangeCount}" />
+        <ctl:Chip Classes="strong" Content="{Binding ProgramCount}" />
+      </StackPanel>
+      <StackPanel Spacing="4">
+        <TextBlock Classes="h1" TextTrimming="CharacterEllipsis" Text="{Binding Heading}" />
+        <TextBlock Classes="meta mono" FontSize="12" TextTrimming="CharacterEllipsis" Text="{Binding Subline}" ToolTip.Tip="{Binding Subline}"
+                   IsVisible="{Binding HasPlan}" />
+      </StackPanel>
+    </DockPanel>
+
+    <!-- Target device -->
+    <StackPanel Grid.Row="1" Spacing="8">
+      <TextBlock Classes="muted" TextWrapping="Wrap" Text="{x:Static res:Strings.Claude_NoDevices}" IsVisible="{Binding !HasDevices}" />
+      <DockPanel IsVisible="{Binding HasDevices}">
+        <Button Name="Compare" DockPanel.Dock="Right" Margin="10,0,0,0" Content="{x:Static res:Strings.Claude_Compare}"
+                Command="{Binding CompareCommand}" IsEnabled="{Binding !IsBusy}" />
+        <TextBlock DockPanel.Dock="Left" Classes="meta" VerticalAlignment="Center" Margin="0,0,10,0" Text="{x:Static res:Strings.Claude_Device}" />
+        <ctl:SegmentedControl Name="TargetDevice" HorizontalAlignment="Left" ItemsSource="{Binding Devices}" SelectedItem="{Binding SelectedDevice}" />
+      </DockPanel>
+    </StackPanel>
+
+    <!-- Waiting steps, errors, progress -->
+    <StackPanel Grid.Row="2" Spacing="8">
+      <Border Classes="banner" IsVisible="{Binding HasPending}">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" Margin="12,0,0,0">
+            <Button Name="DiscardPending" Content="{x:Static res:Strings.Claude_DiscardPending}" Command="{Binding DiscardPendingCommand}" />
+            <Button Name="ApplyPending" Classes="primary compact" Content="{x:Static res:Strings.Claude_ApplyPending}" Command="{Binding ApplyPendingCommand}" />
+          </StackPanel>
+          <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Text="{Binding PendingText}" />
+        </DockPanel>
+      </Border>
+      <TextBlock Classes="muted" Text="{x:Static res:Strings.Claude_Loading}" IsVisible="{Binding IsBusy}" />
+      <Border Classes="banner warning" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <TextBlock Name="Error" TextWrapping="Wrap" Text="{Binding Error}" />
+      </Border>
+    </StackPanel>
+
+    <!-- The plan in three columns -->
+    <Grid Grid.Row="3" ColumnDefinitions="*,*,*" ColumnSpacing="16" IsVisible="{Binding HasPlan}">
+      <Border Classes="panel">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Bottom" Classes="hint" TextWrapping="Wrap" Margin="0,12,0,0" Text="{x:Static res:Strings.Claude_NeverSynced}" />
+          <ctl:Rubric DockPanel.Dock="Top" Margin="0,0,0,10" Text="{x:Static res:Strings.Claude_Portable}" />
+          <ScrollViewer>
+            <ItemsControl Name="PortableItems" ItemsSource="{Binding PortableItems}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PortableItemRowViewModel">
+                  <DockPanel Margin="0,0,0,6">
+                    <TextBlock DockPanel.Dock="Right" Classes="meta" VerticalAlignment="Center" Margin="8,0,0,0" Text="{Binding Status}"
+                               Classes.accent="{Binding HasChanges}" />
+                    <CheckBox IsChecked="{Binding Enabled}">
+                      <TextBlock Classes="mono" FontSize="13" TextTrimming="CharacterEllipsis" Text="{Binding Title}" />
+                    </CheckBox>
+                  </DockPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+
+      <Border Grid.Column="1" Classes="panel">
+        <DockPanel>
+          <ctl:Rubric DockPanel.Dock="Top" Margin="0,0,0,10" Text="{x:Static res:Strings.Claude_PluginsMcp}" />
+          <ScrollViewer>
+            <StackPanel Spacing="10">
+              <TextBlock Classes="muted" TextWrapping="Wrap" Text="{x:Static res:Strings.Claude_NoCommands}" IsVisible="{Binding !HasCommands}" />
+              <ItemsControl Name="Commands" ItemsSource="{Binding Commands}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ClaudeCommandRowViewModel">
+                    <StackPanel Margin="0,0,0,8" Spacing="2">
+                      <TextBlock Classes="mono" FontSize="12" TextWrapping="Wrap" Text="{Binding Command}" IsVisible="{Binding !Skipped}" />
+                      <TextBlock Classes="mono disabled" FontSize="12" TextWrapping="Wrap" TextDecorations="Strikethrough" Text="{Binding Command}"
+                                 IsVisible="{Binding Skipped}" />
+                      <TextBlock Classes="meta" TextWrapping="Wrap" Text="{Binding Meta}" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <ItemsControl ItemsSource="{Binding McpNotes}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <TextBlock Classes="hint" TextWrapping="Wrap" Margin="0,0,0,4" Text="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Border Background="{StaticResource Accent100Brush}" Padding="10" IsVisible="{Binding HasMappings}">
+                <StackPanel Spacing="8">
+                  <TextBlock FontWeight="Medium" Text="{x:Static res:Strings.Claude_PathsTitle}" />
+                  <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Claude_PathsHint}" />
+                  <ItemsControl Name="PathMappings" ItemsSource="{Binding PathMappings}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:PathMappingRowViewModel">
+                        <StackPanel Spacing="4" Margin="0,0,0,8">
+                          <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap" Text="{Binding Original}" />
+                          <TextBox Classes="mono" FontSize="12" Text="{Binding Mapping}" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+
+      <ctl:Card Grid.Column="2" Classes="marked" Padding="16" BorderBrush="{StaticResource Accent900Brush}" MarksBrush="{StaticResource Accent900Brush}">
+        <DockPanel>
+          <!-- Actions stay visible however long the list is. -->
+          <StackPanel DockPanel.Dock="Bottom" Spacing="10" Margin="0,12,0,0">
+            <TextBlock Name="ConfirmedText" Classes="hint" TextWrapping="Wrap" Text="{Binding ConfirmedText}" />
+            <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Claude_CloseSessions}" />
+            <WrapPanel HorizontalAlignment="Right" ItemSpacing="8" LineSpacing="6">
+              <Button Name="ShowDiff" Content="{x:Static res:Strings.Claude_ShowDiff}" Command="{Binding ShowDiffCommand}" />
+              <Button Name="Apply" Classes="primary compact" Content="{Binding ApplyLabel}" Command="{Binding ApplyCommand}" />
+            </WrapPanel>
+          </StackPanel>
+          <ctl:Rubric DockPanel.Dock="Top" Classes="strong" Margin="0,0,0,10" Text="{x:Static res:Strings.Claude_RunsPrograms}" />
+          <TextBlock DockPanel.Dock="Top" Classes="problem" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,10" Text="{Binding ProgramsHint}"
+                     IsVisible="{Binding ProgramsHint, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          <ScrollViewer>
+            <StackPanel>
+              <TextBlock Classes="muted" Text="{x:Static res:Strings.Claude_NoExecutables}" IsVisible="{Binding !HasExecutables}" />
+              <ItemsControl Name="Executables" ItemsSource="{Binding Executables}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ExecutableRowViewModel">
+                    <CheckBox Margin="0,0,0,10" VerticalContentAlignment="Top" IsChecked="{Binding Confirmed}" IsEnabled="{Binding Allowed}">
+                      <StackPanel Spacing="2">
+                        <TextBlock FontWeight="Medium" TextWrapping="Wrap" Text="{Binding Title}" />
+                        <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap" Text="{Binding Command}" />
+                      </StackPanel>
+                    </CheckBox>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+        </DockPanel>
+      </ctl:Card>
+    </Grid>
+
+    <!-- Result of the last apply and notes -->
+    <ScrollViewer Grid.Row="4" MaxHeight="200" IsVisible="{Binding HasFooter}">
+      <StackPanel Spacing="6">
+        <ctl:Rubric Text="{x:Static res:Strings.Claude_Result}" IsVisible="{Binding HasResults}" />
+        <TextBlock Name="ResultText" TextWrapping="Wrap" Text="{Binding ResultText}" IsVisible="{Binding HasResults}" />
+        <ItemsControl Name="StepResults" ItemsSource="{Binding StepResults}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ClaudeStepRowViewModel">
+              <StackPanel Margin="0,0,0,6">
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Right" Classes="meta" Margin="10,0,0,0" Text="{Binding Status}" Classes.problem="{Binding Failed}" />
+                  <TextBlock Classes="mono" FontSize="12" TextTrimming="CharacterEllipsis" Text="{Binding Title}" />
+                </DockPanel>
+                <TextBlock Classes="mono meta" FontSize="11" TextWrapping="Wrap" MaxLines="6" Text="{Binding Output}"
+                           IsVisible="{Binding Output, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <ctl:Rubric Margin="0,6,0,0" Text="{x:Static res:Strings.Claude_Notes}" IsVisible="{Binding HasNotes}" />
+        <ItemsControl ItemsSource="{Binding Notes}" IsVisible="{Binding HasNotes}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <TextBlock Classes="hint" TextWrapping="Wrap" Margin="0,0,0,4" Text="{Binding}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

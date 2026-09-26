@@ -44,6 +44,12 @@
     <DataTemplate DataType="vm:ConfirmDialogViewModel">
       <views:ConfirmDialogView />
     </DataTemplate>
+    <DataTemplate DataType="vm:ClaudeCodeViewModel">
+      <views:ClaudeCodeView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:ClaudeDiffDialogViewModel">
+      <views:ClaudeDiffDialogView />
+    </DataTemplate>
     <DataTemplate DataType="vm:SyncsViewModel">
       <views:SyncsView />
     </DataTemplate>

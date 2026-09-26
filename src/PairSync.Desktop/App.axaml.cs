@@ -55,7 +55,7 @@ public sealed partial class App : Avalonia.Application
             new PlaceholderViewModel(AppPage.Overview),
             new PlaceholderViewModel(AppPage.Send, Strings.Title_Send),
             SyncsPage(),
-            ClaudeCodePage(),
+            new PlaceholderViewModel(AppPage.ClaudeCode, message: Strings.ClaudeCode_ComingLater),
             new PlaceholderViewModel(AppPage.Devices),
             new SettingsViewModel(settings, autostart, trayAvailable),
         ], quit);
@@ -83,7 +83,7 @@ public sealed partial class App : Avalonia.Application
             }, new LatencyProbe(), time, internet),
             new SendViewModel(core, desktop, Navigate),
             new SyncsViewModel(core, dialogs, desktop, time),
-            ClaudeCodePage(),
+            new ClaudeCodeViewModel(core, dialogs),
             devices,
             new SettingsViewModel(core.Settings, autostart, trayAvailable, core, desktop, internet),
         ], quit, dialogs);
@@ -92,7 +92,6 @@ public sealed partial class App : Avalonia.Application
 
     private static PlaceholderViewModel SyncsPage() => new(AppPage.Syncs, Strings.Title_Syncs, Strings.Syncs_ComingLater);
 
-    private static PlaceholderViewModel ClaudeCodePage() => new(AppPage.ClaudeCode, message: Strings.ClaudeCode_ComingLater);
 
     private void StartDesktop(IClassicDesktopStyleApplicationLifetime desktop, PairSyncCore core)
     {
