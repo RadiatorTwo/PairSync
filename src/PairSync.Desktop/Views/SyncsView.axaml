@@ -47,9 +47,18 @@
     <!-- Details of the selected profile -->
     <Grid Grid.Row="2" ColumnDefinitions="1*,1*" ColumnSpacing="18" IsVisible="{Binding HasSelection}">
       <Border Classes="panel">
+        <DockPanel>
+          <!-- Actions stay visible however small the window is. -->
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+            <WrapPanel DockPanel.Dock="Right" ItemSpacing="8" LineSpacing="6">
+              <Button Content="{Binding PauseLabel}" Command="{Binding TogglePauseCommand}" IsEnabled="{Binding IsActive}" />
+              <Button Content="{x:Static res:Strings.Syncs_OpenFolder}" Command="{Binding OpenFolderCommand}" />
+              <Button Name="RemoveProfile" Content="{x:Static res:Strings.Syncs_Remove}" Command="{Binding RemoveCommand}" />
+            </WrapPanel>
+            <ctl:Rubric VerticalAlignment="Center" Text="{x:Static res:Strings.Syncs_Settings}" />
+          </DockPanel>
         <ScrollViewer>
           <StackPanel Spacing="14">
-            <ctl:Rubric Text="{x:Static res:Strings.Syncs_Settings}" />
             <Border Classes="banner warning" IsVisible="{Binding ProblemText, Converter={x:Static ObjectConverters.IsNotNull}}">
               <TextBlock TextWrapping="Wrap" Text="{Binding ProblemText}" />
             </Border>
@@ -79,13 +88,9 @@
               </WrapPanel>
             </StackPanel>
             <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Syncs_Note}" />
-            <WrapPanel ItemSpacing="8" LineSpacing="6">
-              <Button Content="{Binding PauseLabel}" Command="{Binding TogglePauseCommand}" IsEnabled="{Binding IsActive}" />
-              <Button Content="{x:Static res:Strings.Syncs_OpenFolder}" Command="{Binding OpenFolderCommand}" />
-              <Button Name="RemoveProfile" Classes="quiet" Content="{x:Static res:Strings.Syncs_Remove}" Command="{Binding RemoveCommand}" />
-            </WrapPanel>
           </StackPanel>
         </ScrollViewer>
+        </DockPanel>
       </Border>
 
       <Border Grid.Column="1" Classes="panel">
