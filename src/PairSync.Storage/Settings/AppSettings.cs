@@ -45,6 +45,14 @@ public sealed record AppSettings
 
     public const int MaxStunServers = 8;
 
+    /// <summary>
+    /// <c>NAME=value</c> lines for paths in Claude Code commands from another device, e.g. <c>TOOLS_ROOT=D:	ools</c>.
+    /// The other device writes <c>${TOOLS_ROOT}</c>; this device puts in its value.
+    /// </summary>
+    public IReadOnlyList<string> PathVariables { get; init; } = [];
+
+    public const int MaxPathVariables = 32;
+
     [JsonIgnore]
     public string EffectiveDeviceName => string.IsNullOrWhiteSpace(DeviceName) ? Environment.MachineName : DeviceName.Trim();
 
@@ -63,6 +71,9 @@ public sealed record AppSettings
                 ? DefaultStunServers
                 : [.. StunServers.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim())
                     .Distinct(StringComparer.OrdinalIgnoreCase).Take(MaxStunServers)],
+            PathVariables = PathVariables is null
+                ? []
+                : [.. PathVariables.Where(v => v?.Contains('=') == true).Select(v => v.Trim()).Take(MaxPathVariables)],
         };
     }
 
@@ -78,11 +89,12 @@ public sealed record AppSettings
         && UploadLimitBytesPerSecond == other.UploadLimitBytesPerSecond
         && ParallelTransfers == other.ParallelTransfers
         && VerboseLogging == other.VerboseLogging
-        && StunServers.SequenceEqual(other.StunServers);
+        && StunServers.SequenceEqual(other.StunServers)
+        && PathVariables.SequenceEqual(other.PathVariables);
 
     public override int GetHashCode() =>
         HashCode.Combine(DeviceName, CloseBehavior, StartWithSystem, Port, UploadLimitBytesPerSecond, ParallelTransfers, VerboseLogging,
-            StunServers.Count);
+            StunServers.Count + PathVariables.Count);
 }
 
 [JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]

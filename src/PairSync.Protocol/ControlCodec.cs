@@ -57,6 +57,12 @@ public static class ControlCodec
         Register<SyncRequest>(66);
         Register<FileRequest>(67);
         Register<FileUnavailable>(68);
+        Register<ClaudeStateRequest>(70);
+        Register<ClaudeState>(71);
+        Register<ClaudeApply>(72);
+        Register<ClaudeFileData>(73);
+        Register<ClaudeStepResult>(74);
+        Register<ClaudeApplyDone>(75);
     }
 
     private static void Register<T>(ushort code) where T : IControlMessage

@@ -34,6 +34,23 @@ public sealed class ControlCodecTests
                 MTimeUtc = new DateTime(2026, 9, 26, 0, 0, 0, DateTimeKind.Utc), Version = [new VersionCounter { DeviceId = Guid.NewGuid(), Counter = 2 }] }],
         },
         new FileRequest { ProfileId = Guid.NewGuid(), Path = "a/b.txt", Sha256 = new byte[32] },
+        new ClaudeStateRequest(),
+        new ClaudeState
+        {
+            Allowed = true, AllowPrograms = true, ConfigDir = "/home/b/.claude", ClaudeVersion = "2.1.283", Os = "linux", HomeDir = "/home/b",
+            Files = [new ClaudeFileEntry { Path = "CLAUDE.md", Size = 2, Sha256 = new byte[32] }], SettingsJson = "{}",
+            Plugins = [new ClaudePluginEntry { Id = "a@m", Installed = true, Enabled = true, Version = "1.0" }], Marketplaces = ["m"],
+            McpServers = [new ClaudeMcpEntry { Name = "fs", Json = "{}" }], PathVariables = ["TOOLS_ROOT"],
+        },
+        new ClaudeApply
+        {
+            Files = [new ClaudeFileEntry { Path = "skills/a.md", Size = 1, Sha256 = new byte[32] }],
+            Settings = [new ClaudeSettingEntry { Key = "hooks", SubKey = "Stop", Json = "[]" }],
+            Steps = [new ClaudeStepEntry { Kind = 1, Name = "a@m", Title = "Plugin a@m" }],
+        },
+        new ClaudeFileData { Path = "skills/a.md", Offset = 0, Data = [1], Last = true },
+        new ClaudeStepResult { Index = 2, Status = ClaudeStepStatus.Failed, ExitCode = 1, Output = "error" },
+        new ClaudeApplyDone { FilesWritten = 3, SettingsWritten = 1, Notes = ["n"], BackupFolder = "/x" },
     ];
 
     [Theory]

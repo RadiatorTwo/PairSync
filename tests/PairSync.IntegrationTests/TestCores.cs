@@ -24,7 +24,8 @@ internal static class TestCores
     /// internet links run over host candidates on this machine and tests make no external requests.</param>
     public static async Task<PairSyncCore> StartAsync(
         DataDirectory data, CancellationToken cancellationToken, PresenceOptions? presence = null, PairingOptions? pairing = null,
-        TransferOptions? transfers = null, InternetOptions? internet = null, SyncOptions? sync = null)
+        TransferOptions? transfers = null, InternetOptions? internet = null, SyncOptions? sync = null,
+        PairSync.Application.Claude.ClaudeOptions? claude = null)
     {
         var core = await PairSyncCore.StartAsync(data, cancellationToken, services =>
         {
@@ -34,6 +35,8 @@ internal static class TestCores
             services.AddSingleton(transfers ?? ForTests(data));
             services.AddSingleton(internet ?? new InternetOptions { DetectNat = false });
             services.AddSingleton(sync ?? FastSync);
+            if (claude is not null)
+                services.AddSingleton(claude);
         });
         core.Settings.Update(s => s with { StunServers = [] });
         return core;

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using PairSync.Application.Claude;
 using PairSync.Application.Connections;
 using PairSync.Application.Pairing;
 using PairSync.Application.Presence;
@@ -74,7 +75,7 @@ public sealed class PairSyncCore : IAsyncDisposable
             var sync = services.GetRequiredService<SyncService>();
             lan.IncomingConnectionHandler = connection => connection.Access == PeerAccess.PairingOnly
                 ? pairing.HandleIncomingAsync(connection)
-                : RouteAsync(connection, transfers, sync);
+                : RouteAsync(connection, transfers, sync, services.GetRequiredService<ClaudeService>());
 
             // A busy port is not fatal: the app still works as a sender and Settings shows the error.
             await lan.StartAsync(cancellationToken).ConfigureAwait(false);
@@ -93,8 +94,8 @@ public sealed class PairSyncCore : IAsyncDisposable
         }
     }
 
-    /// <summary>A session of a paired device: its first message says whether it is about a job or a sync profile.</summary>
-    private static async Task RouteAsync(PeerConnection connection, TransferService transfers, SyncService sync)
+    /// <summary>A session of a paired device: its first message says whether it is about a job, a sync profile or Claude Code.</summary>
+    private static async Task RouteAsync(PeerConnection connection, TransferService transfers, SyncService sync, ClaudeService claude)
     {
         IControlMessage? first = null;
         try
@@ -102,7 +103,7 @@ public sealed class PairSyncCore : IAsyncDisposable
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             await foreach (var message in connection.Channels.Control.ReadAllAsync(timeout.Token).ConfigureAwait(false))
             {
-                if (message is JobOffer or JobControl || SyncService.IsSyncMessage(message))
+                if (message is JobOffer or JobControl || SyncService.IsSyncMessage(message) || ClaudeService.IsClaudeMessage(message))
                 {
                     first = message;
                     break;
@@ -114,6 +115,8 @@ public sealed class PairSyncCore : IAsyncDisposable
         }
         if (first is null)
             await connection.DisposeAsync().ConfigureAwait(false);
+        else if (ClaudeService.IsClaudeMessage(first))
+            await claude.HandleIncomingAsync(connection, first).ConfigureAwait(false);
         else if (SyncService.IsSyncMessage(first))
             await sync.HandleIncomingAsync(connection, first).ConfigureAwait(false);
         else
@@ -121,6 +124,8 @@ public sealed class PairSyncCore : IAsyncDisposable
     }
 
     public SyncService Sync => _services.GetRequiredService<SyncService>();
+
+    public ClaudeService Claude => _services.GetRequiredService<ClaudeService>();
 
     public LanConnectionService Lan => _services.GetRequiredService<LanConnectionService>();
 

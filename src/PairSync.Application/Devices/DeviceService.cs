@@ -43,6 +43,14 @@ public sealed class DeviceService(
     public Task SetCanSendToMeAsync(Guid deviceId, bool allowed, CancellationToken cancellationToken) =>
         UpdateAsync(deviceId, d => d.CanSendToMe = allowed, cancellationToken);
 
+    /// <summary>Claude Code permissions of the device (plan phase 4); "install programs" only together with "apply config".</summary>
+    public Task SetClaudePermissionsAsync(Guid deviceId, bool applyConfig, bool installPrograms, CancellationToken cancellationToken) =>
+        UpdateAsync(deviceId, d =>
+        {
+            d.CanApplyClaudeConfig = applyConfig;
+            d.CanInstallPrograms = applyConfig && installPrograms;
+        }, cancellationToken);
+
     /// <summary>
     /// A blocked device can neither connect nor receive; its unfinished jobs are paused, so a running transfer stops,
     /// and its internet connection is closed.

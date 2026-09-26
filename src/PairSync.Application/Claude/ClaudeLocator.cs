@@ -11,8 +11,8 @@ public sealed record ClaudeOptions
 
     public string? HomeDir { get; init; }
 
-    /// <summary>The <c>claude</c> program; "" means "not installed".</summary>
-    public string? Executable { get; init; }
+    /// <summary>The <c>claude</c> program; "" means "not installed". Settable so tests can install it later.</summary>
+    public string? Executable { get; set; }
 
     /// <summary>Limit for one CLI step on the target (plugin install, MCP add).</summary>
     public TimeSpan StepTimeout { get; init; } = TimeSpan.FromMinutes(5);

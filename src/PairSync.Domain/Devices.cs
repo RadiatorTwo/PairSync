@@ -25,4 +25,10 @@ public sealed class PairedDevice
 
     /// <summary>"May send to me": incoming transfers are still confirmed one by one.</summary>
     public bool CanSendToMe { get; set; } = true;
+
+    /// <summary>"Apply Claude config": the device may read this device's Claude Code state and write portable files and settings.</summary>
+    public bool CanApplyClaudeConfig { get; set; }
+
+    /// <summary>"Install programs": hooks, status line, MCP servers and plugins from the device; needs <see cref="CanApplyClaudeConfig"/>.</summary>
+    public bool CanInstallPrograms { get; set; }
 }
