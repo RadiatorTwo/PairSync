@@ -232,7 +232,8 @@ public sealed partial class SyncService
         var upTo = profile.LastSequence;
         var batch = new List<IndexEntry>();
         var size = 0;
-        while (true)
+        // Receive only: local changes stay here (and are undone by the next round), the other device never sees them.
+        while (profile.Direction != SyncDirection.ReceiveOnly)
         {
             var changes = await _index.LocalChangesSinceAsync(profile.Id, since, 1000, _stopping.Token).ConfigureAwait(false);
             foreach (var change in changes.Where(c => c.Sequence <= upTo))

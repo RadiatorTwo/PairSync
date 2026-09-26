@@ -91,6 +91,24 @@ public sealed class SyncPlannerTests
     }
 
     [Fact]
+    public void Receive_only_undoes_local_changes_with_the_other_devices_version()
+    {
+        var receiveOnly = Profile(SyncDirection.ReceiveOnly);
+
+        var restore = SyncPlanner.Plan(receiveOnly, Me, Tombstone(V(1, 1)), File(V(0, 1)));
+        Assert.Equal(SyncActionKind.Fetch, restore.Kind);
+        Assert.Equal(V(0, 1).ToString(), restore.Version);
+        Assert.NotNull(restore.Note);
+
+        Assert.Equal(SyncActionKind.Fetch, Kind(File(V(1, 1), "mine"), File(V(0, 1)), receiveOnly));
+        Assert.Equal(SyncActionKind.Delete, Kind(File(V(1, 1)), Tombstone(V(0, 2)), receiveOnly));
+        Assert.Equal(SyncActionKind.CreateDirectory, Kind(Tombstone(V(1, 1)), Folder(V(0, 1)), receiveOnly));
+        Assert.Equal(SyncActionKind.None, Kind(File(V(0, 1)), File(V(0, 1)), receiveOnly));
+        Assert.Equal(V(0, 1).ToString(), SyncPlanner.Plan(receiveOnly, Me, File(V(1, 1)), File(V(0, 1))).Version);
+        Assert.Null(SyncPlanner.Plan(receiveOnly, Me, File(V(0, 1)), File(V(0, 2), "b")).Note);
+    }
+
+    [Fact]
     public void Conflict_copy_name_is_the_same_on_both_devices()
     {
         var time = new DateTime(2026, 9, 26, 15, 42, 10, DateTimeKind.Utc);

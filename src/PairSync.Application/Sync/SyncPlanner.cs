@@ -47,6 +47,9 @@ public static class SyncPlanner
         if (remote is null || !profile.TakesChanges)
             return SyncAction.Nothing(path);
 
+        if (profile.Direction == SyncDirection.ReceiveOnly && local is not null)
+            return Mirror(profile, local, remote);
+
         var remoteVersion = remote.VersionVector;
         if (local is null)
         {
@@ -99,6 +102,32 @@ public static class SyncPlanner
                     ? new SyncAction(SyncActionKind.Conflict, path, local, remote, merged)
                     : SyncAction.Nothing(path);
         }
+    }
+
+    /// <summary>
+    /// Receive only: the other device's folder is the original. Local changes are never announced, so any entry that
+    /// differs from the other device's is a local change and is undone. The local entry takes the other device's
+    /// version exactly, so the next round finds both equal.
+    /// </summary>
+    private static SyncAction Mirror(SyncProfile profile, SyncFile local, SyncFile remote)
+    {
+        var path = remote.Path;
+        if (local.Version == remote.Version && local.SameContentAs(remote))
+            return SyncAction.Nothing(path);
+        if (local.SameContentAs(remote))
+            return new SyncAction(SyncActionKind.AdoptVersion, path, local, remote, remote.Version);
+        if (remote.Deleted)
+        {
+            return profile.AllowDelete
+                ? new SyncAction(SyncActionKind.Delete, path, local, remote, remote.Version)
+                : SyncAction.Nothing(path);
+        }
+        if (!profile.AllowWrite)
+            return SyncAction.Nothing(path);
+        var note = local.VersionVector.Compare(remote.VersionVector) == VersionOrder.Older
+            ? null
+            : $"{path} was changed here; the version of the other device was restored.";
+        return new SyncAction(remote.IsDirectory ? SyncActionKind.CreateDirectory : SyncActionKind.Fetch, path, local, remote, remote.Version, note);
     }
 }
 

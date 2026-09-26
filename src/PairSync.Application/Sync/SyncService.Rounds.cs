@@ -134,7 +134,7 @@ public sealed partial class SyncService
         run.Status = result.Incomplete ? SyncStatus.WaitingForDevice : SyncStatus.UpToDate;
         if (result.Incomplete)
             RetryLater(profileId, run, _options.RetryInterval);
-        if (announce.Value)
+        if (announce.Value && profile.Direction != SyncDirection.ReceiveOnly)
             await SendNoticeAsync(device.Id, new SyncRequest { ProfileId = profileId }).ConfigureAwait(false);
     }
 

@@ -243,6 +243,29 @@ public sealed class SyncProfileTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Receive_only_device_restores_its_local_changes_and_never_passes_them_on()
+    {
+        var (a, b) = await StartPairAsync();
+        var (aFolder, bFolder) = (Folder("laptop"), Folder("office"));
+        Write(aFolder, "deleted.txt", "x");
+        Write(aFolder, "changed.txt", "original");
+        await ShareAsync(a, b, aFolder, bFolder,
+            acceptance: new ProfileAcceptance(bFolder, SyncDirection.ReceiveOnly, SyncMode.Automatic));
+        await WaitAsync(() => Read(bFolder, "deleted.txt") == "x" && Read(bFolder, "changed.txt") == "original", "files did not reach B");
+
+        File.Delete(Path.Combine(bFolder, "deleted.txt"));
+        Write(bFolder, "changed.txt", "edited on office");
+
+        await WaitAsync(() => Read(bFolder, "deleted.txt") == "x" && Read(bFolder, "changed.txt") == "original", "B did not restore A's versions");
+        Assert.Equal("x", Read(aFolder, "deleted.txt"));
+        Assert.Equal("original", Read(aFolder, "changed.txt"));
+
+        // Changes of A still arrive.
+        Write(aFolder, "changed.txt", "changed on laptop");
+        await WaitAsync(() => Read(bFolder, "changed.txt") == "changed on laptop", "A's change did not reach B");
+    }
+
+    [Fact]
     public async Task Manual_profile_syncs_only_on_sync_now()
     {
         var (a, b) = await StartPairAsync();
