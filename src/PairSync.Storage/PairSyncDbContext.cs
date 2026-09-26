@@ -15,6 +15,14 @@ public sealed class PairSyncDbContext(DbContextOptions<PairSyncDbContext> option
 
     public DbSet<HistoryEntry> History => Set<HistoryEntry>();
 
+    public DbSet<SyncProfile> SyncProfiles => Set<SyncProfile>();
+
+    public DbSet<SyncFile> SyncFiles => Set<SyncFile>();
+
+    public DbSet<SyncConflict> SyncConflicts => Set<SyncConflict>();
+
+    public DbSet<SyncActivity> SyncActivities => Set<SyncActivity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<PairedDevice>(device =>
@@ -55,6 +63,42 @@ public sealed class PairSyncDbContext(DbContextOptions<PairSyncDbContext> option
             entry.ToTable("History");
             entry.HasKey(h => h.Id);
             entry.HasIndex(h => h.FinishedAtUtc);
+        });
+
+        modelBuilder.Entity<SyncProfile>(profile =>
+        {
+            profile.ToTable("SyncProfiles");
+            profile.HasKey(p => p.Id);
+            profile.Property(p => p.Name).HasMaxLength(256);
+            profile.HasIndex(p => p.PeerDeviceId);
+            // No foreign key to Devices: removing a device detaches its profiles, the files stay.
+            profile.Ignore(p => p.TakesChanges);
+            profile.Ignore(p => p.DeliversFiles);
+        });
+
+        modelBuilder.Entity<SyncFile>(file =>
+        {
+            file.ToTable("SyncFiles");
+            file.HasKey(f => new { f.ProfileId, f.Side, f.Path });
+            file.HasIndex(f => new { f.ProfileId, f.Side, f.Sequence });
+            file.HasOne<SyncProfile>().WithMany().HasForeignKey(f => f.ProfileId).OnDelete(DeleteBehavior.Cascade);
+            file.Ignore(f => f.VersionVector);
+        });
+
+        modelBuilder.Entity<SyncConflict>(conflict =>
+        {
+            conflict.ToTable("SyncConflicts");
+            conflict.HasKey(c => c.Id);
+            conflict.HasIndex(c => new { c.ProfileId, c.Resolved });
+            conflict.HasOne<SyncProfile>().WithMany().HasForeignKey(c => c.ProfileId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SyncActivity>(activity =>
+        {
+            activity.ToTable("SyncActivities");
+            activity.HasKey(a => a.Id);
+            activity.HasIndex(a => new { a.ProfileId, a.Id });
+            activity.HasOne<SyncProfile>().WithMany().HasForeignKey(a => a.ProfileId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 

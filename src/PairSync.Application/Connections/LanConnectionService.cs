@@ -259,6 +259,7 @@ public static class ConnectionServices
         services.AddSingleton(new TransferOptions());
         services.AddSingleton<TransferService>();
         services.AddSingleton<Devices.DeviceService>();
+        services.AddSingleton<Sync.SyncIndex>();
         return services;
     }
 }
