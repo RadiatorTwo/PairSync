@@ -77,11 +77,13 @@ public sealed class InternetScreenTests(HeadlessFixture ui)
         await UiAsync.UntilAsync(() => send.Target is { IsOnline: true, ViaInternet: true });
         Assert.StartsWith("Internet direct", send.RouteText, StringComparison.Ordinal);
 
-        // Disconnecting ends the link on both sides; the card offers a new connection.
+        // Disconnecting ends the link on both sides. The other side was told: plain offline, no "connection lost",
+        // and the card still offers a new connection.
         await CardOf(laptop, office).Actions.Single().Command.ExecuteAsync(null);
         await UiAsync.UntilAsync(() => !CardOf(laptop, office).IsConnected);
-        await UiAsync.UntilAsync(() => CardOf(office, laptop).InternetText == "Connection lost · new code needed");
-        Assert.Contains(CardOf(office, laptop).Actions, x => x.Label == "Connect via internet…");
+        await UiAsync.UntilAsync(() => !CardOf(office, laptop).IsConnected);
+        Assert.Null(CardOf(office, laptop).InternetText);
+        Assert.Contains(CardOf(office, laptop).Actions, x => x is { Label: "Connect via internet…", IsPrimary: false });
         Assert.Null(office.Page<OverviewViewModel>().NatBanner);
     });
 

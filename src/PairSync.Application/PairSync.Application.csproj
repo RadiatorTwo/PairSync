@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <InternalsVisibleTo Include="PairSync.IntegrationTests" />
     <ProjectReference Include="..\PairSync.Domain\PairSync.Domain.csproj" />
     <ProjectReference Include="..\PairSync.Storage\PairSync.Storage.csproj" />
     <ProjectReference Include="..\PairSync.SyncEngine\PairSync.SyncEngine.csproj" />

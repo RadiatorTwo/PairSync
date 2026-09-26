@@ -546,6 +546,20 @@ public sealed class InternetLinkService(
         }
     }
 
+    /// <summary>The user renamed the device: its status and link show the new name.</summary>
+    internal void Rename(Guid deviceId, string name)
+    {
+        lock (_gate)
+        {
+            if (!_entries.TryGetValue(deviceId, out var entry))
+                return;
+            entry.DeviceName = name;
+            if (entry.Link is { } link)
+                link.Device.Name = name;
+        }
+        Changed?.Invoke();
+    }
+
     /// <summary>Forgets a failed attempt, so the device shows no internet status any more.</summary>
     public void Dismiss(Guid deviceId)
     {
@@ -723,7 +737,10 @@ public sealed class InternetLinkService(
         lock (_gate)
         {
             lost = _entries.TryGetValue(entry.DeviceId, out var current) && ReferenceEquals(current, entry) && ReferenceEquals(entry.Link, link);
-            if (lost)
+            // Closed on purpose by the other side: the device is just offline, no "connection lost".
+            if (lost && link.ClosedByPeer)
+                _entries.Remove(entry.DeviceId);
+            else if (lost)
             {
                 entry.Phase = InternetLinkPhase.Failed;
                 entry.Link = null;

@@ -52,7 +52,7 @@ public sealed partial class PairingViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StepText), nameof(IsStart), nameof(IsInvitation), nameof(IsAnswerCode), nameof(IsConnecting),
-        nameof(IsCode), nameof(ShowsQrCode))]
+        nameof(IsCode), nameof(ShowsQrCode), nameof(CloseLabel))]
     private PairingStep _step = PairingStep.Start;
 
     /// <summary>The current pairing runs over the internet (one more step: the answer code).</summary>
@@ -142,6 +142,9 @@ public sealed partial class PairingViewModel : ObservableObject, IDisposable
     public bool IsCode => Step == PairingStep.Code;
 
     public bool ShowsQrCode => Step is PairingStep.Invitation or PairingStep.AnswerCode;
+
+    /// <summary>"Cancel invitation" under an invitation, "Cancel" under an answer code.</summary>
+    public string CloseLabel => IsInvitation ? Strings.Pair_CancelInvitation : Strings.Dialog_Cancel;
 
     /// <summary>Paired or canceled: the device lists may have changed.</summary>
     public event Action? Finished;

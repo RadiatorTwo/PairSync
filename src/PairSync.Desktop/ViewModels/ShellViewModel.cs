@@ -78,6 +78,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
     public void Navigate(AppPage page) => ActivePage = Pages.First(p => p.Page == page);
 
+    partial void OnActivePageChanged(PageViewModel value) => value.OnOpened();
+
     [RelayCommand]
     private void Quit() => _quit();
 

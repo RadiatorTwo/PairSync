@@ -31,6 +31,9 @@ public sealed partial class PairedDeviceViewModel(PairedDevice device, DevicesVi
     public string BlockLabel => IsBlocked ? Strings.Devices_Unblock : Strings.Devices_Block;
 
     [RelayCommand]
+    private Task Rename() => owner.ShowRenameAsync(this);
+
+    [RelayCommand]
     private Task Permissions() => owner.ShowPermissionsAsync(this);
 
     [RelayCommand]
@@ -61,6 +64,42 @@ public sealed partial class PermissionsDialogViewModel : DialogViewModel
 
     [RelayCommand]
     private void Done() => Close();
+}
+
+/// <summary>"Rename laptop-win11": a local name for a paired device.</summary>
+public sealed partial class RenameDialogViewModel : DialogViewModel
+{
+    private readonly Func<string, Task<string?>> _rename;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private string _name;
+
+    [ObservableProperty]
+    private string? _error;
+
+    /// <param name="rename">Saves the name; returns an error message, or null on success.</param>
+    public RenameDialogViewModel(string deviceName, Func<string, Task<string?>> rename)
+    {
+        Title = string.Format(CultureInfo.CurrentCulture, Strings.Rename_Title, deviceName);
+        _name = deviceName;
+        _rename = rename;
+    }
+
+    public string Title { get; }
+
+    private bool CanSave => !string.IsNullOrWhiteSpace(Name);
+
+    [RelayCommand(CanExecute = nameof(CanSave))]
+    private async Task Save()
+    {
+        Error = await _rename(Name);
+        if (Error is null)
+            Close();
+    }
+
+    [RelayCommand]
+    private void Cancel() => Close();
 }
 
 /// <summary>Devices and pairing (screen 05).</summary>
@@ -120,6 +159,20 @@ public sealed partial class DevicesViewModel : PageViewModel, IDisposable
             _logger.LogWarning(e, "Device list could not be read");
         }
     }
+
+    internal async Task ShowRenameAsync(PairedDeviceViewModel device) =>
+        await _dialogs.ShowAsync(new RenameDialogViewModel(device.Name, async name =>
+        {
+            try
+            {
+                await _core.Devices.RenameAsync(device.Id, name, CancellationToken.None);
+                return null;
+            }
+            catch (Exception e) when (e is ArgumentException or IOException or InvalidOperationException)
+            {
+                return e.Message;
+            }
+        }));
 
     internal async Task ShowPermissionsAsync(PairedDeviceViewModel device) =>
         await _dialogs.ShowAsync(new PermissionsDialogViewModel(device.Name, device.CanSendToMe,

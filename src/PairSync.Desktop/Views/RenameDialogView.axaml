@@ -1,0 +1,18 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PairSync.Desktop.ViewModels"
+             xmlns:res="using:PairSync.Desktop.Resources"
+             x:Class="PairSync.Desktop.Views.RenameDialogView"
+             x:DataType="vm:RenameDialogViewModel">
+  <StackPanel Spacing="16">
+    <TextBlock Classes="h2" TextWrapping="Wrap" Text="{Binding Title}" />
+    <TextBox Name="NameInput" Classes="mono" MaxLength="64" Text="{Binding Name}" />
+    <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Rename_Hint}" />
+    <TextBlock Classes="problem" FontSize="13" TextWrapping="Wrap" Text="{Binding Error}"
+               IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+      <Button Content="{x:Static res:Strings.Dialog_Cancel}" Command="{Binding CancelCommand}" />
+      <Button Classes="primary compact" IsDefault="True" Content="{x:Static res:Strings.Dialog_Save}" Command="{Binding SaveCommand}" />
+    </StackPanel>
+  </StackPanel>
+</UserControl>

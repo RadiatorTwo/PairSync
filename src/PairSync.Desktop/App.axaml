@@ -44,6 +44,9 @@
     <DataTemplate DataType="vm:ConfirmDialogViewModel">
       <views:ConfirmDialogView />
     </DataTemplate>
+    <DataTemplate DataType="vm:RenameDialogViewModel">
+      <views:RenameDialogView />
+    </DataTemplate>
     <DataTemplate DataType="vm:PermissionsDialogViewModel">
       <views:PermissionsDialogView />
     </DataTemplate>

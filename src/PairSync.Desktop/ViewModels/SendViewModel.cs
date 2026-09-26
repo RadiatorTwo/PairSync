@@ -255,6 +255,13 @@ public sealed partial class SendViewModel : PageViewModel, IDisposable
         _navigate(AppPage.Overview);
     }
 
+    /// <summary>An offline device chosen earlier is not preselected again; an online one takes its place, if any.</summary>
+    public override void OnOpened()
+    {
+        if (Target is { IsOnline: false })
+            Target = Targets.FirstOrDefault(t => t.IsOnline);
+    }
+
     private void OnPresenceChanged() => Ui.Run(() =>
     {
         if (!_disposed)

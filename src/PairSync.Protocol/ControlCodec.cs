@@ -37,6 +37,7 @@ public static class ControlCodec
         Register<Cancel>(22);
         Register<Ping>(30);
         Register<Pong>(31);
+        Register<Goodbye>(32);
         Register<PairCommit>(40);
         Register<PairNonce>(41);
         Register<PairReveal>(42);

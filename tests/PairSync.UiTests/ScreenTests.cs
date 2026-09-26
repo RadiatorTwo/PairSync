@@ -75,6 +75,12 @@ public sealed class ScreenTests(HeadlessFixture ui)
         Assert.Equal("nas-box · offline", send.Targets.Single().ToString());
         Assert.Null(send.Target);
 
+        // An offline device chosen by hand is not preselected the next time the page opens.
+        send.Target = send.Targets.Single();
+        laptop.Shell.Navigate(AppPage.Overview);
+        laptop.Shell.Navigate(AppPage.Send);
+        Assert.Null(send.Target);
+
         await laptop.Core.Transfers.SendAsync(nas.Id,
             Application.Transfers.SendScanner.Scan([cores.SourceFile("notes.md", 10)]), ExistingFilePolicy.KeepBoth, null, CancellationToken.None);
 
@@ -110,6 +116,7 @@ public sealed class ScreenTests(HeadlessFixture ui)
         Assert.NotNull(inviting.QrCode);
         Assert.StartsWith("Expires in 0", inviting.ExpiresText, StringComparison.Ordinal);
         Assert.Equal("Step 2 of 3", inviting.StepText);
+        Assert.Equal("Cancel invitation", inviting.CloseLabel);
         await inviting.CopyInvitationCommand.ExecuteAsync(null);
         workstation.Shell.Navigate(AppPage.Devices);
         Snapshots.Save(workstation.Window, "screen-devices-invitation");
@@ -184,6 +191,21 @@ public sealed class ScreenTests(HeadlessFixture ui)
         Assert.StartsWith("SHA256: ", device.Fingerprint, StringComparison.Ordinal);
         Assert.True(device.CanSendToMe);
 
+        // Rename: only here, and everywhere the device is shown
+        _ = device.RenameCommand.ExecuteAsync(null);
+        await UiAsync.UntilAsync(() => laptop.Shell.Dialogs.Current is RenameDialogViewModel);
+        var rename = (RenameDialogViewModel)laptop.Shell.Dialogs.Current!;
+        Assert.Equal("Rename workstation", rename.Title);
+        Assert.Equal("workstation", rename.Name);
+        rename.Name = "  ";
+        Assert.False(rename.SaveCommand.CanExecute(null));
+        rename.Name = "office desk";
+        await rename.SaveCommand.ExecuteAsync(null);
+        await UiAsync.UntilAsync(() => devices.Paired.Count == 1 && devices.Paired[0].Name == "office desk");
+        Assert.Equal("office desk", laptop.Core.Presence.Devices.Single().Name);
+        await UiAsync.UntilAsync(() => laptop.Page<OverviewViewModel>().Devices.SingleOrDefault()?.Name == "office desk");
+        Assert.Equal("laptop-win11", (await workstation.Core.Devices.GetPairedAsync(CancellationToken.None)).Single().Name);
+
         // Permissions: "May send to me" off
         _ = device.PermissionsCommand.ExecuteAsync(null);
         await UiAsync.UntilAsync(() => laptop.Shell.Dialogs.Current is PermissionsDialogViewModel);
@@ -203,7 +225,7 @@ public sealed class ScreenTests(HeadlessFixture ui)
         var remove = devices.Paired[0].RemoveCommand.ExecuteAsync(null);
         await UiAsync.UntilAsync(() => laptop.Shell.Dialogs.Current is ConfirmDialogViewModel);
         var confirm = (ConfirmDialogViewModel)laptop.Shell.Dialogs.Current!;
-        Assert.Equal("Remove workstation?", confirm.Title);
+        Assert.Equal("Remove office desk?", confirm.Title);
         Snapshots.Save(laptop.Window, "screen-devices-remove");
         confirm.ConfirmCommand.Execute(null);
         await remove;

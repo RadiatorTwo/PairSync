@@ -13,7 +13,7 @@ namespace PairSync.Application.Internet;
 /// An established internet connection to a paired device (phase 2 block C). It stays open until either side quits or
 /// the network drops it, and carries any number of jobs in both directions: each job opens its own pair of channels
 /// (<see cref="OpenSessionAsync"/>) and closes them when done. The <c>link</c> channel carries Ping/Pong for the
-/// round-trip time and as a sign of life.
+/// round-trip time and as a sign of life, and a Goodbye before a side closes the link on purpose.
 /// </summary>
 public sealed class InternetLink : IAsyncDisposable
 {
@@ -24,12 +24,17 @@ public sealed class InternetLink : IAsyncDisposable
     private const string ControlPrefix = "c:";
     private const string DataPrefix = "d:";
 
+    /// <summary>How long closing waits for the Goodbye to go out.</summary>
+    private static readonly TimeSpan GoodbyeTimeout = TimeSpan.FromSeconds(1);
+
     private readonly CancellationTokenSource _stopping = new();
     private readonly TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly ILogger _logger;
     private readonly TimeProvider _time;
     private Task _run = Task.CompletedTask;
+    private ControlChannel? _control;
     private long _roundTripTicks = -1;
+    private int _closedByPeer;
     private int _disposed;
 
     internal InternetLink(PairedDevice device, WebRtcSession session, NatHint remoteNat, TimeProvider time, ILogger logger)
@@ -60,6 +65,9 @@ public sealed class InternetLink : IAsyncDisposable
 
     /// <summary>Completes when the connection is gone (lost, closed by either side, or disposed).</summary>
     public Task Closed => _closed.Task;
+
+    /// <summary>The other side said Goodbye: it quit or disconnected on purpose, the connection was not lost.</summary>
+    public bool ClosedByPeer => Volatile.Read(ref _closedByPeer) != 0;
 
     /// <summary>Raised after a new round-trip measurement.</summary>
     public event Action? RoundTripChanged;
@@ -106,6 +114,7 @@ public sealed class InternetLink : IAsyncDisposable
         try
         {
             var control = new ControlChannel(await Session.GetChannelAsync(LinkChannel, cancellationToken).ConfigureAwait(false));
+            Volatile.Write(ref _control, control);
             var replies = Task.Run(async () =>
             {
                 await foreach (var message in control.ReadAllAsync(cancellationToken).ConfigureAwait(false))
@@ -118,6 +127,12 @@ public sealed class InternetLink : IAsyncDisposable
                         case Pong pong:
                             Interlocked.Exchange(ref _roundTripTicks, Stopwatch.GetElapsedTime(pong.Timestamp).Ticks);
                             RoundTripChanged?.Invoke();
+                            break;
+                        case Goodbye:
+                            Volatile.Write(ref _closedByPeer, 1);
+                            if (_closed.TrySetResult())
+                                _logger.LogInformation("{Name} closed the internet connection", Device.Name);
+                            _stopping.Cancel();
                             break;
                     }
                 }
@@ -169,11 +184,27 @@ public sealed class InternetLink : IAsyncDisposable
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
             return;
         Session.StateChanged -= OnStateChanged;
+        await SayGoodbyeAsync().ConfigureAwait(false);
         await _stopping.CancelAsync().ConfigureAwait(false);
         _closed.TrySetResult();
         await Session.DisposeAsync().ConfigureAwait(false);
         await _run.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
         _stopping.Dispose();
+    }
+
+    /// <summary>Tells the other side that this side closes the link on purpose; skipped if the link is gone already.</summary>
+    private async Task SayGoodbyeAsync()
+    {
+        if (!IsOpen || Volatile.Read(ref _control) is not { } control)
+            return;
+        try
+        {
+            using var timeout = new CancellationTokenSource(GoodbyeTimeout, _time);
+            await control.SendAsync(new Goodbye(), timeout.Token).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is OperationCanceledException or TransportException or ProtocolException or ObjectDisposedException)
+        {
+        }
     }
 
     /// <summary>

@@ -33,6 +33,11 @@ public abstract class PageViewModel(AppPage page) : ObservableObject
 
     /// <summary>Heading of the screen.</summary>
     public virtual string Title => NavTitle;
+
+    /// <summary>The screen was opened in the main window.</summary>
+    public virtual void OnOpened()
+    {
+    }
 }
 
 /// <summary>A screen that only shows its heading and a note, for features of later phases.</summary>

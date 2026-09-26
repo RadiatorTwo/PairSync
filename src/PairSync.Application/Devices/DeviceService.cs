@@ -27,6 +27,18 @@ public sealed class DeviceService(
         return [.. devices.OrderBy(d => d.Name, StringComparer.CurrentCultureIgnoreCase).ThenBy(d => d.PairedAtUtc)];
     }
 
+    /// <summary>Gives the device another name. Only this device sees it; the other device keeps its own name.</summary>
+    /// <exception cref="ArgumentException">The name is empty.</exception>
+    public async Task RenameAsync(Guid deviceId, string name, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Enter a name.", nameof(name));
+        var cleaned = Pairing.DeviceNames.Clean(name, deviceId);
+        await UpdateAsync(deviceId, d => d.Name = cleaned, cancellationToken).ConfigureAwait(false);
+        internet.Rename(deviceId, cleaned);
+        logger.LogInformation("Device {DeviceId} renamed to {Name}", deviceId, cleaned);
+    }
+
     /// <summary>"May send to me". Incoming transfers are still confirmed one by one.</summary>
     public Task SetCanSendToMeAsync(Guid deviceId, bool allowed, CancellationToken cancellationToken) =>
         UpdateAsync(deviceId, d => d.CanSendToMe = allowed, cancellationToken);

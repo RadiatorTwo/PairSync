@@ -24,6 +24,7 @@ public sealed class ControlCodecTests
         new Cancel { TransferId = Guid.NewGuid(), Reason = "user" },
         new Ping { Timestamp = 123 },
         new Pong { Timestamp = 456 },
+        new Goodbye(),
     ];
 
     [Theory]

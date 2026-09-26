@@ -31,11 +31,12 @@
                     <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
                       <ctl:Chip Content="{x:Static res:Strings.Perm_MaySend}" Classes.off="{Binding !CanSendToMe}" />
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+                    <WrapPanel ItemSpacing="8" LineSpacing="6" Margin="0,6,0,0">
+                      <Button Content="{x:Static res:Strings.Devices_Rename}" Command="{Binding RenameCommand}" />
                       <Button Content="{x:Static res:Strings.Devices_Permissions}" Command="{Binding PermissionsCommand}" />
                       <Button Content="{Binding BlockLabel}" Command="{Binding ToggleBlockCommand}" />
                       <Button Classes="quiet" Content="{x:Static res:Strings.Devices_Remove}" Command="{Binding RemoveCommand}" />
-                    </StackPanel>
+                    </WrapPanel>
                   </StackPanel>
                 </ctl:Card>
               </DataTemplate>
@@ -101,15 +102,15 @@
               </Border>
               <StackPanel Grid.Column="1" Spacing="12">
                 <TextBlock TextWrapping="Wrap" Text="{Binding QrHint}" />
-                <StackPanel Orientation="Horizontal" Spacing="8">
+                <WrapPanel ItemSpacing="8" LineSpacing="8">
                   <Button Content="{x:Static res:Strings.Pair_Copy}" Command="{Binding CopyInvitationCommand}" IsVisible="{Binding IsInvitation}" />
                   <Button Content="{x:Static res:Strings.Connect_Copy}" Command="{Binding CopyInvitationCommand}" IsVisible="{Binding IsAnswerCode}" />
                   <Button Content="{x:Static res:Strings.Pair_Save}" Command="{Binding SaveInvitationCommand}" />
-                </StackPanel>
+                </WrapPanel>
                 <TextBlock Classes="meta" Text="{Binding CopiedText}" IsVisible="{Binding CopiedText, Converter={x:Static ObjectConverters.IsNotNull}}" />
                 <TextBlock Classes="meta" TextWrapping="Wrap" Text="{Binding ExpiresText}" Classes.problem="{Binding IsExpired}" />
                 <TextBlock Classes="meta" TextWrapping="Wrap" Text="{Binding ConnectingText}" IsVisible="{Binding IsAnswerCode}" />
-                <Button Classes="quiet" Padding="0,4" HorizontalAlignment="Left" Content="{x:Static res:Strings.Pair_Close}" Command="{Binding CloseCommand}" />
+                <Button Name="CancelInvitation" HorizontalAlignment="Left" Content="{Binding CloseLabel}" Command="{Binding CloseCommand}" />
               </StackPanel>
             </Grid>
 

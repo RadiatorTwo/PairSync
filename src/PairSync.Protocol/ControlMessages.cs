@@ -253,6 +253,10 @@ public sealed record Pong : IControlMessage
     [Key(0)] public long Timestamp { get; init; }
 }
 
+/// <summary>Sent on an internet link before this side closes it on purpose (quit, disconnect), so the other side does not report a lost connection.</summary>
+[MessagePackObject]
+public sealed record Goodbye : IControlMessage;
+
 // Pairing (plan §5): commit-reveal for the security code. The connecting device commits to its nonce, the answering
 // device replies with its own, then the connecting device reveals. Neither side can steer the code. After both users
 // compared the code, each side sends PairConfirm; a Cancel from either side ends the pairing without storing anything.
@@ -289,7 +293,7 @@ public static class ControlMessageRules
 {
     /// <summary>Messages a device that is not paired may send (plan §6: unknown devices get no access).</summary>
     public static bool IsAllowedBeforePairing(IControlMessage message) =>
-        message is Hello or HelloAck or Ping or Pong or Cancel or UnknownControlMessage
+        message is Hello or HelloAck or Ping or Pong or Goodbye or Cancel or UnknownControlMessage
             or PairCommit or PairNonce or PairReveal or PairConfirm;
 }
 

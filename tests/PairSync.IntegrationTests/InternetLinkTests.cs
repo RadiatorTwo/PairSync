@@ -177,8 +177,8 @@ public sealed class InternetLinkTests : IAsyncLifetime
         await WaitAsync(() => a.Transfers.GetJobsAsync(Ct).Result.FirstOrDefault(j => j.Id == job) is { State: JobState.Running, TransferredBytes: > 0 },
             "job did not start");
 
-        // B goes away: A notices the loss, the job waits without an error loop.
-        await b.Internet.CloseAsync(Id(a));
+        // B's connection drops without a Goodbye: A notices the loss, the job waits without an error loop.
+        await b.Internet.LinkTo(Id(a))!.Session.DisposeAsync();
         await WaitAsync(() => a.Internet.StatusOf(Id(b))?.Phase == InternetLinkPhase.Failed, "A did not notice the loss");
         Assert.True(a.Internet.StatusOf(Id(b))!.WasConnected);
         Assert.Contains("lost", a.Internet.StatusOf(Id(b))!.Error);
@@ -189,6 +189,20 @@ public sealed class InternetLinkTests : IAsyncLifetime
 
         Assert.Equal(HistoryOutcome.Completed, (await WaitForHistoryAsync(b, job)).Outcome);
         Assert.Equal(await File.ReadAllBytesAsync(file, Ct), await File.ReadAllBytesAsync(Path.Combine(TargetOf(b, "laptop"), "big.bin"), Ct));
+    }
+
+    [Fact]
+    public async Task Closing_on_purpose_leaves_the_other_side_offline_without_a_lost_connection()
+    {
+        var (a, b) = await StartPairAsync();
+        await ConnectAsync(a, b);
+
+        // B quits: it says Goodbye before the connection goes away.
+        _cores.Remove(b);
+        await b.DisposeAsync();
+
+        await WaitAsync(() => a.Internet.StatusOf(Id(b)) is null, "A still shows an internet status", seconds: 5);
+        Assert.Null(a.Internet.LinkTo(Id(b)));
     }
 
     [Fact]
@@ -237,7 +251,7 @@ public sealed class InternetLinkTests : IAsyncLifetime
         await b.Devices.SetBlockedAsync(Id(a), true, Ct);
 
         Assert.Null(b.Internet.LinkTo(Id(a)));
-        await WaitAsync(() => a.Internet.StatusOf(Id(b))?.Phase == InternetLinkPhase.Failed, "A did not notice");
+        await WaitAsync(() => a.Internet.LinkTo(Id(b)) is null, "A did not notice");
         var code = await a.Internet.CreateCodeAsync(Id(b), Ct);
         var refused = await Assert.ThrowsAsync<InvalidConnectCodeException>(() => b.Internet.AnswerCodeAsync(code.Text, Ct));
         Assert.Contains("blocked", refused.Message);
