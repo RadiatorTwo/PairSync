@@ -260,6 +260,8 @@ public static class ConnectionServices
         services.AddSingleton<TransferService>();
         services.AddSingleton<Devices.DeviceService>();
         services.AddSingleton<Sync.SyncIndex>();
+        services.AddSingleton(new Sync.SyncOptions());
+        services.AddSingleton<Sync.SyncService>();
         return services;
     }
 }

@@ -8,6 +8,7 @@ using PairSync.Application.Pairing;
 using PairSync.Application.Transfers;
 using PairSync.Discovery.Lan;
 using PairSync.Application.Presence;
+using PairSync.Application.Sync;
 using PairSync.Domain;
 using PairSync.Storage;
 
@@ -23,7 +24,7 @@ internal static class TestCores
     /// internet links run over host candidates on this machine and tests make no external requests.</param>
     public static async Task<PairSyncCore> StartAsync(
         DataDirectory data, CancellationToken cancellationToken, PresenceOptions? presence = null, PairingOptions? pairing = null,
-        TransferOptions? transfers = null, InternetOptions? internet = null)
+        TransferOptions? transfers = null, InternetOptions? internet = null, SyncOptions? sync = null)
     {
         var core = await PairSyncCore.StartAsync(data, cancellationToken, services =>
         {
@@ -32,10 +33,18 @@ internal static class TestCores
             services.AddSingleton(pairing ?? new PairingOptions { InvitationAddresses = [IPAddress.Loopback] });
             services.AddSingleton(transfers ?? ForTests(data));
             services.AddSingleton(internet ?? new InternetOptions { DetectNat = false });
+            services.AddSingleton(sync ?? FastSync);
         });
         core.Settings.Update(s => s with { StunServers = [] });
         return core;
     }
+
+    /// <summary>Sync timings for tests: short watcher quiet time and retries.</summary>
+    public static SyncOptions FastSync { get; } = new()
+    {
+        WatcherSettle = TimeSpan.FromMilliseconds(300),
+        RetryInterval = TimeSpan.FromSeconds(1),
+    };
 
     public static TransferOptions ForTests(DataDirectory data) => new()
     {

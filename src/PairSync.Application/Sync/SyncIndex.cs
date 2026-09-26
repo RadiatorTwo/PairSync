@@ -86,6 +86,26 @@ public sealed class SyncIndex(IDbContextFactory<PairSyncDbContext> contexts)
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Updates only the modification time hint of local entries whose content did not change (no new sequence).</summary>
+    public async Task UpdateHintsAsync(Guid profileId, IReadOnlyCollection<SyncFile> touched, CancellationToken cancellationToken)
+    {
+        if (touched.Count == 0)
+            return;
+        await using var db = await contexts.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var batch in touched.Chunk(Batch))
+        {
+            var paths = batch.Select(f => f.Path).ToList();
+            var rows = await db.SyncFiles.Where(f => f.ProfileId == profileId && f.Side == SyncSide.Local && paths.Contains(f.Path))
+                .ToDictionaryAsync(f => f.Path, StringComparer.Ordinal, cancellationToken).ConfigureAwait(false);
+            foreach (var file in batch)
+            {
+                if (rows.TryGetValue(file.Path, out var row))
+                    row.MTimeUtc = file.MTimeUtc;
+            }
+        }
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     /// <summary>Removes tombstones deleted before <paramref name="before"/> on both sides.</summary>
     public async Task<int> PurgeTombstonesAsync(Guid profileId, DateTime before, CancellationToken cancellationToken)
     {

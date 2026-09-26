@@ -123,4 +123,17 @@ public static class ConflictNames
         var stamp = renamedVersionMTimeUtc.ToString("yyyy-MM-dd HHmmss", CultureInfo.InvariantCulture);
         return $"{folder}{stem} (conflict {id} {stamp}){extension}";
     }
+
+    private static readonly System.Text.RegularExpressions.Regex CopyPattern =
+        new(@"^(?<stem>.*) \(conflict (?<id>[0-9A-F]{6}) \d{4}-\d{2}-\d{2} \d{6}\)(?<ext>(\.[^./]*)?)$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>The original path if <paramref name="path"/> is a conflict copy made by <paramref name="renamingDevice"/>.</summary>
+    public static string? OriginalOf(string path, Guid renamingDevice)
+    {
+        var slash = path.LastIndexOf('/');
+        var match = CopyPattern.Match(slash < 0 ? path : path[(slash + 1)..]);
+        if (!match.Success || match.Groups["id"].Value != renamingDevice.ToString("N")[..6].ToUpperInvariant())
+            return null;
+        return (slash < 0 ? "" : path[..(slash + 1)]) + match.Groups["stem"].Value + match.Groups["ext"].Value;
+    }
 }

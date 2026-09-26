@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using PairSync.Application.Connections;
 using PairSync.Application.Pairing;
 using PairSync.Application.Presence;
+using PairSync.Application.Sync;
 using PairSync.Application.Transfers;
 using PairSync.Protocol;
 using PairSync.Storage;
@@ -66,18 +67,20 @@ public sealed class PairSyncCore : IAsyncDisposable
             core.Identity = await services.GetRequiredService<DeviceIdentityStore>().LoadOrCreateAsync(cancellationToken).ConfigureAwait(false);
             services.GetRequiredService<CurrentIdentity>().Set(core.Identity);
 
-            // Unpaired devices only get to pair; sessions of paired devices are for transfers.
+            // Unpaired devices only get to pair; sessions of paired devices are for jobs or sync profiles.
             var lan = services.GetRequiredService<LanConnectionService>();
             var pairing = services.GetRequiredService<PairingService>();
             var transfers = services.GetRequiredService<TransferService>();
+            var sync = services.GetRequiredService<SyncService>();
             lan.IncomingConnectionHandler = connection => connection.Access == PeerAccess.PairingOnly
                 ? pairing.HandleIncomingAsync(connection)
-                : transfers.HandleIncomingAsync(connection);
+                : RouteAsync(connection, transfers, sync);
 
             // A busy port is not fatal: the app still works as a sender and Settings shows the error.
             await lan.StartAsync(cancellationToken).ConfigureAwait(false);
             await services.GetRequiredService<PresenceService>().StartAsync(cancellationToken).ConfigureAwait(false);
             await transfers.StartAsync(cancellationToken).ConfigureAwait(false);
+            await sync.StartAsync(cancellationToken).ConfigureAwait(false);
 
             services.GetRequiredService<ILogger<PairSyncCore>>()
                 .LogInformation("PairSync core started, data directory {DataDirectory}", dataDirectory.Root);
@@ -89,6 +92,35 @@ public sealed class PairSyncCore : IAsyncDisposable
             throw;
         }
     }
+
+    /// <summary>A session of a paired device: its first message says whether it is about a job or a sync profile.</summary>
+    private static async Task RouteAsync(PeerConnection connection, TransferService transfers, SyncService sync)
+    {
+        IControlMessage? first = null;
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            await foreach (var message in connection.Channels.Control.ReadAllAsync(timeout.Token).ConfigureAwait(false))
+            {
+                if (message is JobOffer or JobControl || SyncService.IsSyncMessage(message))
+                {
+                    first = message;
+                    break;
+                }
+            }
+        }
+        catch (Exception e) when (e is Transport.TransportException or ProtocolException or OperationCanceledException)
+        {
+        }
+        if (first is null)
+            await connection.DisposeAsync().ConfigureAwait(false);
+        else if (SyncService.IsSyncMessage(first))
+            await sync.HandleIncomingAsync(connection, first).ConfigureAwait(false);
+        else
+            await transfers.HandleIncomingAsync(connection, first).ConfigureAwait(false);
+    }
+
+    public SyncService Sync => _services.GetRequiredService<SyncService>();
 
     public LanConnectionService Lan => _services.GetRequiredService<LanConnectionService>();
 
@@ -109,6 +141,8 @@ public sealed class PairSyncCore : IAsyncDisposable
         // Stop the active services in order while the provider still works: a disposing ServiceProvider refuses to
         // create anything, so a transfer could not save its last journal entry and presence not its last-seen times.
         // Services before the provider: the listener still uses the identity until it stops.
+        if (_services.GetService<SyncService>() is { } sync)
+            await sync.DisposeAsync().ConfigureAwait(false);
         if (_services.GetService<TransferService>() is { } transfers)
             await transfers.DisposeAsync().ConfigureAwait(false);
         await _services.GetRequiredService<PairingService>().DisposeAsync().ConfigureAwait(false);

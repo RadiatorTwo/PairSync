@@ -47,6 +47,9 @@ public sealed partial class TransferService : IAsyncDisposable
         _throttle = new UploadThrottle(() => settings.Current.UploadLimitBytesPerSecond, time);
     }
 
+    /// <summary>The upload limit shared by every sender of this device (jobs and sync profiles).</summary>
+    internal UploadThrottle Throttle => _throttle;
+
     /// <summary>A job was created or changed state. Progress is read from <see cref="GetJobsAsync"/>.</summary>
     public event Action? Changed;
 
@@ -239,23 +242,12 @@ public sealed partial class TransferService : IAsyncDisposable
     }
 
     /// <summary>Takes over an incoming session of a paired device: a job offer, or a pause/resume/cancel notice.</summary>
-    public async Task HandleIncomingAsync(PeerConnection connection)
+    /// <summary>Handles a session another device opened with a job message; owns the connection.</summary>
+    public async Task HandleIncomingAsync(PeerConnection connection, IControlMessage first)
     {
         await using var owned = connection;
         try
         {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_stopping.Token);
-            timeout.CancelAfter(TimeSpan.FromSeconds(30));
-            IControlMessage? first = null;
-            await foreach (var message in connection.Channels.Control.ReadAllAsync(timeout.Token).ConfigureAwait(false))
-            {
-                if (message is JobOffer or JobControl)
-                {
-                    first = message;
-                    break;
-                }
-            }
-
             switch (first)
             {
                 case JobOffer offer:

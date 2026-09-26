@@ -100,5 +100,9 @@ public sealed class SyncPlannerTests
         Assert.Equal("docs/plan (conflict 111111 2026-09-26 154210).md", ConflictNames.CopyPath("docs/plan.md", Me, time));
         Assert.Equal("Makefile (conflict 111111 2026-09-26 154210)", ConflictNames.CopyPath("Makefile", Me, time));
         Assert.Equal(".env (conflict 111111 2026-09-26 154210)", ConflictNames.CopyPath(".env", Me, time));
+        Assert.Equal("docs/plan.md", ConflictNames.OriginalOf(ConflictNames.CopyPath("docs/plan.md", Me, time), Me));
+        Assert.Equal("Makefile", ConflictNames.OriginalOf(ConflictNames.CopyPath("Makefile", Me, time), Me));
+        Assert.Null(ConflictNames.OriginalOf(ConflictNames.CopyPath("docs/plan.md", Me, time), Other));
+        Assert.Null(ConflictNames.OriginalOf("docs/plan.md", Me));
     }
 }

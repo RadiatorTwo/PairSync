@@ -25,6 +25,15 @@ public sealed class ControlCodecTests
         new Ping { Timestamp = 123 },
         new Pong { Timestamp = 456 },
         new Goodbye(),
+        new ProfileOffer { ProfileId = Guid.NewGuid(), Name = "Projects", Direction = SyncProfileDirection.SendOnly, Excludes = "*.tmp" },
+        new SyncHello { ProfileId = Guid.NewGuid(), IndexId = Guid.NewGuid(), SeenSequence = 42 },
+        new IndexUpdate
+        {
+            ProfileId = Guid.NewGuid(), IndexId = Guid.NewGuid(), UpToSequence = 7, Last = true,
+            Entries = [new IndexEntry { Path = "a/b.txt", Size = 3, Sha256 = new byte[32], ChunkHashes = new byte[32], Sequence = 7,
+                MTimeUtc = new DateTime(2026, 9, 26, 0, 0, 0, DateTimeKind.Utc), Version = [new VersionCounter { DeviceId = Guid.NewGuid(), Counter = 2 }] }],
+        },
+        new FileRequest { ProfileId = Guid.NewGuid(), Path = "a/b.txt", Sha256 = new byte[32] },
     ];
 
     [Theory]

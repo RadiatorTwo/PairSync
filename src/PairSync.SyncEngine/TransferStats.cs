@@ -23,6 +23,9 @@ public sealed class TransferStats
     /// <summary>Chunks the receiver already had when this run started (resume).</summary>
     public int ResumedChunks { get; set; }
 
+    /// <summary>Chunks copied from a local file with the same content instead of being transferred.</summary>
+    public int SeededChunks { get; set; }
+
     public long BytesThisRun => Interlocked.Read(ref _bytesThisRun);
 
     public int ChunksConfirmed => Volatile.Read(ref _chunksConfirmed);

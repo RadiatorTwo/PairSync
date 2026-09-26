@@ -27,7 +27,16 @@ public sealed record ReceiverOptions
 public sealed record ReceiveOutcome(bool Success, string? FinalPath, string Message, bool Skipped = false);
 
 /// <summary>Where a received file goes and what happens if something is already there.</summary>
-public sealed record ReceiveTarget(string TargetPath, ExistingFileAction Policy);
+/// <param name="Seed">A local file whose matching chunks are copied instead of transferred; null for none.</param>
+public sealed record ReceiveTarget(string TargetPath, ExistingFileAction Policy, ChunkSeed? Seed = null);
+
+/// <summary>
+/// An older version of the file (or the same content elsewhere) on this device. Chunks whose hash appears in both
+/// lists are copied from it and checked again, so only changed chunks go over the network.
+/// </summary>
+/// <param name="SourceChunkHashes">SHA-256 of each 4 MiB chunk of the source, concatenated.</param>
+/// <param name="WantedChunkHashes">SHA-256 of each chunk of the file being received, concatenated.</param>
+public sealed record ChunkSeed(string SourcePath, byte[] SourceChunkHashes, byte[] WantedChunkHashes);
 
 /// <summary>
 /// Receives one file: writes verified chunks into a temporary file in the target directory,
@@ -101,6 +110,11 @@ public sealed class ChunkedFileReceiver(string targetDirectory, IChunkJournal jo
         TransferFinish finish;
         await using (var stream = OpenTempFile(tempPath, plan.FileSize))
         {
+            if (target.Seed is { } seed)
+            {
+                await SeedAsync(seed, plan, stream.SafeFileHandle, confirmed, cancellationToken).ConfigureAwait(false);
+                Stats.SeededChunks = confirmed.SetCount - Stats.ResumedChunks;
+            }
             await SaveJournalAsync(plan, tempPath, confirmed, cancellationToken).ConfigureAwait(false);
             await control.SendAsync(new TransferPlanAck { TransferId = plan.TransferId, ConfirmedChunks = confirmed.ToBytes() }, cancellationToken)
                 .ConfigureAwait(false);
@@ -255,6 +269,50 @@ public sealed class ChunkedFileReceiver(string targetDirectory, IChunkJournal jo
         {
             Stats.Retransmitted();
             return control.SendAsync(new ChunkNack { TransferId = plan.TransferId, ChunkIndex = chunkIndex, Reason = reason }, cancellationToken);
+        }
+    }
+
+    /// <summary>Copies chunks the seed file has into the temporary file and marks them confirmed.</summary>
+    private static async Task SeedAsync(ChunkSeed seed, TransferPlan plan, SafeFileHandle file, ChunkBitmap confirmed, CancellationToken cancellationToken)
+    {
+        const int hashSize = DataFrameCodec.HashSize;
+        if (seed.WantedChunkHashes.Length != plan.ChunkCount * hashSize || seed.SourceChunkHashes.Length % hashSize != 0)
+            return;
+        var source = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (var j = seed.SourceChunkHashes.Length / hashSize - 1; j >= 0; j--)
+            source[Convert.ToHexString(seed.SourceChunkHashes, j * hashSize, hashSize)] = j;
+        try
+        {
+            using var reader = File.OpenHandle(seed.SourcePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, FileOptions.RandomAccess);
+            var sourceLength = RandomAccess.GetLength(reader);
+            var buffer = new byte[plan.ChunkSize];
+            for (var i = 0; i < plan.ChunkCount; i++)
+            {
+                if (confirmed.IsSet(i) || !source.TryGetValue(Convert.ToHexString(seed.WantedChunkHashes, i * hashSize, hashSize), out var j))
+                    continue;
+                var length = ChunkLength(plan, i);
+                var offset = (long)j * plan.ChunkSize;
+                if (offset + length > sourceLength)
+                    continue;
+                var chunk = buffer.AsMemory(0, length);
+                var read = 0;
+                while (read < length)
+                {
+                    var n = await RandomAccess.ReadAsync(reader, chunk[read..], offset + read, cancellationToken).ConfigureAwait(false);
+                    if (n == 0)
+                        break;
+                    read += n;
+                }
+                // The source may have changed since it was indexed: only verified bytes count.
+                if (read != length || !SHA256.HashData(chunk.Span).AsSpan().SequenceEqual(seed.WantedChunkHashes.AsSpan(i * hashSize, hashSize)))
+                    continue;
+                await RandomAccess.WriteAsync(file, chunk, (long)i * plan.ChunkSize, cancellationToken).ConfigureAwait(false);
+                confirmed.Set(i);
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // The seed is only a shortcut; whatever is missing comes over the network.
         }
     }
 

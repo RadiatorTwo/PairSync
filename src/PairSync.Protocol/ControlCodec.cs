@@ -48,6 +48,15 @@ public static class ControlCodec
         Register<JobDecline>(53);
         Register<JobControl>(54);
         Register<JobComplete>(55);
+        Register<ProfileOffer>(60);
+        Register<ProfileAccept>(61);
+        Register<ProfileDecline>(62);
+        Register<ProfileRemoved>(63);
+        Register<SyncHello>(64);
+        Register<IndexUpdate>(65);
+        Register<SyncRequest>(66);
+        Register<FileRequest>(67);
+        Register<FileUnavailable>(68);
     }
 
     private static void Register<T>(ushort code) where T : IControlMessage
