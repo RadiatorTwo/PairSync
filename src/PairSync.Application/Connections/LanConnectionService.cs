@@ -250,6 +250,7 @@ public static class ConnectionServices
         services.AddSingleton<LanConnectionService>();
         services.AddSingleton(new Internet.InternetOptions());
         services.AddSingleton<Internet.AnsweredOffers>();
+        services.AddSingleton<Internet.RelayServers>();
         services.AddSingleton<Internet.InternetLinkService>();
         services.AddSingleton<PeerLinks>();
         services.AddSingleton(new PresenceOptions());

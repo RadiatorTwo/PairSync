@@ -16,10 +16,16 @@ public sealed class ConnectFailureAnalysisTests
     [InlineData(NatHint.EndpointIndependent, NatHint.Unknown, HostAndSrflx, CandidateTypes.Host, ConnectFailureReason.RemoteNoPublicAddress)]
     [InlineData(NatHint.Open, NatHint.Symmetric, CandidateTypes.Host, HostAndSrflx, ConnectFailureReason.OneSideSymmetric)]
     [InlineData(NatHint.EndpointIndependent, NatHint.EndpointIndependent, HostAndSrflx, HostAndSrflx, ConnectFailureReason.Unknown)]
-    [InlineData(NatHint.Symmetric, NatHint.Symmetric, HostAndSrflx | CandidateTypes.Relay, HostAndSrflx, ConnectFailureReason.Unknown)]
+    [InlineData(NatHint.Symmetric, NatHint.Symmetric, HostAndSrflx | CandidateTypes.Relay, HostAndSrflx, ConnectFailureReason.RelayFailed)]
+    [InlineData(NatHint.Symmetric, NatHint.Symmetric, HostAndSrflx, HostAndSrflx | CandidateTypes.Relay, ConnectFailureReason.RelayFailed)]
     public void Failure_reason_follows_hints_and_candidates(
         NatHint local, NatHint remote, CandidateTypes localCandidates, CandidateTypes remoteCandidates, ConnectFailureReason expected) =>
         Assert.Equal(expected, ConnectFailureAnalysis.Analyze(local, remote, localCandidates, remoteCandidates));
+
+    [Fact]
+    public void Configured_relay_without_relay_candidate_counts_as_unavailable() =>
+        Assert.Equal(ConnectFailureReason.LocalRelayUnavailable,
+            ConnectFailureAnalysis.Analyze(NatHint.Symmetric, NatHint.Symmetric, HostAndSrflx, HostAndSrflx, relayConfigured: true));
 
     [Fact]
     public void Candidate_types_are_read_from_sdp()

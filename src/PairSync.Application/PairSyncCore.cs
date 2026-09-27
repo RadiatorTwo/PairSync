@@ -77,6 +77,8 @@ public sealed class PairSyncCore : IAsyncDisposable
                 ? pairing.HandleIncomingAsync(connection)
                 : RouteAsync(connection, transfers, sync, services.GetRequiredService<ClaudeService>());
 
+            await services.GetRequiredService<Internet.RelayServers>().LoadAsync(cancellationToken).ConfigureAwait(false);
+
             // A busy port is not fatal: the app still works as a sender and Settings shows the error.
             await lan.StartAsync(cancellationToken).ConfigureAwait(false);
             await services.GetRequiredService<PresenceService>().StartAsync(cancellationToken).ConfigureAwait(false);
@@ -138,6 +140,8 @@ public sealed class PairSyncCore : IAsyncDisposable
     public Devices.DeviceService Devices => _services.GetRequiredService<Devices.DeviceService>();
 
     public Internet.InternetLinkService Internet => _services.GetRequiredService<Internet.InternetLinkService>();
+
+    public Internet.RelayServers Relays => _services.GetRequiredService<Internet.RelayServers>();
 
     public PeerLinks Links => _services.GetRequiredService<PeerLinks>();
 

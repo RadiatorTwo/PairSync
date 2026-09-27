@@ -14,7 +14,7 @@ public enum CandidateTypes
 /// <summary>Why a direct connection most likely failed, for the NAT banner. Ordered roughly by certainty.</summary>
 public enum ConnectFailureReason
 {
-    /// <summary>Nothing conclusive, or a relay was available and it still failed.</summary>
+    /// <summary>Nothing conclusive.</summary>
     Unknown,
 
     /// <summary>Our STUN servers got no UDP response at all.</summary>
@@ -32,6 +32,12 @@ public enum ConnectFailureReason
 
     /// <summary>One side maps each destination to a different port; works only if the other side is open enough.</summary>
     OneSideSymmetric,
+
+    /// <summary>A relay candidate was offered and the connection still failed.</summary>
+    RelayFailed,
+
+    /// <summary>A relay is configured here, but it gave no relay candidate: unreachable or credentials refused.</summary>
+    LocalRelayUnavailable,
 }
 
 public static class ConnectFailureAnalysis
@@ -40,11 +46,14 @@ public static class ConnectFailureAnalysis
     /// Picks the most likely reason a direct ICE connection failed from both <see cref="NatHint"/>s and the candidate
     /// types of both session descriptions. Pure; no network access.
     /// </summary>
+    /// <param name="relayConfigured">This device had TURN servers in its ICE configuration.</param>
     public static ConnectFailureReason Analyze(
-        NatHint localHint, NatHint remoteHint, CandidateTypes localCandidates, CandidateTypes remoteCandidates)
+        NatHint localHint, NatHint remoteHint, CandidateTypes localCandidates, CandidateTypes remoteCandidates, bool relayConfigured = false)
     {
         if ((localCandidates | remoteCandidates).HasFlag(CandidateTypes.Relay))
-            return ConnectFailureReason.Unknown;
+            return ConnectFailureReason.RelayFailed;
+        if (relayConfigured)
+            return ConnectFailureReason.LocalRelayUnavailable;
         if (localHint == NatHint.UdpBlocked)
             return ConnectFailureReason.LocalUdpBlocked;
         if (remoteHint == NatHint.UdpBlocked)

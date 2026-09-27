@@ -88,7 +88,7 @@ public sealed class InternetConnectException(string message, ConnectFailureReaso
 /// </summary>
 public sealed class InternetLinkService(
     CurrentIdentity identity, SettingsStore settings, IDbContextFactory<PairSyncDbContext> contexts, LanConnectionService lan,
-    AnsweredOffers answered, InternetOptions options, TimeProvider time, ILogger<InternetLinkService> logger) : IAsyncDisposable
+    AnsweredOffers answered, RelayServers relays, InternetOptions options, TimeProvider time, ILogger<InternetLinkService> logger) : IAsyncDisposable
 {
     private readonly Lock _gate = new();
     private readonly Dictionary<Guid, Entry> _entries = [];
@@ -142,10 +142,10 @@ public sealed class InternetLinkService(
     public string? UnavailableReason => WebRtcTransport.UnavailableReason;
 
     /// <summary>
-    /// New invitations carry a WebRTC offer (<c>PSI2</c>): WebRTC is available and STUN servers are set, without
-    /// which the offer would hold no public address.
+    /// New invitations carry a WebRTC offer (<c>PSI2</c>): WebRTC is available and STUN or TURN servers are set,
+    /// without which the offer would hold no public address.
     /// </summary>
-    public bool CanInviteOverInternet => IsAvailable && StunServers().Count > 0;
+    public bool CanInviteOverInternet => IsAvailable && (StunServers().Count > 0 || relays.IceServers().Count > 0);
 
     /// <summary>A status changed (code issued, connected, lost, round trip measured).</summary>
     public event Action? Changed;
@@ -190,7 +190,7 @@ public sealed class InternetLinkService(
         var (session, offer) = await CreateTransportAsync(servers, t => new WebRtcConnector(t).CreateOfferAsync(InternetLink.ChannelLabels, cancellationToken))
             .ConfigureAwait(false);
         var localNat = await nat.ConfigureAwait(false);
-        if (!offer.Sdp.Contains("typ srflx", StringComparison.Ordinal))
+        if (!offer.Sdp.Contains("typ srflx", StringComparison.Ordinal) && !offer.Sdp.Contains("typ relay", StringComparison.Ordinal))
             logger.LogWarning("Connection code for {Name} has no public address: STUN servers did not answer", device.Name);
 
         var nonce = RandomNumberGenerator.GetBytes(ConnectCodes.NonceSize);
@@ -588,7 +588,7 @@ public sealed class InternetLinkService(
     {
         var transport = new TransportOptions
         {
-            IceServers = servers,
+            IceServers = [.. servers, .. relays.IceServers()],
             ConnectTimeout = options.ConnectTimeout,
             AnswerTimeout = options.AnswerLifetime,
             GatheringTimeout = options.GatheringTimeout,
@@ -714,7 +714,8 @@ public sealed class InternetLinkService(
         WebRtcSession session, NatHint localNat, NatHint remoteNat, bool answering, string deviceName, Exception e)
     {
         var report = session.GetIceReport();
-        var reason = ConnectFailureAnalysis.Analyze(localNat, remoteNat, ToFlags(report.LocalCandidates), ToFlags(report.RemoteCandidates));
+        var reason = ConnectFailureAnalysis.Analyze(localNat, remoteNat, ToFlags(report.LocalCandidates), ToFlags(report.RemoteCandidates),
+            relayConfigured: relays.IceServers().Count > 0);
         // ICE got through but DTLS never started: the other side did not apply the answer. Without an ICE path the
         // answering side cannot tell a network problem from an answer that never arrived.
         var message = !answering ? FailureMessage(reason, deviceName)
@@ -784,6 +785,10 @@ public sealed class InternetLinkService(
             $"Can't connect to {deviceName}: no public address found here. The STUN servers did not answer; check them in Settings.",
         ConnectFailureReason.RemoteNoPublicAddress =>
             $"Can't connect to {deviceName}: it found no public address. Its STUN servers did not answer.",
+        ConnectFailureReason.RelayFailed =>
+            $"Can't connect to {deviceName}, not even through the relay. Check the relay in Settings; the other device may need one too.",
+        ConnectFailureReason.LocalRelayUnavailable =>
+            $"Can't connect to {deviceName}. The relay did not answer or refused its credentials; check it in Settings.",
         _ => $"Can't connect directly to {deviceName}. The networks did not let the connection through.",
     };
 
