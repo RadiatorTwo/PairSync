@@ -24,6 +24,20 @@ public sealed class ClaudeUnavailableException(string message, bool notAllowed =
 /// <summary>CLI steps that arrived while Claude Code was not installed here; applied from the Claude Code page later.</summary>
 public sealed record PendingClaudePlan(string DeviceName, DateTime ReceivedAtUtc, IReadOnlyList<ClaudeStep> Steps);
 
+public enum ClaudeIncomingStage
+{
+    /// <summary>Another device started applying its configuration here.</summary>
+    Started,
+    Info,
+    Step,
+    Finished,
+    Failed,
+}
+
+/// <summary>What happens on this device while another device applies Claude Code configuration, for the page and the log.</summary>
+public sealed record ClaudeIncomingEvent(
+    string DeviceName, ClaudeIncomingStage Stage, string Title, ClaudeStepStatus? Status = null, int ExitCode = 0, string? Output = null);
+
 /// <summary>What the target reported after "Apply".</summary>
 public sealed record ClaudeApplyOutcome(string? Error, int FilesWritten, int SettingsWritten, IReadOnlyList<string> Notes, string? BackupFolder);
 
@@ -45,6 +59,17 @@ public sealed class ClaudeService(
 
     /// <summary>The pending plan appeared, was applied or discarded.</summary>
     public event Action? Changed;
+
+    /// <summary>Progress of an apply another device runs on this one (target side).</summary>
+    public event Action<ClaudeIncomingEvent>? Incoming;
+
+    private void Report(PairedDevice device, ClaudeIncomingStage stage, string title, ClaudeStepResult? step = null)
+    {
+        if (step is not null)
+            logger.LogInformation("Claude Code from {Name}: {Title}: {Status}", device.Name, title, step.Status);
+        Incoming?.Invoke(new ClaudeIncomingEvent(device.Name, stage, title, step?.Status, step?.ExitCode ?? 0,
+            string.IsNullOrWhiteSpace(step?.Output) ? null : step.Output.Trim()));
+    }
 
     public static bool IsClaudeMessage(IControlMessage first) => first is ClaudeStateRequest or ClaudeApply;
 
@@ -251,6 +276,12 @@ public sealed class ClaudeService(
                     break;
                 case ClaudeApply apply:
                     var done = await ApplyIncomingAsync(connection, device, apply, session.Token).ConfigureAwait(false);
+                    if (done.Error is { } error)
+                        Report(device, ClaudeIncomingStage.Failed, error);
+                    else
+                        Report(device, ClaudeIncomingStage.Finished,
+                            $"Done: {done.FilesWritten} files and {done.SettingsWritten} settings written."
+                            + (done.BackupFolder is null ? "" : $" Backup: {done.BackupFolder}"));
                     await control.SendAsync(done, session.Token).ConfigureAwait(false);
                     await LingerAsync(connection, session.Token).ConfigureAwait(false);
                     break;
@@ -315,6 +346,8 @@ public sealed class ClaudeService(
 
             var environment = Environment;
             var applier = NewApplier(environment, device.CanInstallPrograms);
+            Report(device, ClaudeIncomingStage.Started,
+                $"{device.Name} applies its Claude Code configuration: {files.Count} files, {changes.Count} settings, {steps.Count} steps.");
             var incoming = connection.Channels.Control.ReadAllAsync(cancellationToken).GetAsyncEnumerator(cancellationToken);
             await using (incoming.ConfigureAwait(false))
             {
@@ -340,12 +373,25 @@ public sealed class ClaudeService(
                     return new ClaudeApplyDone { Error = e.Message };
                 }
 
+                Report(device, ClaudeIncomingStage.Info, $"Wrote {filesWritten} files and {settingsWritten} settings."
+                    + (applier.BackupFolder is null ? "" : $" Backup: {applier.BackupFolder}"));
                 var control = connection.Channels.Control;
+                async Task SendStepAsync(ClaudeStepResult result, CancellationToken token)
+                {
+                    await control.SendAsync(result, token).ConfigureAwait(false);
+                    Report(device, ClaudeIncomingStage.Step, result.Index >= 0 && result.Index < steps.Count ? ClaudeWire.StepTitle(steps[result.Index]) : $"#{result.Index + 1}", result);
+                }
+                async Task AnnounceAsync(int index)
+                {
+                    if (index >= 0 && index < steps.Count)
+                        Report(device, ClaudeIncomingStage.Info, $"Running: {ClaudeWire.StepTitle(steps[index])}");
+                    await Task.CompletedTask.ConfigureAwait(false);
+                }
                 var runnable = new List<(int Index, ClaudeStep Step)>();
                 for (var i = 0; i < steps.Count; i++)
                 {
                     if (ClaudeApplier.RunsPrograms(steps[i]) && !device.CanInstallPrograms)
-                        await control.SendAsync(new ClaudeStepResult { Index = i, Status = ClaudeStepStatus.Skipped, Output = "This device does not allow installing programs." },
+                        await SendStepAsync(new ClaudeStepResult { Index = i, Status = ClaudeStepStatus.Skipped, Output = "This device does not allow installing programs." },
                             cancellationToken).ConfigureAwait(false);
                     else
                         runnable.Add((i, steps[i]));
@@ -358,13 +404,15 @@ public sealed class ClaudeService(
                     var missing = ClaudeTools.Missing(options);
                     var needed = toolSteps.Where(t => missing.Contains(t.Step.Name)).ToList();
                     foreach (var (index, step) in toolSteps.Except(needed))
-                        await control.SendAsync(new ClaudeStepResult { Index = index, Status = ClaudeStepStatus.Skipped, Output = $"{step.Name} is installed already." },
+                        await SendStepAsync(new ClaudeStepResult { Index = index, Status = ClaudeStepStatus.Skipped, Output = $"{step.Name} is installed already." },
                             cancellationToken).ConfigureAwait(false);
                     if (needed.Count > 0)
                     {
+                        foreach (var (announce, _) in needed)
+                            await AnnounceAsync(announce).ConfigureAwait(false);
                         var results = await InstallToolsAsync([.. needed.Select(n => n.Step.Name)], device.Name, cancellationToken).ConfigureAwait(false);
                         foreach (var ((index, _), result) in needed.Zip(results))
-                            await control.SendAsync(new ClaudeStepResult
+                            await SendStepAsync(new ClaudeStepResult
                             {
                                 Index = index,
                                 Status = result.Success ? ClaudeStepStatus.Done : ClaudeStepStatus.Failed,
@@ -385,6 +433,7 @@ public sealed class ClaudeService(
                         installed = new ClaudeStepResult { Index = index, Status = ClaudeStepStatus.Skipped, Output = "Claude Code is installed already." };
                     else
                     {
+                        await AnnounceAsync(index).ConfigureAwait(false);
                         var result = await InstallAsync(device.Name, cancellationToken).ConfigureAwait(false);
                         installed = new ClaudeStepResult
                         {
@@ -396,13 +445,13 @@ public sealed class ClaudeService(
                         };
                         program = ClaudeLocator.FindProgram(options);
                     }
-                    await control.SendAsync(installed, cancellationToken).ConfigureAwait(false);
+                    await SendStepAsync(installed, cancellationToken).ConfigureAwait(false);
                 }
                 if (program is null && runnable.Count > 0)
                 {
                     SavePending(new PendingClaudePlan(device.Name, DateTime.UtcNow, [.. runnable.Select(r => r.Step)]));
                     foreach (var (index, _) in runnable)
-                        await control.SendAsync(new ClaudeStepResult { Index = index, Status = ClaudeStepStatus.Pending, Output = "Claude Code is not installed on this device; the step waits there." },
+                        await SendStepAsync(new ClaudeStepResult { Index = index, Status = ClaudeStepStatus.Pending, Output = "Claude Code is not installed on this device; the step waits there." },
                             cancellationToken).ConfigureAwait(false);
                 }
                 else if (program is not null)
@@ -410,9 +459,10 @@ public sealed class ClaudeService(
                     var existing = ClaudeInventory.Read(environment, null).McpServers;
                     foreach (var (index, step) in runnable)
                     {
+                        await AnnounceAsync(index).ConfigureAwait(false);
                         var result = await ClaudeApplier.RunAsync(applier, program, step, index, existing, options.StepTimeout, cancellationToken).ConfigureAwait(false);
                         logger.LogInformation("Claude step {Title}: exit code {ExitCode}\n{Output}", ClaudeWire.StepTitle(step), result.ExitCode, result.Output);
-                        await control.SendAsync(result, cancellationToken).ConfigureAwait(false);
+                        await SendStepAsync(result, cancellationToken).ConfigureAwait(false);
                     }
                 }
                 return new ClaudeApplyDone

@@ -1363,4 +1363,19 @@
   <data name="Claude_ToolsPartly" xml:space="preserve">
     <value>Nicht alle Werkzeuge lieÃŸen sich installieren; Details unten.</value>
   </data>
+  <data name="Claude_LogSending" xml:space="preserve">
+    <value>Sende {0} Dateien, {1} Einstellungen und {2} Schritte.</value>
+  </data>
+  <data name="Claude_Receiving" xml:space="preserve">
+    <value>{0} wendet seine Claude-Code-Konfiguration auf diesem Gerät an. Installer fragen hier eventuell nach Administratorrechten oder deinem Passwort.</value>
+  </data>
+  <data name="Claude_LogFrom" xml:space="preserve">
+    <value>Von {0}</value>
+  </data>
+  <data name="Claude_CopyLog" xml:space="preserve">
+    <value>Protokoll kopieren</value>
+  </data>
+  <data name="Claude_Output" xml:space="preserve">
+    <value>Ausgabe</value>
+  </data>
 </root>

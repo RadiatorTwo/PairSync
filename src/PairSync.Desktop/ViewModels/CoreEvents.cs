@@ -23,6 +23,19 @@ public sealed class CoreEvents : IDisposable
         _desktop = desktop;
         _core.Pairing.IncomingRequest += OnPairingRequest;
         _core.Sync.OfferReceived += OnProfileOffer;
+        _core.Claude.Incoming += OnClaudeIncoming;
+    }
+
+    /// <summary>Another device starts changing Claude Code here: show what happens (installers may ask for rights on this screen).</summary>
+    private void OnClaudeIncoming(PairSync.Application.Claude.ClaudeIncomingEvent e)
+    {
+        if (e.Stage != PairSync.Application.Claude.ClaudeIncomingStage.Started)
+            return;
+        Ui.Run(() =>
+        {
+            _desktop.RevealWindow();
+            _shell.Navigate(AppPage.ClaudeCode);
+        });
     }
 
     private void OnProfileOffer(IncomingProfileOffer offer) => Ui.Run(() =>
@@ -43,5 +56,6 @@ public sealed class CoreEvents : IDisposable
     {
         _core.Pairing.IncomingRequest -= OnPairingRequest;
         _core.Sync.OfferReceived -= OnProfileOffer;
+        _core.Claude.Incoming -= OnClaudeIncoming;
     }
 }

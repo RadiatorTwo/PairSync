@@ -64,6 +64,19 @@ public sealed class ClaudeScreenTests(HeadlessFixture ui)
         Assert.Equal("skill", File.ReadAllText(Path.Combine(ConfigDir(office), "skills", "review", "SKILL.md")));
         Assert.DoesNotContain("statusLine", File.ReadAllText(Path.Combine(ConfigDir(office), "settings.json")), StringComparison.Ordinal);
         Assert.StartsWith("Done: 2 files and 1 settings written.", page.ResultText, StringComparison.Ordinal);
+        Assert.Equal("Apply on office-pc", page.Log.Heading);
+        Assert.Contains(page.Log.Entries, e => e.Kind == ClaudeLogKind.Done);
+        await page.Log.CopyCommand.ExecuteAsync(null);
+        Assert.Contains("Done: 2 files and 1 settings written.", laptop.Desktop.Copied, StringComparison.Ordinal);
+
+        // The target shows what the other device did there.
+        var there = office.Page<ClaudeCodeViewModel>();
+        await UiAsync.UntilAsync(() => there.Log.Entries.Any(e => e.Kind == ClaudeLogKind.Done));
+        Assert.Equal("From laptop-win11", there.Log.Heading);
+        Assert.False(there.IsReceiving);
+        Assert.StartsWith("laptop-win11 applies its Claude Code configuration", there.Log.Entries[0].Title, StringComparison.Ordinal);
+        Assert.Equal(AppPage.ClaudeCode, office.Shell.ActivePage.Page);
+        Snapshots.Save(office.Window, "screen-claude-target");
         Assert.Equal("same", page.PortableItems.Single(p => p.Key == "claude-md").Status);
     });
 

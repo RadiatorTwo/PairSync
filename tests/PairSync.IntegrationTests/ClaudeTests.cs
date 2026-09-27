@@ -431,4 +431,48 @@ public sealed class ClaudeTests : IAsyncLifetime
         Assert.Equal("jq", Assert.Single(ClaudeApplier.CheckSteps([new ClaudeStepEntry { Kind = 6, Name = "jq" }])).Name);
         Assert.Throws<ClaudeApplyRejectedException>(() => ClaudeApplier.CheckSteps([new ClaudeStepEntry { Kind = 6, Name = "rm -rf" }]));
     }
+    [Fact]
+    public async Task Target_reports_each_stage_of_an_incoming_apply()
+    {
+        var (source, target) = await StartPairAsync();
+        await AllowAsync(target, source, programs: true);
+        WriteSourceConfig();
+        var events = new List<ClaudeIncomingEvent>();
+        target.Claude.Incoming += e => { lock (events) events.Add(e); };
+
+        var fetched = await FetchAsync(source);
+        var plan = ClaudePlanner.Plan(await source.Claude.ReadLocalAsync(Ct), fetched.Snapshot, fetched.CanInstallClaude);
+        var request = ClaudePlanner.BuildApply(plan, new ClaudeSelection(
+            PortableItem.All.Select(i => i.Key).ToHashSet(), new HashSet<string> { "plugin:good@m" }, new Dictionary<string, string>()));
+        await source.Claude.ApplyAsync(fetched.Device, request, _ => { }, Ct);
+
+        List<ClaudeIncomingEvent> seen;
+        lock (events)
+            seen = [.. events];
+        Assert.Equal(ClaudeIncomingStage.Started, seen[0].Stage);
+        Assert.All(seen, e => Assert.Equal("laptop", e.DeviceName));
+        Assert.Contains(seen, e => e.Stage == ClaudeIncomingStage.Info && e.Title.StartsWith("Wrote ", StringComparison.Ordinal));
+        Assert.Contains(seen, e => e.Stage == ClaudeIncomingStage.Info && e.Title == "Running: install good@m · user");
+        Assert.Contains(seen, e => e is { Stage: ClaudeIncomingStage.Step, Title: "install good@m · user", Status: ClaudeStepStatus.Done });
+        Assert.Equal(ClaudeIncomingStage.Finished, seen[^1].Stage);
+    }
+
+    [Fact]
+    public async Task Refused_apply_is_reported_on_the_target_too()
+    {
+        var (source, target) = await StartPairAsync();
+        var events = new List<ClaudeIncomingEvent>();
+        target.Claude.Incoming += e => { lock (events) events.Add(e); };
+
+        await using var connection = await TestCores.ConnectAsync(source, target, Ct);
+        await connection.Channels.Control.SendAsync(new ClaudeApply(), Ct);
+        await foreach (var message in connection.Channels.Control.ReadAllAsync(Ct))
+        {
+            if (message is ClaudeApplyDone)
+                break;
+        }
+
+        lock (events)
+            Assert.Equal(ClaudeIncomingStage.Failed, Assert.Single(events).Stage);
+    }
 }

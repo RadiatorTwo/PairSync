@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using PairSync.Application;
 using PairSync.Application.Claude;
+using PairSync.Desktop.Platform;
 using PairSync.Desktop.Resources;
 using PairSync.Domain;
 using PairSync.Protocol;
@@ -83,7 +84,6 @@ public sealed partial class ExecutableRowViewModel(ExecutableItem item, bool all
 }
 
 /// <summary>The result of one step after "Apply".</summary>
-public sealed record ClaudeStepRowViewModel(string Title, string Status, string? Output, bool Failed);
 
 /// <summary>Claude Code (screen 04): compare this device with a paired one, confirm what runs programs, apply there.</summary>
 public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
@@ -154,10 +154,17 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
 
     public bool ToolsMissing => MissingToolsText is not null;
 
-    public ClaudeCodeViewModel(PairSyncCore core, DialogHost dialogs) : base(AppPage.ClaudeCode)
+    public ClaudeCodeViewModel(PairSyncCore core, DialogHost dialogs, IDesktopServices? desktop = null) : base(AppPage.ClaudeCode)
     {
         _core = core;
         _dialogs = dialogs;
+        Log = new ClaudeLogViewModel(desktop);
+        Log.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ClaudeLogViewModel.HasEntries))
+                OnPropertyChanged(nameof(HasResults));
+        };
+        _core.Claude.Incoming += OnIncoming;
         _logger = core.Logger<ClaudeCodeViewModel>();
         _core.Devices.Changed += OnDevicesChanged;
         _core.Claude.Changed += OnPendingChanged;
@@ -178,7 +185,15 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
 
     public ObservableCollection<string> Notes { get; } = [];
 
-    public ObservableCollection<ClaudeStepRowViewModel> StepResults { get; } = [];
+    /// <summary>What "Apply", the installers or another device's apply did here, step by step.</summary>
+    public ClaudeLogViewModel Log { get; }
+
+    /// <summary>"laptop applies its Claude Code configuration here" while another device's apply runs.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsReceiving))]
+    private string? _incomingText;
+
+    public bool IsReceiving => IncomingText is not null;
 
     public bool HasDevice => SelectedDevice is not null;
 
@@ -194,7 +209,7 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
 
     public bool HasNotes => Notes.Count > 0;
 
-    public bool HasResults => StepResults.Count > 0 || ResultText is not null;
+    public bool HasResults => Log.HasEntries || ResultText is not null;
 
     public bool HasPending => PendingText is not null;
 
@@ -254,8 +269,11 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
         if (_keepPlan)
             return;
         IsLoaded = false;
-        StepResults.Clear();
-        ResultText = null;
+        if (!IsReceiving)
+        {
+            Log.Start("");
+            ResultText = null;
+        }
         OnPropertyChanged(nameof(HasResults));
         if (value is not null)
             _ = CompareAsync();
@@ -385,17 +403,19 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
         var titles = request.Steps.Select(ClaudeStepText.Of).ToList();
         IsBusy = true;
         Error = null;
-        StepResults.Clear();
+        Log.Start(ApplyLabel);
+        Log.Add(string.Format(CultureInfo.CurrentCulture, Strings.Claude_LogSending, request.Files.Count, request.Settings.Count, request.Steps.Count));
         ResultText = Strings.Claude_Applying;
         OnPropertyChanged(nameof(HasResults));
         try
         {
             var outcome = await _core.Claude.ApplyAsync(_target.Device, request,
-                result => Ui.Run(() => StepResults.Add(StepRow(titles, result))), CancellationToken.None);
+                result => Ui.Run(() => AddStep(titles, result)), CancellationToken.None);
             ResultText = outcome.Error is { } error
                 ? error
                 : string.Format(CultureInfo.CurrentCulture, Strings.Claude_Applied, outcome.FilesWritten, outcome.SettingsWritten)
                   + (outcome.BackupFolder is null ? "" : " " + string.Format(CultureInfo.CurrentCulture, Strings.Claude_Backup, outcome.BackupFolder));
+            Log.Add(ResultText!, outcome.Error is null ? ClaudeLogKind.Done : ClaudeLogKind.Failed);
             foreach (var note in outcome.Notes)
                 Notes.Add(note);
             OnPropertyChanged(nameof(HasNotes));
@@ -403,35 +423,63 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
         catch (ClaudeUnavailableException e)
         {
             ResultText = e.Message;
+            Log.Add(e.Message, ClaudeLogKind.Failed);
         }
         finally
         {
             IsBusy = false;
             OnPropertyChanged(nameof(HasResults));
         }
-        // Show the new state of the target; the results stay visible.
-        var results = StepResults.ToList();
+        // Show the new state of the target; the log stays.
         var text = ResultText;
         await CompareAsync();
-        foreach (var row in results)
-            StepResults.Add(row);
         ResultText = text;
         OnPropertyChanged(nameof(HasResults));
     }
 
-    private static ClaudeStepRowViewModel StepRow(IReadOnlyList<string> titles, ClaudeStepResult result)
+    private void AddStep(IReadOnlyList<string> titles, ClaudeStepResult result) =>
+        AddStep(result.Index >= 0 && result.Index < titles.Count ? titles[result.Index] : $"#{result.Index + 1}", result.Status, result.ExitCode, result.Output);
+
+    private void AddStep(string title, ClaudeStepStatus status, int exitCode, string? output)
     {
-        var title = result.Index >= 0 && result.Index < titles.Count ? titles[result.Index] : $"#{result.Index + 1}";
-        var status = result.Status switch
+        var (kind, text) = status switch
         {
-            ClaudeStepStatus.Done => Strings.Claude_StepDone,
-            ClaudeStepStatus.Skipped => Strings.Claude_StepSkipped,
-            ClaudeStepStatus.Pending => Strings.Claude_StepPending,
-            _ => string.Format(CultureInfo.CurrentCulture, Strings.Claude_StepFailed, result.ExitCode),
+            ClaudeStepStatus.Done => (ClaudeLogKind.Done, Strings.Claude_StepDone),
+            ClaudeStepStatus.Skipped => (ClaudeLogKind.Skipped, Strings.Claude_StepSkipped),
+            ClaudeStepStatus.Pending => (ClaudeLogKind.Pending, Strings.Claude_StepPending),
+            _ => (ClaudeLogKind.Failed, string.Format(CultureInfo.CurrentCulture, Strings.Claude_StepFailed, exitCode)),
         };
-        var output = string.IsNullOrWhiteSpace(result.Output) ? null : result.Output.Trim();
-        return new ClaudeStepRowViewModel(title, status, output, result.Status == ClaudeStepStatus.Failed);
+        Log.Add(title, kind, text, output);
     }
+
+    /// <summary>Another device applies its configuration here: the log shows each step as it happens.</summary>
+    private void OnIncoming(ClaudeIncomingEvent e) => Ui.Run(() =>
+    {
+        switch (e.Stage)
+        {
+            case ClaudeIncomingStage.Started:
+                IncomingText = string.Format(CultureInfo.CurrentCulture, Strings.Claude_Receiving, e.DeviceName);
+                Log.Start(string.Format(CultureInfo.CurrentCulture, Strings.Claude_LogFrom, e.DeviceName));
+                ResultText = null;
+                Log.Add(e.Title);
+                break;
+            case ClaudeIncomingStage.Info:
+                Log.Add(e.Title, e.Title.StartsWith("Running", StringComparison.Ordinal) ? ClaudeLogKind.Running : ClaudeLogKind.Info);
+                break;
+            case ClaudeIncomingStage.Step:
+                AddStep(e.Title, e.Status ?? ClaudeStepStatus.Done, e.ExitCode, e.Output);
+                break;
+            case ClaudeIncomingStage.Finished or ClaudeIncomingStage.Failed:
+                if (!IsReceiving)
+                    Log.Start(string.Format(CultureInfo.CurrentCulture, Strings.Claude_LogFrom, e.DeviceName));
+                Log.Add(e.Title, e.Stage == ClaudeIncomingStage.Finished ? ClaudeLogKind.Done : ClaudeLogKind.Failed);
+                ResultText = e.Title;
+                IncomingText = null;
+                UpdatePending();
+                break;
+        }
+        OnPropertyChanged(nameof(HasResults));
+    });
 
     partial void OnIsBusyChanged(bool value) => ApplyCommand.NotifyCanExecuteChanged();
 
@@ -458,18 +506,20 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
     [RelayCommand]
     private async Task ApplyPendingAsync()
     {
-        StepResults.Clear();
+        Log.Start(Strings.Claude_ApplyPending);
         ResultText = Strings.Claude_Applying;
         OnPropertyChanged(nameof(HasResults));
         var titles = _core.Claude.Pending?.Steps.Select(ClaudeStepText.Of).ToList() ?? [];
         try
         {
-            await _core.Claude.ApplyPendingAsync(result => Ui.Run(() => StepResults.Add(StepRow(titles, result))), CancellationToken.None);
+            await _core.Claude.ApplyPendingAsync(result => Ui.Run(() => AddStep(titles, result)), CancellationToken.None);
             ResultText = Strings.Claude_PendingApplied;
+            Log.Add(ResultText, ClaudeLogKind.Done);
         }
         catch (ClaudeUnavailableException e)
         {
             ResultText = e.Message;
+            Log.Add(e.Message, ClaudeLogKind.Failed);
         }
         OnPropertyChanged(nameof(HasResults));
     }
@@ -484,18 +534,21 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
     private async Task InstallToolsAsync()
     {
         IsInstalling = true;
-        StepResults.Clear();
+        var missing = _core.Claude.MissingToolsLocally;
+        Log.Start(Strings.Claude_InstallTools);
+        foreach (var tool in missing)
+            Log.Add(string.Format(CultureInfo.CurrentCulture, Strings.Claude_ToolInstall, tool), ClaudeLogKind.Running);
         ResultText = Strings.Claude_ToolsInstalling;
         OnPropertyChanged(nameof(HasResults));
         try
         {
-            var results = await _core.Claude.InstallToolsLocalAsync(_core.Claude.MissingToolsLocally, CancellationToken.None);
+            var results = await _core.Claude.InstallToolsLocalAsync(missing, CancellationToken.None);
             foreach (var result in results)
-                StepResults.Add(new ClaudeStepRowViewModel(string.Format(CultureInfo.CurrentCulture, Strings.Claude_ToolInstall, result.Tool),
-                    result.Success ? Strings.Claude_StepDone : string.Format(CultureInfo.CurrentCulture, Strings.Claude_StepFailed, 1),
-                    string.Join("\n", new[] { result.Error, result.Output?.Trim() }.Where(t => !string.IsNullOrWhiteSpace(t))) is { Length: > 0 } text ? text : null,
-                    !result.Success));
+                AddStep(string.Format(CultureInfo.CurrentCulture, Strings.Claude_ToolInstall, result.Tool),
+                    result.Success ? ClaudeStepStatus.Done : ClaudeStepStatus.Failed, 1,
+                    string.Join("\n", new[] { result.Error, result.Output }.Where(t => !string.IsNullOrWhiteSpace(t))));
             ResultText = results.All(r => r.Success) ? Strings.Claude_ToolsInstalled : Strings.Claude_ToolsPartly;
+            Log.Add(ResultText, results.All(r => r.Success) ? ClaudeLogKind.Done : ClaudeLogKind.Failed);
         }
         finally
         {
@@ -510,7 +563,8 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
     private async Task InstallLocalAsync()
     {
         IsInstalling = true;
-        StepResults.Clear();
+        Log.Start(Strings.Claude_Install);
+        Log.Add(Strings.Claude_Installing, ClaudeLogKind.Running);
         ResultText = Strings.Claude_Installing;
         OnPropertyChanged(nameof(HasResults));
         try
@@ -519,10 +573,8 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
             ResultText = result.Success
                 ? string.Format(CultureInfo.CurrentCulture, Strings.Claude_Installed, result.Version ?? "?") + " " + ClaudeService.DescribePath(result.Path)
                 : result.Error;
-            if (!string.IsNullOrWhiteSpace(result.Output))
-                StepResults.Add(new ClaudeStepRowViewModel(Strings.Claude_Install,
-                    result.Success ? Strings.Claude_StepDone : string.Format(CultureInfo.CurrentCulture, Strings.Claude_StepFailed, 1),
-                    result.Output.Trim(), !result.Success));
+            AddStep(Strings.Claude_Install, result.Success ? ClaudeStepStatus.Done : ClaudeStepStatus.Failed, 1, result.Output);
+            Log.Add(ResultText ?? "", result.Success ? ClaudeLogKind.Done : ClaudeLogKind.Failed);
         }
         finally
         {
@@ -537,6 +589,7 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
         _disposed = true;
         _loading?.Cancel();
         _core.Devices.Changed -= OnDevicesChanged;
+        _core.Claude.Incoming -= OnIncoming;
         _core.Claude.Changed -= OnPendingChanged;
     }
 }

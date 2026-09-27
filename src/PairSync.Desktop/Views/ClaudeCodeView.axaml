@@ -32,6 +32,9 @@
 
     <!-- Waiting steps, errors, progress -->
     <StackPanel Grid.Row="2" Spacing="8">
+      <Border Name="ReceivingBanner" Classes="banner" IsVisible="{Binding IsReceiving}">
+        <TextBlock TextWrapping="Wrap" FontWeight="Medium" Text="{Binding IncomingText}" />
+      </Border>
       <Border Name="LocalMissingBanner" Classes="banner" IsVisible="{Binding LocalMissing}">
         <DockPanel>
           <Button Name="InstallLocal" DockPanel.Dock="Right" Classes="primary compact" Margin="12,0,0,0"
@@ -166,25 +169,48 @@
       </ctl:Card>
     </Grid>
 
-    <!-- Result of the last apply and notes -->
-    <ScrollViewer Grid.Row="4" MaxHeight="200" IsVisible="{Binding HasFooter}">
+    <!-- Log of the last apply (here or from another device) and notes. Everything is selectable; "Copy log" takes all of it. -->
+    <ScrollViewer Grid.Row="4" MaxHeight="300" IsVisible="{Binding HasFooter}">
       <StackPanel Spacing="6">
-        <ctl:Rubric Text="{x:Static res:Strings.Claude_Result}" IsVisible="{Binding HasResults}" />
-        <TextBlock Name="ResultText" TextWrapping="Wrap" Text="{Binding ResultText}" IsVisible="{Binding HasResults}" />
-        <ItemsControl Name="StepResults" ItemsSource="{Binding StepResults}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:ClaudeStepRowViewModel">
-              <StackPanel Margin="0,0,0,6">
-                <DockPanel>
-                  <TextBlock DockPanel.Dock="Right" Classes="meta" Margin="10,0,0,0" Text="{Binding Status}" Classes.problem="{Binding Failed}" />
-                  <TextBlock Classes="mono" FontSize="12" TextTrimming="CharacterEllipsis" Text="{Binding Title}" />
-                </DockPanel>
-                <TextBlock Classes="mono meta" FontSize="11" TextWrapping="Wrap" MaxLines="6" Text="{Binding Output}"
-                           IsVisible="{Binding Output, Converter={x:Static ObjectConverters.IsNotNull}}" />
-              </StackPanel>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <DockPanel IsVisible="{Binding HasResults}">
+          <Button Name="CopyLog" DockPanel.Dock="Right" FontSize="12" Content="{x:Static res:Strings.Claude_CopyLog}"
+                  Command="{Binding Log.CopyCommand}" IsVisible="{Binding Log.HasEntries}" />
+          <ctl:Rubric VerticalAlignment="Center" Text="{x:Static res:Strings.Claude_Result}" />
+          <TextBlock Classes="meta" VerticalAlignment="Center" Margin="10,0,0,0" Text="{Binding Log.Heading}" />
+        </DockPanel>
+        <SelectableTextBlock Name="ResultText" TextWrapping="Wrap" FontWeight="Medium" Text="{Binding ResultText}"
+                             IsVisible="{Binding ResultText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <Border BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1" Padding="10,6" IsVisible="{Binding Log.HasEntries}">
+          <ItemsControl Name="LogEntries" ItemsSource="{Binding Log.Entries}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ClaudeLogEntryViewModel">
+                <StackPanel Margin="0,3">
+                  <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="10">
+                    <TextBlock Classes="mono meta" FontSize="11" VerticalAlignment="Center" Text="{Binding Time}" />
+                    <Border Grid.Column="1" Classes="dot" Width="8" Height="8" VerticalAlignment="Center"
+                            Classes.done="{Binding IsDone}" Classes.failed="{Binding IsFailed}">
+                      <Border.Styles>
+                        <Style Selector="Border.dot"><Setter Property="Background" Value="{StaticResource HairlineBrush}" /></Style>
+                        <Style Selector="Border.done"><Setter Property="Background" Value="{StaticResource AccentBrush}" /></Style>
+                        <Style Selector="Border.failed"><Setter Property="Background" Value="{StaticResource Accent900Brush}" /></Style>
+                      </Border.Styles>
+                    </Border>
+                    <SelectableTextBlock Grid.Column="2" Classes="mono" FontSize="12" TextWrapping="Wrap" Text="{Binding Title}"
+                                         Classes.muted="{Binding IsMuted}" />
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                      <ToggleButton FontSize="11" Padding="6,1" Content="{x:Static res:Strings.Claude_Output}" IsChecked="{Binding IsExpanded}"
+                                    IsVisible="{Binding HasOutput}" />
+                      <TextBlock Classes="meta" Text="{Binding Status}" Classes.problem="{Binding IsFailed}" IsVisible="{Binding HasStatus}" />
+                    </StackPanel>
+                  </Grid>
+                  <Border Margin="76,4,0,4" Padding="8,6" Background="{StaticResource Accent100Brush}" IsVisible="{Binding IsExpanded}">
+                    <SelectableTextBlock Classes="mono" FontSize="11" TextWrapping="Wrap" Text="{Binding Output}" />
+                  </Border>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Border>
         <ctl:Rubric Margin="0,6,0,0" Text="{x:Static res:Strings.Claude_Notes}" IsVisible="{Binding HasNotes}" />
         <ItemsControl ItemsSource="{Binding Notes}" IsVisible="{Binding HasNotes}">
           <ItemsControl.ItemTemplate>

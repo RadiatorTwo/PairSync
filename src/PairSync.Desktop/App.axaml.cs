@@ -88,7 +88,7 @@ public sealed partial class App : Avalonia.Application
             }, new LatencyProbe(), time, internet),
             new SendViewModel(core, desktop, Navigate),
             new SyncsViewModel(core, dialogs, desktop, time),
-            new ClaudeCodeViewModel(core, dialogs),
+            new ClaudeCodeViewModel(core, dialogs, desktop),
             devices,
             new SettingsViewModel(core.Settings, autostart, trayAvailable, core, desktop, internet, dialogs: dialogs, quit: quit),
         ], quit, dialogs);

@@ -71,6 +71,13 @@
     <Setter Property="FontSize" Value="{StaticResource HintTextSize}" />
     <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
   </Style>
+  <!-- Selectable text (logs, program output) looks like the TextBlock it replaces. -->
+  <Style Selector="SelectableTextBlock.mono">
+    <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+  </Style>
+  <Style Selector="SelectableTextBlock.muted">
+    <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+  </Style>
   <Style Selector="TextBlock.muted">
     <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
   </Style>
