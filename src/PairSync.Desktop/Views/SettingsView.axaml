@@ -96,10 +96,6 @@
         <TextBlock Classes="problem" FontSize="13" TextWrapping="Wrap" Text="{Binding StunError}"
                    IsVisible="{Binding StunError, Converter={x:Static ObjectConverters.IsNotNull}}" />
         <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Settings_StunHint}" />
-        <DockPanel Margin="0,6,0,0">
-          <TextBlock DockPanel.Dock="Right" Classes="meta" Text="{x:Static res:Strings.Settings_TurnState}" />
-          <TextBlock Text="{x:Static res:Strings.Settings_Turn}" />
-        </DockPanel>
         <Button HorizontalAlignment="Left" Margin="0,6,0,0" Content="{x:Static res:Strings.Nat_Run}" Command="{Binding RunDiagnosticCommand}"
                 IsVisible="{Binding CanRunDiagnostic}" />
       </StackPanel>
@@ -125,6 +121,19 @@
         <TextBox Name="PathVariables" Classes="mono" AcceptsReturn="True" MinHeight="60" PlaceholderText="TOOLS_ROOT=D:	ools"
                  Text="{Binding PathVariables, UpdateSourceTrigger=LostFocus}" />
         <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Settings_PathVariablesHint}" />
+      </StackPanel>
+
+      <StackPanel Name="AboutSection" Spacing="8">
+        <ctl:Rubric Text="{x:Static res:Strings.Settings_About}" />
+        <WrapPanel Orientation="Horizontal" ItemSpacing="12" LineSpacing="8">
+          <TextBlock Name="AppVersion" Classes="mono" VerticalAlignment="Center" Text="{Binding VersionText}" />
+          <Button Name="CheckUpdates" Content="{x:Static res:Strings.Settings_CheckUpdates}" Command="{Binding CheckUpdatesCommand}" />
+          <Button Name="OpenRelease" Content="{x:Static res:Strings.Update_OpenPage}" Command="{Binding OpenReleasePageCommand}"
+                  IsVisible="{Binding CanOpenReleasePage}" />
+        </WrapPanel>
+        <TextBlock Name="UpdateResult" TextWrapping="Wrap" Text="{Binding UpdateText}"
+                   IsVisible="{Binding UpdateText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Settings_UpdateHint}" />
       </StackPanel>
 
       <Border BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,1,0,0" Padding="0,14,0,0"

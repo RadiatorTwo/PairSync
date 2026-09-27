@@ -767,10 +767,7 @@
     <value>Manche Netze, etwa zwei Mobilfunk- oder Carrier-Grade-NAT-Anschlüsse, lassen nie eine direkte Verbindung durch. Dann kann nur ein Relay (TURN-Server) dazwischen die beiden Geräte verbinden.</value>
   </data>
   <data name="Relays_Later" xml:space="preserve">
-    <value>PairSync nutzt noch kein Relay. Eine spätere Version lässt dich bei Bedarf eines eintragen.</value>
-  </data>
-  <data name="Relays_Encrypted" xml:space="preserve">
-    <value>Ein Relay sähe immer nur verschlüsselte Daten: Die Verbindung bleibt zwischen deinen Geräten Ende-zu-Ende-verschlüsselt.</value>
+    <value>PairSync nutzt kein Relay und keinen eigenen Server. Lassen beide Netze keine direkte Verbindung zu, verbinde die GerÃ¤te im selben LAN oder Ã¼ber ein VPN zwischen ihnen.</value>
   </data>
   <data name="Pair_Preparing" xml:space="preserve">
     <value>Einladung wird erstellt … Das dauert ein paar Sekunden.</value>
@@ -822,12 +819,6 @@
   </data>
   <data name="Settings_StunHint" xml:space="preserve">
     <value>Wird nur bei einer Internetverbindung oder der NAT-Diagnose gefragt, nie für das LAN.</value>
-  </data>
-  <data name="Settings_Turn" xml:space="preserve">
-    <value>Relay (TURN)</value>
-  </data>
-  <data name="Settings_TurnState" xml:space="preserve">
-    <value>Nicht eingerichtet · kommt nach dem MVP</value>
   </data>
   <data name="Stun_Empty" xml:space="preserve">
     <value>Gib einen STUN-Server ein, z. B. stun:stun.example.org:3478.</value>
@@ -1242,5 +1233,35 @@
   </data>
   <data name="Claude_OneKey" xml:space="preserve">
     <value>1 Schlüssel</value>
+  </data>
+  <data name="Settings_About" xml:space="preserve">
+    <value>Ãœber PairSync</value>
+  </data>
+  <data name="Settings_Version" xml:space="preserve">
+    <value>PairSync {0}</value>
+  </data>
+  <data name="Settings_CheckUpdates" xml:space="preserve">
+    <value>Nach Updates suchen</value>
+  </data>
+  <data name="Settings_UpdateHint" xml:space="preserve">
+    <value>Fragt GitHub nur, wenn du klickst. Nichts wird automatisch heruntergeladen oder installiert.</value>
+  </data>
+  <data name="Update_Checking" xml:space="preserve">
+    <value>Sucheâ€¦</value>
+  </data>
+  <data name="Update_UpToDate" xml:space="preserve">
+    <value>Du hast die neueste Version ({0}).</value>
+  </data>
+  <data name="Update_Newer" xml:space="preserve">
+    <value>Version {0} ist verfÃ¼gbar.</value>
+  </data>
+  <data name="Update_NoRelease" xml:space="preserve">
+    <value>Es wurde noch keine Version verÃ¶ffentlicht.</value>
+  </data>
+  <data name="Update_Failed" xml:space="preserve">
+    <value>Updates konnten nicht geprÃ¼ft werden: {0}</value>
+  </data>
+  <data name="Update_OpenPage" xml:space="preserve">
+    <value>Release-Seite Ã¶ffnen</value>
   </data>
 </root>

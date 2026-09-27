@@ -773,10 +773,7 @@
     <value>Some networks, for example two mobile or carrier-grade NAT connections, never let a direct connection through. Then only a relay (TURN server) in between can connect the two devices.</value>
   </data>
   <data name="Relays_Later" xml:space="preserve">
-    <value>PairSync does not use a relay yet. A later version will let you add one if you want.</value>
-  </data>
-  <data name="Relays_Encrypted" xml:space="preserve">
-    <value>A relay would only ever see encrypted data: the connection stays end-to-end encrypted between your devices.</value>
+    <value>PairSync uses no relay and no server of its own. If both networks block direct connections, connect the devices on the same LAN or through a VPN between them.</value>
   </data>
   <data name="Pair_Preparing" xml:space="preserve">
     <value>Creating the invitation… This takes a few seconds.</value>
@@ -828,12 +825,6 @@
   </data>
   <data name="Settings_StunHint" xml:space="preserve">
     <value>Only asked when you connect over the internet or run the NAT diagnostic, never for the LAN.</value>
-  </data>
-  <data name="Settings_Turn" xml:space="preserve">
-    <value>Relay (TURN)</value>
-  </data>
-  <data name="Settings_TurnState" xml:space="preserve">
-    <value>Not configured · add after the MVP</value>
   </data>
   <data name="Stun_Empty" xml:space="preserve">
     <value>Enter a STUN server, e.g. stun:stun.example.org:3478.</value>
@@ -1248,5 +1239,35 @@
   </data>
   <data name="Claude_OneKey" xml:space="preserve">
     <value>1 key</value>
+  </data>
+  <data name="Settings_About" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="Settings_Version" xml:space="preserve">
+    <value>PairSync {0}</value>
+  </data>
+  <data name="Settings_CheckUpdates" xml:space="preserve">
+    <value>Check for updates</value>
+  </data>
+  <data name="Settings_UpdateHint" xml:space="preserve">
+    <value>Asks GitHub only when you click. Nothing is downloaded or installed automatically.</value>
+  </data>
+  <data name="Update_Checking" xml:space="preserve">
+    <value>Checkingâ€¦</value>
+  </data>
+  <data name="Update_UpToDate" xml:space="preserve">
+    <value>You have the latest version ({0}).</value>
+  </data>
+  <data name="Update_Newer" xml:space="preserve">
+    <value>Version {0} is available.</value>
+  </data>
+  <data name="Update_NoRelease" xml:space="preserve">
+    <value>No release has been published yet.</value>
+  </data>
+  <data name="Update_Failed" xml:space="preserve">
+    <value>Could not check for updates: {0}</value>
+  </data>
+  <data name="Update_OpenPage" xml:space="preserve">
+    <value>Open release page</value>
   </data>
 </root>

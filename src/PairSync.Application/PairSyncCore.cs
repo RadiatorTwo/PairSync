@@ -84,7 +84,7 @@ public sealed class PairSyncCore : IAsyncDisposable
             await sync.StartAsync(cancellationToken).ConfigureAwait(false);
 
             services.GetRequiredService<ILogger<PairSyncCore>>()
-                .LogInformation("PairSync core started, data directory {DataDirectory}", dataDirectory.Root);
+                .LogInformation("PairSync {Version} core started, data directory {DataDirectory}", Updates.AppInfo.DisplayVersion, dataDirectory.Root);
             return core;
         }
         catch

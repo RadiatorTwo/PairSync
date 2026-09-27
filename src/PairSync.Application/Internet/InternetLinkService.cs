@@ -775,7 +775,7 @@ public sealed class InternetLinkService(
     internal static string FailureMessage(ConnectFailureReason reason, string deviceName) => reason switch
     {
         ConnectFailureReason.BothSymmetric =>
-            $"Can't connect directly to {deviceName}. Both networks look like symmetric NAT / CGNAT, and no relay is configured.",
+            $"Can't connect directly to {deviceName}. Both networks look like symmetric NAT / CGNAT, which never lets a direct connection through.",
         ConnectFailureReason.OneSideSymmetric =>
             $"Can't connect directly to {deviceName}. One network uses symmetric NAT / CGNAT and the other one does not allow incoming connections.",
         ConnectFailureReason.LocalUdpBlocked => $"Can't connect to {deviceName}: this network blocks UDP.",

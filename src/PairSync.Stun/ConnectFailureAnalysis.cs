@@ -27,7 +27,7 @@ public enum ConnectFailureReason
 
     RemoteNoPublicAddress,
 
-    /// <summary>Both networks look like symmetric NAT / CGNAT, and no relay is configured.</summary>
+    /// <summary>Both networks look like symmetric NAT / CGNAT: no direct connection is possible.</summary>
     BothSymmetric,
 
     /// <summary>One side maps each destination to a different port; works only if the other side is open enough.</summary>

@@ -3,6 +3,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PairSync.Application;
+using PairSync.Application.Updates;
 using PairSync.Desktop.Platform;
 using PairSync.Desktop.Resources;
 using PairSync.Storage.Secrets;
@@ -25,6 +26,7 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
     private readonly PairSyncCore? _core;
     private readonly IDesktopServices? _desktop;
     private readonly InternetUi? _internet;
+    private readonly UpdateCheck _updates;
     private bool _loading;
 
     [ObservableProperty]
@@ -59,6 +61,14 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
     [ObservableProperty]
     private bool _verboseLogging;
 
+    /// <summary>Result of the last update check; null before the first one.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanOpenReleasePage))]
+    private UpdateResult? _update;
+
+    [ObservableProperty]
+    private string? _updateText;
+
     /// <summary><c>NAME=value</c> lines for Claude Code commands from other devices.</summary>
     [ObservableProperty]
     private string _pathVariables = "";
@@ -67,9 +77,10 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
     /// <param name="internet">Opens the NAT diagnostic; null leaves the button out.</param>
     public SettingsViewModel(
         SettingsStore settings, IAutostart autostart, bool trayAvailable, PairSyncCore? core = null, IDesktopServices? desktop = null,
-        InternetUi? internet = null)
+        InternetUi? internet = null, UpdateCheck? updates = null)
         : base(AppPage.Settings)
     {
+        _updates = updates ?? new UpdateCheck();
         _settings = settings;
         _autostart = autostart;
         _core = core;
@@ -125,6 +136,33 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
     public string? InternetUnavailable => _core is { Internet.IsAvailable: false } core
         ? string.Format(CultureInfo.CurrentCulture, Strings.Settings_InternetUnavailable, core.Internet.UnavailableReason)
         : null;
+
+    public string VersionText => string.Format(CultureInfo.CurrentCulture, Strings.Settings_Version, AppInfo.DisplayVersion);
+
+    public bool CanOpenReleasePage => _desktop is not null && Update?.ReleaseUrl is not null;
+
+    /// <summary>Only on click (plan phase 6): asks GitHub for the latest release, never downloads anything.</summary>
+    [RelayCommand]
+    private async Task CheckUpdatesAsync()
+    {
+        UpdateText = Strings.Update_Checking;
+        var result = await _updates.CheckAsync(AppInfo.Version, CancellationToken.None);
+        Update = result;
+        UpdateText = result.State switch
+        {
+            UpdateState.NewerAvailable => string.Format(CultureInfo.CurrentCulture, Strings.Update_Newer, result.LatestVersion),
+            UpdateState.UpToDate => string.Format(CultureInfo.CurrentCulture, Strings.Update_UpToDate, AppInfo.DisplayVersion),
+            UpdateState.NoRelease => Strings.Update_NoRelease,
+            _ => string.Format(CultureInfo.CurrentCulture, Strings.Update_Failed, result.Error),
+        };
+    }
+
+    [RelayCommand]
+    private async Task OpenReleasePageAsync()
+    {
+        if (_desktop is not null && Update?.ReleaseUrl is { } url && Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps)
+            await _desktop.OpenUriAsync(uri);
+    }
 
     [RelayCommand]
     private void AddStunServer()

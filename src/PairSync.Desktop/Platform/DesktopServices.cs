@@ -21,6 +21,9 @@ public interface IDesktopServices
 
     Task OpenFolderAsync(string path);
 
+    /// <summary>Opens a web page in the browser.</summary>
+    Task OpenUriAsync(Uri uri);
+
     /// <summary>Brings the main window to the front (incoming transfer, pairing request).</summary>
     void RevealWindow();
 }
@@ -82,6 +85,12 @@ internal sealed class WindowDesktopServices(Func<TopLevel?> topLevel, Action rev
         Directory.CreateDirectory(path);
         if (topLevel()?.Launcher is { } launcher)
             await launcher.LaunchUriAsync(new Uri(Path.GetFullPath(path)));
+    }
+
+    public async Task OpenUriAsync(Uri uri)
+    {
+        if (topLevel()?.Launcher is { } launcher)
+            await launcher.LaunchUriAsync(uri);
     }
 
     public void RevealWindow() => reveal();

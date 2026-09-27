@@ -97,4 +97,39 @@ public sealed class SettingsViewModelTests(HeadlessFixture ui) : IDisposable
 
         Assert.Equal(CloseBehavior.Quit, vm.SelectedCloseOption.Value);
     });
+
+    [Fact]
+    public Task Version_is_shown_and_updates_are_checked_only_on_click() => ui.RunAsync(async () =>
+    {
+        var handler = new ReleaseHandler("v9.0.0");
+        var desktop = new FakeDesktop();
+        using var vm = new SettingsViewModel(_settings.Store, new FakeAutostart(), trayAvailable: true, desktop: desktop,
+            updates: new PairSync.Application.Updates.UpdateCheck(handler));
+
+        Assert.Equal($"PairSync {PairSync.Application.Updates.AppInfo.DisplayVersion}", vm.VersionText);
+        Assert.Equal(0, handler.Requests);
+        Assert.False(vm.CanOpenReleasePage);
+
+        await vm.CheckUpdatesCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, handler.Requests);
+        Assert.Equal("Version 9.0.0 is available.", vm.UpdateText);
+        Assert.True(vm.CanOpenReleasePage);
+        await vm.OpenReleasePageCommand.ExecuteAsync(null);
+        Assert.Equal(new Uri("https://github.com/RadiatorTwo/PairSync/releases/tag/v9.0.0"), Assert.Single(desktop.OpenedUris));
+    });
+
+    private sealed class ReleaseHandler(string tag) : HttpMessageHandler
+    {
+        public int Requests { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Requests++;
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent($$"""{"tag_name":"{{tag}}","html_url":"https://github.com/RadiatorTwo/PairSync/releases/tag/{{tag}}"}"""),
+            });
+        }
+    }
 }

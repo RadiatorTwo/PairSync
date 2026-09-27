@@ -45,6 +45,14 @@ public sealed class FakeDesktop : IDesktopServices
 
     public Task OpenFolderAsync(string path) => Task.CompletedTask;
 
+    public List<Uri> OpenedUris { get; } = [];
+
+    public Task OpenUriAsync(Uri uri)
+    {
+        OpenedUris.Add(uri);
+        return Task.CompletedTask;
+    }
+
     public void RevealWindow() => Reveals++;
 }
 
