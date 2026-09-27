@@ -419,10 +419,47 @@ public sealed class ClaudeTests : IAsyncLifetime
     {
         var core = await StartAsync("office");
 
-        var results = await core.Claude.InstallToolsLocalAsync(["bun"], Ct);
+        var results = await core.Claude.InstallToolsLocalAsync(["bun"], _ => Task.CompletedTask, Ct);
 
         Assert.True(Assert.Single(results).Success, results[0].Error);
         Assert.Equal(["git", "jq", "gh", "warp"], core.Claude.MissingToolsLocally);
+    }
+
+    [Fact]
+    public async Task A_program_that_leaves_a_child_running_counts_as_finished_when_it_exits()
+    {
+        // Installers start the installed app (Warp), which keeps the output pipes open.
+        var start = OperatingSystem.IsWindows()
+            ? new System.Diagnostics.ProcessStartInfo("cmd.exe", "/c \"start /b powershell -NoProfile -Command Start-Sleep 20 & echo done\"")
+            : new System.Diagnostics.ProcessStartInfo("sh", ["-c", "sleep 20 & echo done"]);
+        start.RedirectStandardInput = start.RedirectStandardOutput = start.RedirectStandardError = true;
+        start.UseShellExecute = false;
+        start.CreateNoWindow = true;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+
+        var result = await ClaudeCli.RunProcessAsync(start, TimeSpan.FromSeconds(60), Ct);
+
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(12), $"took {watch.Elapsed}");
+        Assert.False(result.TimedOut);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("done", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Each_tool_is_reported_as_soon_as_it_is_installed()
+    {
+        var core = await StartAsync("office");
+        var reported = new List<(string Tool, List<string> Missing)>();
+
+        await core.Claude.InstallToolsLocalAsync(["git", "jq"], r =>
+        {
+            reported.Add((r.Tool, [.. core.Claude.MissingToolsLocally]));
+            return Task.CompletedTask;
+        }, Ct);
+
+        Assert.Equal("git", reported[0].Tool);
+        Assert.Contains("jq", reported[0].Missing);
+        Assert.Equal("jq", reported[1].Tool);
     }
 
     [Fact]

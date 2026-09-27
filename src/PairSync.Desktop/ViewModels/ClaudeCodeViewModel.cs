@@ -553,17 +553,26 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
         var missing = _core.Claude.MissingToolsLocally;
         _showingIncoming = false;
         Log.Start(Strings.Claude_InstallTools);
-        foreach (var tool in missing)
-            Log.Add(string.Format(CultureInfo.CurrentCulture, Strings.Claude_ToolInstall, tool), ClaudeLogKind.Running);
+        if (missing.Count > 0)
+            Log.Add(string.Format(CultureInfo.CurrentCulture, Strings.Claude_ToolInstall, missing[0]), ClaudeLogKind.Running);
         ResultText = Strings.Claude_ToolsInstalling;
         OnPropertyChanged(nameof(HasResults));
         try
         {
-            var results = await _core.Claude.InstallToolsLocalAsync(missing, CancellationToken.None);
-            foreach (var result in results)
-                AddStep(string.Format(CultureInfo.CurrentCulture, Strings.Claude_ToolInstall, result.Tool),
-                    result.Success ? ClaudeStepStatus.Done : ClaudeStepStatus.Failed, 1,
-                    string.Join("\n", new[] { result.Error, result.Output }.Where(t => !string.IsNullOrWhiteSpace(t))));
+            var done = 0;
+            var results = await _core.Claude.InstallToolsLocalAsync(missing, result =>
+            {
+                var next = ++done < missing.Count ? missing[done] : null;
+                Ui.Run(() =>
+                {
+                    AddStep(string.Format(CultureInfo.CurrentCulture, Strings.Claude_ToolInstall, result.Tool),
+                        result.Success ? ClaudeStepStatus.Done : ClaudeStepStatus.Failed, 1,
+                        string.Join("\n", new[] { result.Error, result.Output }.Where(t => !string.IsNullOrWhiteSpace(t))));
+                    if (next is not null)
+                        Log.Add(string.Format(CultureInfo.CurrentCulture, Strings.Claude_ToolInstall, next), ClaudeLogKind.Running);
+                });
+                return Task.CompletedTask;
+            }, CancellationToken.None);
             ResultText = results.All(r => r.Success) ? Strings.Claude_ToolsInstalled : Strings.Claude_ToolsPartly;
             Log.Add(ResultText, results.All(r => r.Success) ? ClaudeLogKind.Done : ClaudeLogKind.Failed);
         }

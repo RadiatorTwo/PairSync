@@ -38,8 +38,12 @@ public sealed class ToolInstaller(ClaudeOptions claude, ToolInstallerOptions opt
         ["warp"] = "Warp.Warp",
     };
 
-    /// <summary>Installs <paramref name="tools"/> one after the other; each result says whether the tool is found afterwards.</summary>
-    public async Task<IReadOnlyList<ToolInstallResult>> InstallAsync(IReadOnlyList<string> tools, CancellationToken cancellationToken)
+    /// <summary>
+    /// Installs <paramref name="tools"/> one after the other; each result says whether the tool is found afterwards and
+    /// goes to <paramref name="onResult"/> as soon as it is known.
+    /// </summary>
+    public async Task<IReadOnlyList<ToolInstallResult>> InstallAsync(
+        IReadOnlyList<string> tools, Func<ToolInstallResult, Task> onResult, CancellationToken cancellationToken)
     {
         var results = new List<ToolInstallResult>();
         // Linux: one password prompt for all packages instead of one per tool.
@@ -52,19 +56,21 @@ public sealed class ToolInstaller(ClaudeOptions claude, ToolInstallerOptions opt
 
         foreach (var tool in tools)
         {
+            ToolInstallResult result;
             if (!ClaudeTools.IsKnown(tool))
             {
-                results.Add(new ToolInstallResult(tool, false, "", $"{tool} is not a tool PairSync installs."));
-                continue;
+                result = new ToolInstallResult(tool, false, "", $"{tool} is not a tool PairSync installs.");
             }
-            string output;
-            string? error;
-            if (packages.Contains(tool))
-                (output, error) = (packageOutput ?? "", packageError);
             else
-                (output, error) = await RunAllAsync(() => CommandsFor(tool), cancellationToken).ConfigureAwait(false);
-            var found = ClaudeTools.Find(tool, claude) is not null;
-            results.Add(new ToolInstallResult(tool, found, output, found ? null : error ?? $"{tool} was not found after the installation."));
+            {
+                var (output, error) = packages.Contains(tool)
+                    ? (packageOutput ?? "", packageError)
+                    : await RunAllAsync(() => CommandsFor(tool), cancellationToken).ConfigureAwait(false);
+                var found = ClaudeTools.Find(tool, claude) is not null;
+                result = new ToolInstallResult(tool, found, output, found ? null : error ?? $"{tool} was not found after the installation.");
+            }
+            results.Add(result);
+            await onResult(result).ConfigureAwait(false);
         }
         return results;
     }

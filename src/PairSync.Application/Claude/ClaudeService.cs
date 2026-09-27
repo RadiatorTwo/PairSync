@@ -116,13 +116,14 @@ public sealed class ClaudeService(
     /// <summary>Tools for Claude Code plugins this device lacks (git, bun, jq).</summary>
     public IReadOnlyList<string> MissingToolsLocally => ClaudeTools.Missing(options);
 
-    /// <summary>"Install missing tools" on this device.</summary>
-    public async Task<IReadOnlyList<ToolInstallResult>> InstallToolsLocalAsync(IReadOnlyList<string> names, CancellationToken cancellationToken)
+    /// <summary>"Install missing tools" on this device; <paramref name="onResult"/> hears about each tool when it is done.</summary>
+    public async Task<IReadOnlyList<ToolInstallResult>> InstallToolsLocalAsync(
+        IReadOnlyList<string> names, Func<ToolInstallResult, Task> onResult, CancellationToken cancellationToken)
     {
         await _applying.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            return await InstallToolsAsync(names, "this device", cancellationToken).ConfigureAwait(false);
+            return await InstallToolsAsync(names, "this device", onResult, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -131,18 +132,18 @@ public sealed class ClaudeService(
         }
     }
 
-    private async Task<IReadOnlyList<ToolInstallResult>> InstallToolsAsync(IReadOnlyList<string> names, string requestedBy, CancellationToken cancellationToken)
+    private Task<IReadOnlyList<ToolInstallResult>> InstallToolsAsync(
+        IReadOnlyList<string> names, string requestedBy, Func<ToolInstallResult, Task> onResult, CancellationToken cancellationToken)
     {
         logger.LogInformation("Installing {Tools} (requested by {By})", string.Join(", ", names), requestedBy);
-        var results = await tools.InstallAsync(names, cancellationToken).ConfigureAwait(false);
-        foreach (var result in results)
+        return tools.InstallAsync(names, result =>
         {
             if (result.Success)
                 logger.LogInformation("Installed {Tool}", result.Tool);
             else
                 logger.LogWarning("Installing {Tool} failed: {Error}\n{Output}", result.Tool, result.Error, result.Output);
-        }
-        return results;
+            return onResult(result);
+        }, cancellationToken);
     }
 
     /// <summary>One line about the PATH change, for step output and the page.</summary>
@@ -410,15 +411,14 @@ public sealed class ClaudeService(
                     {
                         foreach (var (announce, _) in needed)
                             await AnnounceAsync(announce).ConfigureAwait(false);
-                        var results = await InstallToolsAsync([.. needed.Select(n => n.Step.Name)], device.Name, cancellationToken).ConfigureAwait(false);
-                        foreach (var ((index, _), result) in needed.Zip(results))
-                            await SendStepAsync(new ClaudeStepResult
-                            {
-                                Index = index,
-                                Status = result.Success ? ClaudeStepStatus.Done : ClaudeStepStatus.Failed,
-                                ExitCode = result.Success ? 0 : 1,
-                                Output = string.Join("\n", new[] { result.Error, result.Output }.Where(t => !string.IsNullOrWhiteSpace(t))),
-                            }, cancellationToken).ConfigureAwait(false);
+                        var next = 0;
+                        await InstallToolsAsync([.. needed.Select(n => n.Step.Name)], device.Name, result => SendStepAsync(new ClaudeStepResult
+                        {
+                            Index = needed[next++].Index,
+                            Status = result.Success ? ClaudeStepStatus.Done : ClaudeStepStatus.Failed,
+                            ExitCode = result.Success ? 0 : 1,
+                            Output = string.Join("\n", new[] { result.Error, result.Output }.Where(t => !string.IsNullOrWhiteSpace(t))),
+                        }, cancellationToken), cancellationToken).ConfigureAwait(false);
                     }
                 }
 

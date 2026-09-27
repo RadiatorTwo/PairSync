@@ -223,11 +223,18 @@ public static class ClaudeCli
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
 
+        var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        process.EnableRaisingEvents = true;
+        process.Exited += (_, _) => exited.TrySetResult();
+        if (process.HasExited)
+            exited.TrySetResult();
+
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         limit.CancelAfter(timeout);
         try
         {
-            await process.WaitForExitAsync(limit.Token).ConfigureAwait(false);
+            // The exit, not the end of the output: installers may start the installed app, which inherits the pipes.
+            await exited.Task.WaitAsync(limit.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -242,7 +249,18 @@ public static class ClaudeCli
             lock (output)
                 return new CliResult(-1, output.ToString(), TimedOut: true);
         }
-        // WaitForExitAsync returns after the redirected streams reached their end.
+        // WaitForExitAsync also waits for the end of the redirected output; a child still holding it gets a moment only.
+        using (var rest = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+        {
+            rest.CancelAfter(TimeSpan.FromSeconds(2));
+            try
+            {
+                await process.WaitForExitAsync(rest.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+            }
+        }
         lock (output)
         {
             var text = output.ToString();
