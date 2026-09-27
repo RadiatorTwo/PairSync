@@ -138,6 +138,35 @@ public sealed class ChunkedTransferTests : IDisposable
         Assert.Equal(Path.Combine(TargetDirectory, "payload (2).bin"), received.FinalPath);
     }
 
+    [Theory]
+    [MemberData(nameof(LoopbackPair.Transports), MemberType = typeof(LoopbackPair))]
+    public async Task A_request_right_after_the_result_stays_for_the_next_reader(SpikeTransport transport)
+    {
+        // Sync sends the next FileRequest on the same session as soon as a file arrived; the sender must not swallow it.
+        var ct = Timeout(60);
+        for (var round = 0; round < 20; round++)
+        {
+            var file = await CreateSourceAsync(1024);
+            await using var pair = await LoopbackPair.ConnectAsync(transport, ct);
+            var (offerer, answerer) = await pair.HandshakeAsync(ct);
+            var receive = Task.Run(async () =>
+            {
+                var outcome = await new ChunkedFileReceiver(TargetDirectory, _journal, new ReceiverOptions()).ReceiveAsync(answerer, ct);
+                await answerer.Control.SendAsync(new FileRequest { Path = "next" }, ct);
+                return outcome;
+            }, ct);
+
+            var sent = await new ChunkedFileSender(new SenderOptions()).SendAsync(offerer, file, ct);
+            Assert.True(sent.Success, sent.Message);
+            Assert.True((await receive).Success);
+            using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            wait.CancelAfter(TimeSpan.FromSeconds(5));
+            Assert.Equal("next", (await offerer.Control.ExpectAsync<FileRequest>(wait.Token)).Path);
+            foreach (var received in Directory.GetFiles(TargetDirectory))
+                File.Delete(received);
+        }
+    }
+
     [Theory(Explicit = true)]
     [MemberData(nameof(LoopbackPair.Transports), MemberType = typeof(LoopbackPair))]
     public async Task Four_gigabytes_over_loopback(SpikeTransport transport)

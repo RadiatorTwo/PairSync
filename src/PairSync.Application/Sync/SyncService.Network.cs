@@ -398,20 +398,30 @@ public sealed partial class SyncService
         var control = connection.Channels.Control;
         await control.SendAsync(new FileRequest { ProfileId = profile.Id, Path = remote.Path, Sha256 = remote.Sha256 }, cancellationToken).ConfigureAwait(false);
         TransferPlan? plan = null;
-        await foreach (var message in control.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        // A lost answer must not stop the round for good: the fetch counts as incomplete and is tried again.
+        using var answer = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        answer.CancelAfter(TimeSpan.FromMinutes(2));
+        try
         {
-            if (message is FileUnavailable unavailable && unavailable.Path == remote.Path)
+            await foreach (var message in control.ReadAllAsync(answer.Token).ConfigureAwait(false))
             {
-                _logger.LogDebug("{Path} not fetched: {Reason}", remote.Path, unavailable.Reason);
-                return null;
+                if (message is FileUnavailable unavailable && unavailable.Path == remote.Path)
+                {
+                    _logger.LogDebug("{Path} not fetched: {Reason}", remote.Path, unavailable.Reason);
+                    return null;
+                }
+                if (message is TransferPlan received)
+                {
+                    plan = received;
+                    break;
+                }
+                if (message is Cancel cancel)
+                    throw TransferCanceledException.From(cancel, "the other device canceled");
             }
-            if (message is TransferPlan received)
-            {
-                plan = received;
-                break;
-            }
-            if (message is Cancel cancel)
-                throw TransferCanceledException.From(cancel, "the other device canceled");
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new TransportException($"The other device did not answer the request for {remote.Path}.");
         }
         if (plan is null)
             throw new TransportException("The connection closed before the file arrived.");

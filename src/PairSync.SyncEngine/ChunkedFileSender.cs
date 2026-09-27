@@ -265,9 +265,14 @@ public sealed class ChunkedFileSender(SenderOptions options)
             await foreach (var message in control.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
                 if (message is Ping ping)
+                {
                     await control.SendAsync(new Pong { Timestamp = ping.Timestamp }, cancellationToken).ConfigureAwait(false);
-                else
-                    events.TryWrite(message);
+                    continue;
+                }
+                events.TryWrite(message);
+                // The transfer ends here: what follows (the next file request of a sync) belongs to the next reader.
+                if (message is TransferResult or Cancel or JobControl { Action: not JobAction.Resume })
+                    break;
             }
             events.TryComplete();
         }
