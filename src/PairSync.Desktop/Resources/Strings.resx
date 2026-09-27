@@ -1352,7 +1352,7 @@
     <value>Claude Code {0} installed.</value>
   </data>
   <data name="Claude_ToolsMissing" xml:space="preserve">
-    <value>Missing on this device for Claude Code: {0}. git is needed for marketplaces, bun and jq for plugins such as claude-mem, gh for GitHub, warp is the Warp terminal.</value>
+    <value>Missing on this device for Claude Code: {0}. git is needed for marketplaces, bun and jq for plugins such as claude-mem and gh for GitHub.</value>
   </data>
   <data name="Claude_InstallTools" xml:space="preserve">
     <value>Install missing tools</value>

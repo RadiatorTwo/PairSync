@@ -1346,7 +1346,7 @@
     <value>Claude Code {0} installiert.</value>
   </data>
   <data name="Claude_ToolsMissing" xml:space="preserve">
-    <value>Auf diesem Gerät fehlen für Claude Code: {0}. git braucht es für Marketplaces, bun und jq für Plugins wie claude-mem, gh für GitHub, warp ist das Warp-Terminal.</value>
+    <value>Auf diesem Gerät fehlen für Claude Code: {0}. git braucht es für Marketplaces, bun und jq für Plugins wie claude-mem und gh für GitHub.</value>
   </data>
   <data name="Claude_InstallTools" xml:space="preserve">
     <value>Fehlende Werkzeuge installieren</value>
