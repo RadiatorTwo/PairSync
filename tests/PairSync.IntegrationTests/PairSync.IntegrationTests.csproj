@@ -9,6 +9,5 @@
     <PackageReference Include="xunit.v3" />
     <Using Include="Xunit" />
     <ProjectReference Include="..\..\src\PairSync.Application\PairSync.Application.csproj" />
-    <ProjectReference Include="..\..\src\PairSync.Rendezvous\PairSync.Rendezvous.csproj" />
   </ItemGroup>
 </Project>

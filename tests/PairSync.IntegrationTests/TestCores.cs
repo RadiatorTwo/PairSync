@@ -25,7 +25,7 @@ internal static class TestCores
     public static async Task<PairSyncCore> StartAsync(
         DataDirectory data, CancellationToken cancellationToken, PresenceOptions? presence = null, PairingOptions? pairing = null,
         TransferOptions? transfers = null, InternetOptions? internet = null, SyncOptions? sync = null,
-        PairSync.Application.Claude.ClaudeOptions? claude = null, PairSync.Application.Rendezvous.RendezvousClientOptions? rendezvous = null)
+        PairSync.Application.Claude.ClaudeOptions? claude = null)
     {
         var core = await PairSyncCore.StartAsync(data, cancellationToken, services =>
         {
@@ -37,10 +37,6 @@ internal static class TestCores
             services.AddSingleton(sync ?? FastSync);
             if (claude is not null)
                 services.AddSingleton(claude);
-            services.AddSingleton(rendezvous ?? new PairSync.Application.Rendezvous.RendezvousClientOptions
-            {
-                RetryDelays = [TimeSpan.FromMilliseconds(200), TimeSpan.FromSeconds(1)],
-            });
         });
         core.Settings.Update(s => s with { StunServers = [] });
         return core;
