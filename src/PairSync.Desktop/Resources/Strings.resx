@@ -1253,7 +1253,7 @@
     <value>Asks GitHub only when you click. Nothing is downloaded or installed automatically.</value>
   </data>
   <data name="Update_Checking" xml:space="preserve">
-    <value>Checkingâ€¦</value>
+    <value>Checking…</value>
   </data>
   <data name="Update_UpToDate" xml:space="preserve">
     <value>You have the latest version ({0}).</value>
@@ -1271,10 +1271,10 @@
     <value>Open release page</value>
   </data>
   <data name="Identity_Export" xml:space="preserve">
-    <value>Export identityâ€¦</value>
+    <value>Export identity…</value>
   </data>
   <data name="Identity_Import" xml:space="preserve">
-    <value>Import identityâ€¦</value>
+    <value>Import identity…</value>
   </data>
   <data name="Identity_Hint" xml:space="preserve">
     <value>Back up this device's key to move PairSync to a new computer without pairing again. Whoever has the file and its password can act as this device.</value>
@@ -1346,7 +1346,7 @@
     <value>Install Claude Code</value>
   </data>
   <data name="Claude_Installing" xml:space="preserve">
-    <value>Installing Claude Codeâ€¦</value>
+    <value>Installing Claude Code…</value>
   </data>
   <data name="Claude_Installed" xml:space="preserve">
     <value>Claude Code {0} installed.</value>
@@ -1358,7 +1358,7 @@
     <value>Install missing tools</value>
   </data>
   <data name="Claude_ToolsInstalling" xml:space="preserve">
-    <value>Installing toolsâ€¦ Windows may ask for administrator rights, Linux for your password.</value>
+    <value>Installing tools… Windows may ask for administrator rights, Linux for your password.</value>
   </data>
   <data name="Claude_ToolInstall" xml:space="preserve">
     <value>install {0}</value>

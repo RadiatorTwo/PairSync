@@ -767,7 +767,7 @@
     <value>Manche Netze, etwa zwei Mobilfunk- oder Carrier-Grade-NAT-Anschlüsse, lassen nie eine direkte Verbindung durch. Dann kann nur ein Relay (TURN-Server) dazwischen die beiden Geräte verbinden.</value>
   </data>
   <data name="Relays_Later" xml:space="preserve">
-    <value>PairSync nutzt kein Relay und keinen eigenen Server. Lassen beide Netze keine direkte Verbindung zu, verbinde die GerÃ¤te im selben LAN oder Ã¼ber ein VPN zwischen ihnen.</value>
+    <value>PairSync nutzt kein Relay und keinen eigenen Server. Lassen beide Netze keine direkte Verbindung zu, verbinde die Geräte im selben LAN oder über ein VPN zwischen ihnen.</value>
   </data>
   <data name="Pair_Preparing" xml:space="preserve">
     <value>Einladung wird erstellt … Das dauert ein paar Sekunden.</value>
@@ -1235,7 +1235,7 @@
     <value>1 Schlüssel</value>
   </data>
   <data name="Settings_About" xml:space="preserve">
-    <value>Ãœber PairSync</value>
+    <value>Über PairSync</value>
   </data>
   <data name="Settings_Version" xml:space="preserve">
     <value>PairSync {0}</value>
@@ -1247,34 +1247,34 @@
     <value>Fragt GitHub nur, wenn du klickst. Nichts wird automatisch heruntergeladen oder installiert.</value>
   </data>
   <data name="Update_Checking" xml:space="preserve">
-    <value>Sucheâ€¦</value>
+    <value>Suche…</value>
   </data>
   <data name="Update_UpToDate" xml:space="preserve">
     <value>Du hast die neueste Version ({0}).</value>
   </data>
   <data name="Update_Newer" xml:space="preserve">
-    <value>Version {0} ist verfÃ¼gbar.</value>
+    <value>Version {0} ist verfügbar.</value>
   </data>
   <data name="Update_NoRelease" xml:space="preserve">
-    <value>Es wurde noch keine Version verÃ¶ffentlicht.</value>
+    <value>Es wurde noch keine Version veröffentlicht.</value>
   </data>
   <data name="Update_Failed" xml:space="preserve">
-    <value>Updates konnten nicht geprÃ¼ft werden: {0}</value>
+    <value>Updates konnten nicht geprüft werden: {0}</value>
   </data>
   <data name="Update_OpenPage" xml:space="preserve">
-    <value>Release-Seite Ã¶ffnen</value>
+    <value>Release-Seite öffnen</value>
   </data>
   <data name="Identity_Export" xml:space="preserve">
-    <value>IdentitÃ¤t exportierenâ€¦</value>
+    <value>Identität exportieren…</value>
   </data>
   <data name="Identity_Import" xml:space="preserve">
-    <value>IdentitÃ¤t importierenâ€¦</value>
+    <value>Identität importieren…</value>
   </data>
   <data name="Identity_Hint" xml:space="preserve">
-    <value>Sichere den SchlÃ¼ssel dieses GerÃ¤ts, um PairSync ohne neue Kopplung auf einen neuen Rechner umzuziehen. Wer Datei und Passwort hat, kann als dieses GerÃ¤t auftreten.</value>
+    <value>Sichere den Schlüssel dieses Geräts, um PairSync ohne neue Kopplung auf einen neuen Rechner umzuziehen. Wer Datei und Passwort hat, kann als dieses Gerät auftreten.</value>
   </data>
   <data name="Identity_PasswordTitleExport" xml:space="preserve">
-    <value>Sicherung mit Passwort schÃ¼tzen</value>
+    <value>Sicherung mit Passwort schützen</value>
   </data>
   <data name="Identity_PasswordTitleImport" xml:space="preserve">
     <value>Passwort der Sicherung</value>
@@ -1286,19 +1286,19 @@
     <value>Passwort wiederholen</value>
   </data>
   <data name="Identity_PasswordHint" xml:space="preserve">
-    <value>Ein vergessenes Passwort lÃ¤sst sich nicht wiederherstellen.</value>
+    <value>Ein vergessenes Passwort lässt sich nicht wiederherstellen.</value>
   </data>
   <data name="Identity_TooShort" xml:space="preserve">
     <value>Mindestens {0} Zeichen.</value>
   </data>
   <data name="Identity_Mismatch" xml:space="preserve">
-    <value>Die PasswÃ¶rter stimmen nicht Ã¼berein.</value>
+    <value>Die Passwörter stimmen nicht überein.</value>
   </data>
   <data name="Identity_Continue" xml:space="preserve">
     <value>Weiter</value>
   </data>
   <data name="Identity_Saved" xml:space="preserve">
-    <value>IdentitÃ¤t gespeichert unter {0}.</value>
+    <value>Identität gespeichert unter {0}.</value>
   </data>
   <data name="Identity_Failed" xml:space="preserve">
     <value>Sicherung konnte nicht gespeichert werden: {0}</value>
@@ -1307,22 +1307,22 @@
     <value>Sicherung konnte nicht gelesen werden: {0}</value>
   </data>
   <data name="Identity_ReplaceTitle" xml:space="preserve">
-    <value>IdentitÃ¤t dieses GerÃ¤ts ersetzen?</value>
+    <value>Identität dieses Geräts ersetzen?</value>
   </data>
   <data name="Identity_ReplaceText" xml:space="preserve">
-    <value>Die Sicherung gehÃ¶rt zum GerÃ¤t {0} ({1}). PairSync nutzt sie ab dem nÃ¤chsten Start. GerÃ¤te, die nur mit der bisherigen IdentitÃ¤t gekoppelt sind, erkennen dieses GerÃ¤t dann nicht mehr.</value>
+    <value>Die Sicherung gehört zum Gerät {0} ({1}). PairSync nutzt sie ab dem nächsten Start. Geräte, die nur mit der bisherigen Identität gekoppelt sind, erkennen dieses Gerät dann nicht mehr.</value>
   </data>
   <data name="Identity_ReplaceConfirm" xml:space="preserve">
-    <value>IdentitÃ¤t ersetzen</value>
+    <value>Identität ersetzen</value>
   </data>
   <data name="Identity_SameDevice" xml:space="preserve">
-    <value>Diese Sicherung gehÃ¶rt bereits zu diesem GerÃ¤t. Nichts geÃ¤ndert.</value>
+    <value>Diese Sicherung gehört bereits zu diesem Gerät. Nichts geändert.</value>
   </data>
   <data name="Identity_RestartTitle" xml:space="preserve">
-    <value>PairSync beenden, um abzuschlieÃŸen</value>
+    <value>PairSync beenden, um abzuschließen</value>
   </data>
   <data name="Identity_RestartText" xml:space="preserve">
-    <value>Die importierte IdentitÃ¤t gilt ab dem nÃ¤chsten Start. Beende PairSync jetzt und starte es erneut.</value>
+    <value>Die importierte Identität gilt ab dem nächsten Start. Beende PairSync jetzt und starte es erneut.</value>
   </data>
   <data name="Identity_QuitNow" xml:space="preserve">
     <value>Jetzt beenden</value>
@@ -1334,13 +1334,13 @@
     <value>Beenden</value>
   </data>
   <data name="Claude_LocalMissing" xml:space="preserve">
-    <value>Claude Code ist auf diesem GerÃ¤t nicht installiert. PairSync kann es mit dem offiziellen Installer (nur fÃ¼r diesen Benutzer) installieren und in PATH eintragen.</value>
+    <value>Claude Code ist auf diesem Gerät nicht installiert. PairSync kann es mit dem offiziellen Installer (nur für diesen Benutzer) installieren und in PATH eintragen.</value>
   </data>
   <data name="Claude_Install" xml:space="preserve">
     <value>Claude Code installieren</value>
   </data>
   <data name="Claude_Installing" xml:space="preserve">
-    <value>Claude Code wird installiertâ€¦</value>
+    <value>Claude Code wird installiert…</value>
   </data>
   <data name="Claude_Installed" xml:space="preserve">
     <value>Claude Code {0} installiert.</value>
@@ -1352,16 +1352,16 @@
     <value>Fehlende Werkzeuge installieren</value>
   </data>
   <data name="Claude_ToolsInstalling" xml:space="preserve">
-    <value>Werkzeuge werden installiertâ€¦ Windows fragt eventuell nach Administratorrechten, Linux nach deinem Passwort.</value>
+    <value>Werkzeuge werden installiert… Windows fragt eventuell nach Administratorrechten, Linux nach deinem Passwort.</value>
   </data>
   <data name="Claude_ToolInstall" xml:space="preserve">
     <value>{0} installieren</value>
   </data>
   <data name="Claude_ToolsInstalled" xml:space="preserve">
-    <value>Werkzeuge installiert. Ã–ffne ein neues Terminal, um sie dort zu nutzen.</value>
+    <value>Werkzeuge installiert. Öffne ein neues Terminal, um sie dort zu nutzen.</value>
   </data>
   <data name="Claude_ToolsPartly" xml:space="preserve">
-    <value>Nicht alle Werkzeuge lieÃŸen sich installieren; Details unten.</value>
+    <value>Nicht alle Werkzeuge ließen sich installieren; Details unten.</value>
   </data>
   <data name="Claude_LogSending" xml:space="preserve">
     <value>Sende {0} Dateien, {1} Einstellungen und {2} Schritte.</value>
