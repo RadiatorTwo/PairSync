@@ -58,12 +58,14 @@ public sealed class DeviceIdentity : IDisposable
         try
         {
             key.ImportSubjectPublicKeyInfo(subjectPublicKeyInfo, out _);
+            return key.VerifyData(data, signature, HashAlgorithmName.SHA256);
         }
-        catch (CryptographicException)
+        // A damaged key from another device can name curve parameters the platform rejects (Windows CNG throws
+        // PlatformNotSupportedException for those): not a valid signature either way.
+        catch (Exception e) when (e is CryptographicException or PlatformNotSupportedException)
         {
             return false;
         }
-        return key.VerifyData(data, signature, HashAlgorithmName.SHA256);
     }
 
     /// <summary>
