@@ -19,7 +19,7 @@ public sealed record ToolCommand(string FileName, IReadOnlyList<string> Argument
 public sealed record ToolInstallResult(string Tool, bool Success, string Output, string? Error);
 
 /// <summary>
-/// Installs git, bun and jq for Claude Code plugins. Windows: winget (user scope where the package allows it; Git
+/// Installs git, bun, jq and gh for Claude Code and its plugins. Windows: winget (user scope where the package allows it; Git
 /// may ask for administrator rights on that screen). Linux: the distribution's package manager through pkexec,
 /// which asks for the password on that screen; bun with its official installer into <c>~/.bun</c>. Nothing is
 /// installed without the user confirming it on the Claude Code page.
@@ -31,6 +31,7 @@ public sealed class ToolInstaller(ClaudeOptions claude, ToolInstallerOptions opt
         ["git"] = "Git.Git",
         ["bun"] = "Oven-sh.Bun",
         ["jq"] = "jqlang.jq",
+        ["gh"] = "GitHub.cli",
     };
 
     /// <summary>Installs <paramref name="tools"/> one after the other; each result says whether the tool is found afterwards.</summary>
@@ -92,11 +93,16 @@ public sealed class ToolInstaller(ClaudeOptions claude, ToolInstallerOptions opt
             : ClaudeTools.Find("zypper", claude) is { } zypper ? [zypper, "--non-interactive", "install"]
             : ClaudeTools.Find("brew", claude) is { } brew ? [brew, "install"]
             : throw new ToolInstallException($"No known package manager found. Install {string.Join(", ", packages)} yourself.");
+        var names = PackageNames(prefix[0], packages);
         // Homebrew refuses to run as root.
         return prefix[0].EndsWith("brew", StringComparison.Ordinal)
-            ? [new ToolCommand(prefix[0], [.. prefix[1..], .. packages])]
-            : [new ToolCommand(pkexec, [.. prefix, .. packages])];
+            ? [new ToolCommand(prefix[0], [.. prefix[1..], .. names])]
+            : [new ToolCommand(pkexec, [.. prefix, .. names])];
     }
+
+    /// <summary>Package names for <paramref name="packageManager"/>: Arch calls the GitHub CLI github-cli, everyone else gh.</summary>
+    internal static string[] PackageNames(string packageManager, IEnumerable<string> tools) =>
+        [.. tools.Select(t => t == "gh" && Path.GetFileName(packageManager) == "pacman" ? "github-cli" : t)];
 
     private async Task<(string Output, string? Error)> RunAllAsync(Func<IReadOnlyList<ToolCommand>> commands, CancellationToken cancellationToken)
     {

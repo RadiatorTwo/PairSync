@@ -1346,7 +1346,7 @@
     <value>Claude Code {0} installiert.</value>
   </data>
   <data name="Claude_ToolsMissing" xml:space="preserve">
-    <value>Auf diesem GerÃ¤t fehlen fÃ¼r Claude Code und seine Plugins: {0}. git braucht es fÃ¼r Marketplaces, bun und jq fÃ¼r Plugins wie claude-mem.</value>
+    <value>Auf diesem Gerät fehlen für Claude Code und seine Plugins: {0}. git braucht es für Marketplaces, bun und jq für Plugins wie claude-mem, gh für GitHub.</value>
   </data>
   <data name="Claude_InstallTools" xml:space="preserve">
     <value>Fehlende Werkzeuge installieren</value>

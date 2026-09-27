@@ -399,15 +399,15 @@ public sealed class ClaudeTests : IAsyncLifetime
         await AllowAsync(target, source, programs: true);
 
         var fetched = await FetchAsync(source);
-        Assert.Equal(["git", "bun", "jq"], fetched.Snapshot.MissingTools);
+        Assert.Equal(["git", "bun", "jq", "gh"], fetched.Snapshot.MissingTools);
         var plan = ClaudePlanner.Plan(await source.Claude.ReadLocalAsync(Ct), fetched.Snapshot, fetched.CanInstallClaude);
-        Assert.Equal(["tool:git", "tool:bun", "tool:jq"], plan.Executables.Take(3).Select(e => e.Id));
+        Assert.Equal(["tool:git", "tool:bun", "tool:jq", "tool:gh"], plan.Executables.Take(4).Select(e => e.Id));
         var request = ClaudePlanner.BuildApply(plan, new ClaudeSelection(
-            new HashSet<string>(), new HashSet<string> { "tool:git", "tool:jq" }, new Dictionary<string, string>()));
+            new HashSet<string>(), new HashSet<string> { "tool:git", "tool:jq", "tool:gh" }, new Dictionary<string, string>()));
         var results = new List<ClaudeStepResult>();
         await source.Claude.ApplyAsync(fetched.Device, request, results.Add, Ct);
 
-        Assert.Equal([ClaudeStepStatus.Done, ClaudeStepStatus.Done], results.Select(r => r.Status));
+        Assert.Equal([ClaudeStepStatus.Done, ClaudeStepStatus.Done, ClaudeStepStatus.Done], results.Select(r => r.Status));
         Assert.Equal(["bun"], target.Claude.MissingToolsLocally);
         // CLI steps find tools installed after PairSync started.
         Assert.Contains(Path.Combine(Home("office"), ".local", "bin"),
@@ -422,7 +422,7 @@ public sealed class ClaudeTests : IAsyncLifetime
         var results = await core.Claude.InstallToolsLocalAsync(["bun"], Ct);
 
         Assert.True(Assert.Single(results).Success, results[0].Error);
-        Assert.Equal(["git", "jq"], core.Claude.MissingToolsLocally);
+        Assert.Equal(["git", "jq", "gh"], core.Claude.MissingToolsLocally);
     }
 
     [Fact]
@@ -474,5 +474,11 @@ public sealed class ClaudeTests : IAsyncLifetime
 
         lock (events)
             Assert.Equal(ClaudeIncomingStage.Failed, Assert.Single(events).Stage);
+    }
+    [Fact]
+    public void Github_cli_has_its_arch_package_name()
+    {
+        Assert.Equal(["git", "github-cli"], ToolInstaller.PackageNames("/usr/bin/pacman", ["git", "gh"]));
+        Assert.Equal(["git", "gh"], ToolInstaller.PackageNames("/usr/bin/apt-get", ["git", "gh"]));
     }
 }

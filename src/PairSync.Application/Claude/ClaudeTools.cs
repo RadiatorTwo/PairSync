@@ -5,12 +5,12 @@ namespace PairSync.Application.Claude;
 
 /// <summary>
 /// Programs Claude Code and common plugins call: <c>git</c> (marketplaces, the Bash tool on Windows), <c>bun</c> and
-/// <c>jq</c> (hooks of plugins such as claude-mem). Finds them also where installers put them after PairSync started,
+/// <c>jq</c> (hooks of plugins such as claude-mem), <c>gh</c> (GitHub from Claude Code). Finds them also where installers put them after PairSync started,
 /// so CLI steps get a PATH that includes those folders.
 /// </summary>
 public static class ClaudeTools
 {
-    public static IReadOnlyList<string> Names { get; } = ["git", "bun", "jq"];
+    public static IReadOnlyList<string> Names { get; } = ["git", "bun", "jq", "gh"];
 
     public static bool IsKnown(string name) => Names.Contains(name, StringComparer.Ordinal);
 
