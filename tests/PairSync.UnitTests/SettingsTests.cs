@@ -102,4 +102,34 @@ public sealed class SettingsTests : IDisposable
         Assert.Empty(Open().Current.StunServers);
         Assert.Equal(Open().Current, Open().Current);
     }
+
+    [Theory]
+    [InlineData("wss://rv.example.org", "wss://rv.example.org/v1")]
+    [InlineData(" https://rv.example.org/ ", "wss://rv.example.org/v1")]
+    [InlineData("http://192.0.2.4:8080", "ws://192.0.2.4:8080/v1")]
+    [InlineData("wss://rv.example.org/pairsync/v1", "wss://rv.example.org/pairsync/v1")]
+    public void Rendezvous_url_is_normalized(string text, string expected)
+    {
+        Assert.True(RendezvousUrls.TryNormalize(text, out var url));
+        Assert.Equal(expected, url);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("  ")]
+    [InlineData("ftp://rv.example.org")]
+    [InlineData("rv.example.org")]
+    [InlineData("wss://user:pw@rv.example.org")]
+    [InlineData("wss://rv.example.org/v1?x=1")]
+    public void Invalid_rendezvous_url_is_rejected(string? text) => Assert.False(RendezvousUrls.TryNormalize(text, out _));
+
+    [Fact]
+    public void Rendezvous_is_off_by_default_and_invalid_urls_are_dropped()
+    {
+        Assert.Null(Open().Current.RendezvousUrl);
+
+        Open().Update(s => s with { RendezvousUrl = "not a url" });
+
+        Assert.Null(Open().Current.RendezvousUrl);
+    }
 }

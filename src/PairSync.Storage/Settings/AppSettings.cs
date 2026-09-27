@@ -46,6 +46,12 @@ public sealed record AppSettings
     public const int MaxStunServers = 8;
 
     /// <summary>
+    /// Optional self-hosted rendezvous service (<c>wss://host/v1</c>) for presence and automatic internet connections.
+    /// Null: off, no request to any service.
+    /// </summary>
+    public string? RendezvousUrl { get; init; }
+
+    /// <summary>
     /// <c>NAME=value</c> lines for paths in Claude Code commands from another device, e.g. <c>TOOLS_ROOT=D:	ools</c>.
     /// The other device writes <c>${TOOLS_ROOT}</c>; this device puts in its value.
     /// </summary>
@@ -71,6 +77,7 @@ public sealed record AppSettings
                 ? DefaultStunServers
                 : [.. StunServers.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim())
                     .Distinct(StringComparer.OrdinalIgnoreCase).Take(MaxStunServers)],
+            RendezvousUrl = RendezvousUrls.TryNormalize(RendezvousUrl, out var url) ? url : null,
             PathVariables = PathVariables is null
                 ? []
                 : [.. PathVariables.Where(v => v?.Contains('=') == true).Select(v => v.Trim()).Take(MaxPathVariables)],
@@ -90,11 +97,43 @@ public sealed record AppSettings
         && ParallelTransfers == other.ParallelTransfers
         && VerboseLogging == other.VerboseLogging
         && StunServers.SequenceEqual(other.StunServers)
+        && RendezvousUrl == other.RendezvousUrl
         && PathVariables.SequenceEqual(other.PathVariables);
 
     public override int GetHashCode() =>
         HashCode.Combine(DeviceName, CloseBehavior, StartWithSystem, Port, UploadLimitBytesPerSecond, ParallelTransfers, VerboseLogging,
-            StunServers.Count + PathVariables.Count);
+            HashCode.Combine(StunServers.Count + PathVariables.Count, RendezvousUrl));
+}
+
+/// <summary>Checks and normalizes rendezvous service URLs.</summary>
+public static class RendezvousUrls
+{
+    public const string DefaultPath = "/v1";
+
+    /// <summary>
+    /// Accepts <c>wss://</c> and <c>ws://</c> (and <c>https://</c>/<c>http://</c>, turned into the WebSocket form); a
+    /// URL without path gets <c>/v1</c>. Blank or invalid text gives false.
+    /// </summary>
+    public static bool TryNormalize(string? text, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? url)
+    {
+        url = null;
+        if (string.IsNullOrWhiteSpace(text) || !Uri.TryCreate(text.Trim(), UriKind.Absolute, out var uri))
+            return false;
+        var scheme = uri.Scheme switch
+        {
+            "wss" or "https" => "wss",
+            "ws" or "http" => "ws",
+            _ => null,
+        };
+        if (scheme is null || string.IsNullOrEmpty(uri.Host) || !string.IsNullOrEmpty(uri.UserInfo) || !string.IsNullOrEmpty(uri.Query)
+            || !string.IsNullOrEmpty(uri.Fragment))
+            return false;
+        var builder = new UriBuilder(uri) { Scheme = scheme, Port = uri.IsDefaultPort ? -1 : uri.Port };
+        if (builder.Path is "" or "/")
+            builder.Path = DefaultPath;
+        url = builder.Uri.ToString();
+        return true;
+    }
 }
 
 [JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]

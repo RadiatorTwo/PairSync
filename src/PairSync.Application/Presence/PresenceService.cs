@@ -87,6 +87,16 @@ public sealed class PresenceService(
         }
     }
 
+    /// <summary>All paired devices, including blocked ones, as last loaded.</summary>
+    public IReadOnlyList<PairedDevice> PairedDevices
+    {
+        get
+        {
+            lock (_gate)
+                return [.. _paired.Values];
+        }
+    }
+
     /// <summary>Where a device was last announced, if it is online.</summary>
     public LanServiceInfo? FindEndpoint(Guid deviceId)
     {

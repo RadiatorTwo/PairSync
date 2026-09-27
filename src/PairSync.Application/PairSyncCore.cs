@@ -84,6 +84,7 @@ public sealed class PairSyncCore : IAsyncDisposable
             await services.GetRequiredService<PresenceService>().StartAsync(cancellationToken).ConfigureAwait(false);
             await transfers.StartAsync(cancellationToken).ConfigureAwait(false);
             await sync.StartAsync(cancellationToken).ConfigureAwait(false);
+            services.GetRequiredService<Rendezvous.RendezvousClient>().Start();
 
             services.GetRequiredService<ILogger<PairSyncCore>>()
                 .LogInformation("PairSync core started, data directory {DataDirectory}", dataDirectory.Root);
@@ -141,6 +142,8 @@ public sealed class PairSyncCore : IAsyncDisposable
 
     public Internet.InternetLinkService Internet => _services.GetRequiredService<Internet.InternetLinkService>();
 
+    public Rendezvous.RendezvousClient Rendezvous => _services.GetRequiredService<Rendezvous.RendezvousClient>();
+
     public Internet.RelayServers Relays => _services.GetRequiredService<Internet.RelayServers>();
 
     public PeerLinks Links => _services.GetRequiredService<PeerLinks>();
@@ -154,6 +157,7 @@ public sealed class PairSyncCore : IAsyncDisposable
             await sync.DisposeAsync().ConfigureAwait(false);
         if (_services.GetService<TransferService>() is { } transfers)
             await transfers.DisposeAsync().ConfigureAwait(false);
+        await _services.GetRequiredService<Rendezvous.RendezvousClient>().DisposeAsync().ConfigureAwait(false);
         await _services.GetRequiredService<PairingService>().DisposeAsync().ConfigureAwait(false);
         await _services.GetRequiredService<Internet.InternetLinkService>().DisposeAsync().ConfigureAwait(false);
         await _services.GetRequiredService<PresenceService>().DisposeAsync().ConfigureAwait(false);

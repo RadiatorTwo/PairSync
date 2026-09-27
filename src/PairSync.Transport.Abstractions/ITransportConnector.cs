@@ -2,7 +2,7 @@ namespace PairSync.Transport;
 
 /// <summary>
 /// Creates sessions through an explicit offer/answer exchange. How the descriptions travel
-/// between devices is up to an <see cref="ISignalingProvider"/>.
+/// between devices is up to an <see cref="ISignalingChannel"/>.
 /// </summary>
 public interface ITransportConnector
 {

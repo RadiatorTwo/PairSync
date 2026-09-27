@@ -1,8 +1,10 @@
-namespace PairSync.Transport;
+using PairSync.Transport;
+
+namespace PairSync.Spike;
 
 /// <summary>
 /// Carries session descriptions between two devices (plan §6): manual copy-and-paste or files,
-/// LAN signaling, or later an optional rendezvous service.
+/// used by the spike only; the app uses signed codes and ISignalingChannel.
 /// </summary>
 public interface ISignalingProvider
 {
