@@ -139,6 +139,14 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
     [ObservableProperty]
     private string? _pendingText;
 
+    /// <summary>Claude Code is not installed on this device: the page offers to install it.</summary>
+    [ObservableProperty]
+    private bool _localMissing;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(InstallLocalCommand))]
+    private bool _isInstalling;
+
     public ClaudeCodeViewModel(PairSyncCore core, DialogHost dialogs) : base(AppPage.ClaudeCode)
     {
         _core = core;
@@ -201,6 +209,7 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
 
     private void UpdatePending()
     {
+        LocalMissing = !_core.Claude.IsInstalledLocally;
         var pending = _core.Claude.Pending;
         PendingText = pending is null
             ? null
@@ -260,7 +269,7 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
             var target = await _core.Claude.FetchTargetAsync(device, loading.Token);
             if (loading.IsCancellationRequested)
                 return;
-            Show(local, target, ClaudePlanner.Plan(local, target.Snapshot));
+            Show(local, target, ClaudePlanner.Plan(local, target.Snapshot, target.CanInstallClaude));
         }
         catch (ClaudeUnavailableException e)
         {
@@ -458,6 +467,35 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
 
     [RelayCommand]
     private void DiscardPending() => _core.Claude.DiscardPending();
+
+    private bool CanInstallLocal() => !IsInstalling;
+
+    /// <summary>"Install Claude Code" on this device: official installer, then ~/.local/bin on PATH.</summary>
+    [RelayCommand(CanExecute = nameof(CanInstallLocal))]
+    private async Task InstallLocalAsync()
+    {
+        IsInstalling = true;
+        StepResults.Clear();
+        ResultText = Strings.Claude_Installing;
+        OnPropertyChanged(nameof(HasResults));
+        try
+        {
+            var result = await _core.Claude.InstallLocalAsync(CancellationToken.None);
+            ResultText = result.Success
+                ? string.Format(CultureInfo.CurrentCulture, Strings.Claude_Installed, result.Version ?? "?") + " " + ClaudeService.DescribePath(result.Path)
+                : result.Error;
+            if (!string.IsNullOrWhiteSpace(result.Output))
+                StepResults.Add(new ClaudeStepRowViewModel(Strings.Claude_Install,
+                    result.Success ? Strings.Claude_StepDone : string.Format(CultureInfo.CurrentCulture, Strings.Claude_StepFailed, 1),
+                    result.Output.Trim(), !result.Success));
+        }
+        finally
+        {
+            IsInstalling = false;
+            UpdatePending();
+            OnPropertyChanged(nameof(HasResults));
+        }
+    }
 
     public void Dispose()
     {

@@ -5,8 +5,8 @@ public static class ProtocolVersion
     /// <summary>Incompatible changes bump the major version; peers with different majors refuse to talk.</summary>
     public const ushort Major = 0;
 
-    /// <summary>Compatible additions (new optional fields or message types) bump the minor version. 0.3: internet connection codes and invitations. 0.4: Goodbye on internet links. 0.5: sync profiles. 0.6: Claude Code provider.</summary>
-    public const ushort Minor = 6;
+    /// <summary>Compatible additions (new optional fields or message types) bump the minor version. 0.3: internet connection codes and invitations. 0.4: Goodbye on internet links. 0.5: sync profiles. 0.6: Claude Code provider. 0.7: Claude Code install step.</summary>
+    public const ushort Minor = 7;
 
     public static string Current => $"{Major}.{Minor}";
 }

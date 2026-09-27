@@ -14,6 +14,7 @@ public enum ExecutableKind
     Setting,
     McpServer,
     Plugin,
+    Installer,
 }
 
 /// <summary>Something that runs programs on the target; applied only after the user confirmed it (plan §9).</summary>
@@ -31,6 +32,9 @@ public enum ClaudeStepKind
     PluginEnable = 2,
     PluginDisable = 3,
     McpAdd = 4,
+
+    /// <summary>Installs Claude Code itself with the official installer and puts it on PATH (protocol 0.7).</summary>
+    InstallClaude = 5,
 }
 
 /// <summary>A CLI step on the target. The target builds the command line itself from these fields.</summary>
@@ -144,7 +148,10 @@ public static class ClaudePlanner
     };
 
     /// <param name="target">The target as it reported itself: settings and MCP servers already in comparable form.</param>
-    public static ClaudePlan Plan(ClaudeSnapshot source, ClaudeSnapshot target)
+    public const string InstallClaudeId = "install:claude";
+
+    /// <param name="offerInstall">The target can install Claude Code itself (protocol 0.7); offered when it is missing there.</param>
+    public static ClaudePlan Plan(ClaudeSnapshot source, ClaudeSnapshot target, bool offerInstall = false)
     {
         var comparable = Comparable(source);
         var notes = new List<string>();
@@ -184,6 +191,13 @@ public static class ClaudePlanner
         var steps = new List<ClaudeStep>();
         var synced = PlanPlugins(source, target, steps, executables, notes);
         var mcp = PlanMcp(comparable, target.McpServers, steps, executables);
+        if (offerInstall && target.Version is null)
+        {
+            // First, so the CLI steps after it find the program.
+            executables.Insert(0, new ExecutableItem(InstallClaudeId, ExecutableKind.Installer, "Install Claude Code",
+                target.Os == "windows" ? "irm https://claude.ai/install.ps1 | iex  (+ PATH)" : "curl -fsSL https://claude.ai/install.sh | bash  (+ PATH)", []));
+            steps.Insert(0, new ClaudeStep(ClaudeStepKind.InstallClaude, "claude-code", null, InstallClaudeId, "official installer · user"));
+        }
         return new ClaudePlan(entries, settings, steps, executables, mcp, synced, notes);
     }
 
@@ -365,6 +379,14 @@ public static class ClaudePlanner
         // A marketplace is only added for a plugin that is installed from it.
         var needed = steps.Where(s => s.Kind == ClaudeStepKind.PluginInstall).Select(s => s.Name[(s.Name.LastIndexOf('@') + 1)..]).ToHashSet(StringComparer.Ordinal);
         steps.InsertRange(0, plan.Steps.Where(s => s.Kind == ClaudeStepKind.MarketplaceAdd && needed.Contains(s.Name)));
+        // Installing Claude Code comes before every CLI step.
+        var install = steps.FindIndex(s => s.Kind == ClaudeStepKind.InstallClaude);
+        if (install > 0)
+        {
+            var step = steps[install];
+            steps.RemoveAt(install);
+            steps.Insert(0, step);
+        }
         return new ClaudeApplyRequest(files, settings, steps);
 
         static JsonNode Parse(string json) => JsonNode.Parse(json)!;

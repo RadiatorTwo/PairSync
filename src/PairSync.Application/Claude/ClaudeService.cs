@@ -11,7 +11,9 @@ using PairSync.Transport;
 namespace PairSync.Application.Claude;
 
 /// <summary>The target of a Claude Code review: its state and what it allows this device.</summary>
-public sealed record ClaudeTarget(PairedDevice Device, ClaudeSnapshot Snapshot, bool AllowPrograms, IReadOnlyList<string> PathVariables);
+/// <param name="CanInstallClaude">The target's PairSync can install Claude Code itself (protocol 0.7).</param>
+public sealed record ClaudeTarget(PairedDevice Device, ClaudeSnapshot Snapshot, bool AllowPrograms, IReadOnlyList<string> PathVariables,
+    bool CanInstallClaude = false);
 
 /// <summary>The target cannot be asked: not reachable, too old, or it does not allow this device.</summary>
 public sealed class ClaudeUnavailableException(string message, bool notAllowed = false) : Exception(message)
@@ -30,7 +32,8 @@ public sealed record ClaudeApplyOutcome(string? Error, int FilesWritten, int Set
 /// sends what the user chose; as the target it answers with its state and applies what the source sends, within
 /// the permissions it gave that device ("Apply Claude config", "Install programs").
 /// </summary>
-public sealed class ClaudeService(PeerLinks links, DataDirectory data, SettingsStore settings, ClaudeOptions options, ILogger<ClaudeService> logger)
+public sealed class ClaudeService(
+    PeerLinks links, DataDirectory data, SettingsStore settings, ClaudeOptions options, ClaudeInstaller installer, ILogger<ClaudeService> logger)
 {
     private const int FileDataBytes = 512 * 1024;
     private static readonly TimeSpan StateTimeout = TimeSpan.FromSeconds(60);
@@ -54,6 +57,44 @@ public sealed class ClaudeService(PeerLinks links, DataDirectory data, SettingsS
         return ClaudeInventory.Read(ClaudeLocator.Locate(options), version);
     }, cancellationToken);
 
+    /// <summary>The <c>claude</c> program was found on this device.</summary>
+    public bool IsInstalledLocally => ClaudeLocator.FindProgram(options) is not null;
+
+    /// <summary>"Install Claude Code" on this device: the official installer, then <c>~/.local/bin</c> on PATH.</summary>
+    public async Task<ClaudeInstallResult> InstallLocalAsync(CancellationToken cancellationToken)
+    {
+        await _applying.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await InstallAsync("this device", cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _applying.Release();
+            Changed?.Invoke();
+        }
+    }
+
+    private async Task<ClaudeInstallResult> InstallAsync(string requestedBy, CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Installing Claude Code (requested by {By})", requestedBy);
+        var result = await installer.InstallAsync(cancellationToken).ConfigureAwait(false);
+        if (result.Success)
+            logger.LogInformation("Installed Claude Code {Version}; PATH {Path}", result.Version,
+                result.Path is { AlreadyOnPath: true } ? "unchanged" : string.Join(", ", result.Path?.Changed ?? []));
+        else
+            logger.LogWarning("Installing Claude Code failed: {Error}\n{Output}", result.Error, result.Output);
+        return result;
+    }
+
+    /// <summary>One line about the PATH change, for step output and the page.</summary>
+    public static string DescribePath(PathUpdate? path) => path switch
+    {
+        null => "",
+        { AlreadyOnPath: true } => $"{path.Folder} is on PATH.",
+        _ => $"Added {path.Folder} to PATH ({string.Join(", ", path.Changed)}). Open a new terminal to use claude.",
+    };
+
     // ---- source ----
 
     /// <exception cref="ClaudeUnavailableException">Not reachable, too old or not allowed.</exception>
@@ -71,7 +112,8 @@ public sealed class ClaudeService(PeerLinks links, DataDirectory data, SettingsS
                     continue;
                 if (!state.Allowed)
                     throw new ClaudeUnavailableException($"{device.Name} does not allow this device to apply Claude Code configuration. Allow it there under Devices → Permissions.", notAllowed: true);
-                return new ClaudeTarget(device, ClaudeWire.FromState(state), state.AllowPrograms, state.PathVariables ?? []);
+                return new ClaudeTarget(device, ClaudeWire.FromState(state), state.AllowPrograms, state.PathVariables ?? [],
+                    CanInstallClaude: connection.Handshake.RemoteMinor >= 7);
             }
             throw new ClaudeUnavailableException($"{device.Name} did not answer.");
         }
@@ -277,6 +319,29 @@ public sealed class ClaudeService(PeerLinks links, DataDirectory data, SettingsS
                 }
 
                 var program = ClaudeLocator.FindProgram(options);
+                var install = runnable.FindIndex(r => r.Step.Kind == ClaudeStepKind.InstallClaude);
+                if (install >= 0)
+                {
+                    var (index, _) = runnable[install];
+                    runnable.RemoveAt(install);
+                    ClaudeStepResult installed;
+                    if (program is not null)
+                        installed = new ClaudeStepResult { Index = index, Status = ClaudeStepStatus.Skipped, Output = "Claude Code is installed already." };
+                    else
+                    {
+                        var result = await InstallAsync(device.Name, cancellationToken).ConfigureAwait(false);
+                        installed = new ClaudeStepResult
+                        {
+                            Index = index,
+                            Status = result.Success ? ClaudeStepStatus.Done : ClaudeStepStatus.Failed,
+                            ExitCode = result.Success ? 0 : 1,
+                            Output = string.Join("\n", new[] { result.Error, result.Success ? $"Claude Code {result.Version}" : null, DescribePath(result.Path), result.Output }
+                                .Where(t => !string.IsNullOrWhiteSpace(t))),
+                        };
+                        program = ClaudeLocator.FindProgram(options);
+                    }
+                    await control.SendAsync(installed, cancellationToken).ConfigureAwait(false);
+                }
                 if (program is null && runnable.Count > 0)
                 {
                     SavePending(new PendingClaudePlan(device.Name, DateTime.UtcNow, [.. runnable.Select(r => r.Step)]));

@@ -88,6 +88,7 @@ internal sealed class ClaudeApplier(ClaudeEnvironment environment, string dataRo
                 ClaudeStepKind.PluginInstall or ClaudeStepKind.PluginEnable or ClaudeStepKind.PluginDisable =>
                     ClaudeInventory.IsPluginId(name) && !name.EndsWith("@synced", StringComparison.Ordinal),
                 ClaudeStepKind.McpAdd => ClaudeInventory.IsName(name) && ClaudeWire.ParseObject(e.Value) is not null,
+                ClaudeStepKind.InstallClaude => name == "claude-code",
                 _ => false,
             };
             if (!valid)

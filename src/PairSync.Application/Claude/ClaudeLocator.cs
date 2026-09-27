@@ -14,6 +14,9 @@ public sealed record ClaudeOptions
     /// <summary>The <c>claude</c> program; "" means "not installed". Settable so tests can install it later.</summary>
     public string? Executable { get; set; }
 
+    /// <summary>Also look for the CLI in PATH; tests turn it off so the machine's own installation does not count.</summary>
+    public bool SearchSystemPath { get; init; } = true;
+
     /// <summary>Limit for one CLI step on the target (plugin install, MCP add).</summary>
     public TimeSpan StepTimeout { get; init; } = TimeSpan.FromMinutes(5);
 }
@@ -46,7 +49,7 @@ public static class ClaudeLocator
             return configured.Length == 0 ? null : ProgramFor(configured);
 
         var home = options.HomeDir ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var folders = (Environment.GetEnvironmentVariable("PATH") ?? "")
+        var folders = (options.SearchSystemPath ? Environment.GetEnvironmentVariable("PATH") ?? "" : "")
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Append(Path.Combine(home, ".local", "bin"))
             .Append(Path.Combine(home, ".claude", "local"));
@@ -125,8 +128,13 @@ public static class ClaudeCli
         };
         foreach (var argument in program.PrefixArguments.Concat(arguments))
             start.ArgumentList.Add(argument);
+        return await RunProcessAsync(start, timeout, cancellationToken).ConfigureAwait(false);
+    }
 
-        using var process = Process.Start(start) ?? throw new InvalidOperationException("The claude program did not start.");
+    /// <summary>Starts <paramref name="start"/> (redirected, no window), collects its output and kills it after <paramref name="timeout"/>.</summary>
+    internal static async Task<CliResult> RunProcessAsync(ProcessStartInfo start, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        using var process = Process.Start(start) ?? throw new InvalidOperationException($"{Path.GetFileName(start.FileName)} did not start.");
         process.StandardInput.Close();
         var output = new System.Text.StringBuilder();
         void Append(string? line)

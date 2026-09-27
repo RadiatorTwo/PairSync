@@ -263,6 +263,8 @@ public static class ConnectionServices
         services.AddSingleton(new Sync.SyncOptions());
         services.AddSingleton<Sync.SyncService>();
         services.AddSingleton(new Claude.ClaudeOptions());
+        services.AddSingleton(new Claude.ClaudeInstallerOptions());
+        services.AddSingleton<Claude.ClaudeInstaller>();
         services.AddSingleton<Claude.ClaudeService>();
         return services;
     }

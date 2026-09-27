@@ -205,4 +205,31 @@ public sealed class ClaudePlannerTests
     [InlineData("""{ "source": "directory", "path": "/x" }""", null)]
     public void Marketplace_arguments_are_safe(string source, string? expected) =>
         Assert.Equal(expected, ClaudePlanner.MarketplaceArgument(Json(source)));
+    [Fact]
+    public void Missing_claude_on_the_target_is_offered_as_first_confirmable_step()
+    {
+        var source = Source(plugins: [new ClaudePlugin("good@m", true, true, "1.0", false)],
+            marketplaces: [new ClaudeMarketplace("m", Json("""{"source":"github","repo":"org/m"}"""), null)]);
+
+        var plan = ClaudePlanner.Plan(source, Target(), offerInstall: true);
+
+        Assert.Equal(ClaudeStepKind.InstallClaude, plan.Steps[0].Kind);
+        Assert.Equal(ClaudePlanner.InstallClaudeId, plan.Executables[0].Id);
+        Assert.Contains("install.ps1", plan.Executables[0].Command, StringComparison.Ordinal);
+
+        var all = ClaudePlanner.BuildApply(plan, new ClaudeSelection(new HashSet<string>(),
+            plan.Executables.Select(e => e.Id).ToHashSet(), new Dictionary<string, string>()));
+        Assert.Equal([ClaudeStepKind.InstallClaude, ClaudeStepKind.MarketplaceAdd, ClaudeStepKind.PluginInstall], all.Steps.Select(s => s.Kind));
+        var unconfirmed = ClaudePlanner.BuildApply(plan, new ClaudeSelection(new HashSet<string>(),
+            new HashSet<string> { "plugin:good@m" }, new Dictionary<string, string>()));
+        Assert.DoesNotContain(unconfirmed.Steps, s => s.Kind == ClaudeStepKind.InstallClaude);
+    }
+
+    [Fact]
+    public void Install_is_not_offered_when_claude_is_there_or_the_target_is_too_old()
+    {
+        Assert.DoesNotContain(ClaudePlanner.Plan(Source(), Target() with { Version = "2.1.283" }, offerInstall: true).Steps,
+            s => s.Kind == ClaudeStepKind.InstallClaude);
+        Assert.DoesNotContain(ClaudePlanner.Plan(Source(), Target(), offerInstall: false).Steps, s => s.Kind == ClaudeStepKind.InstallClaude);
+    }
 }

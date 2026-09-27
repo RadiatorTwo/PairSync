@@ -86,6 +86,7 @@ public static class ClaudeStepText
         ClaudeStepKind.PluginInstall => $"install {step.Name} · user",
         ClaudeStepKind.PluginEnable => $"enable {step.Name}",
         ClaudeStepKind.PluginDisable => $"disable {step.Name}",
+        ClaudeStepKind.InstallClaude => "install Claude Code · official installer + PATH",
         _ => $"mcp add-json {step.Name}",
     };
 }

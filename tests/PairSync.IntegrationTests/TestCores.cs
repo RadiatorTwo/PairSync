@@ -25,7 +25,7 @@ internal static class TestCores
     public static async Task<PairSyncCore> StartAsync(
         DataDirectory data, CancellationToken cancellationToken, PresenceOptions? presence = null, PairingOptions? pairing = null,
         TransferOptions? transfers = null, InternetOptions? internet = null, SyncOptions? sync = null,
-        PairSync.Application.Claude.ClaudeOptions? claude = null)
+        PairSync.Application.Claude.ClaudeOptions? claude = null, PairSync.Application.Claude.ClaudeInstallerOptions? claudeInstaller = null)
     {
         var core = await PairSyncCore.StartAsync(data, cancellationToken, services =>
         {
@@ -37,6 +37,8 @@ internal static class TestCores
             services.AddSingleton(sync ?? FastSync);
             if (claude is not null)
                 services.AddSingleton(claude);
+            if (claudeInstaller is not null)
+                services.AddSingleton(claudeInstaller);
         });
         core.Settings.Update(s => s with { StunServers = [] });
         return core;

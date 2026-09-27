@@ -1333,4 +1333,16 @@
   <data name="Startup_Quit" xml:space="preserve">
     <value>Beenden</value>
   </data>
+  <data name="Claude_LocalMissing" xml:space="preserve">
+    <value>Claude Code ist auf diesem GerÃ¤t nicht installiert. PairSync kann es mit dem offiziellen Installer (nur fÃ¼r diesen Benutzer) installieren und in PATH eintragen.</value>
+  </data>
+  <data name="Claude_Install" xml:space="preserve">
+    <value>Claude Code installieren</value>
+  </data>
+  <data name="Claude_Installing" xml:space="preserve">
+    <value>Claude Code wird installiertâ€¦</value>
+  </data>
+  <data name="Claude_Installed" xml:space="preserve">
+    <value>Claude Code {0} installiert.</value>
+  </data>
 </root>

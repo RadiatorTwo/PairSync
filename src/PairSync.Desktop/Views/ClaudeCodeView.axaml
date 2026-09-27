@@ -32,6 +32,13 @@
 
     <!-- Waiting steps, errors, progress -->
     <StackPanel Grid.Row="2" Spacing="8">
+      <Border Name="LocalMissingBanner" Classes="banner" IsVisible="{Binding LocalMissing}">
+        <DockPanel>
+          <Button Name="InstallLocal" DockPanel.Dock="Right" Classes="primary compact" Margin="12,0,0,0"
+                  Content="{x:Static res:Strings.Claude_Install}" Command="{Binding InstallLocalCommand}" />
+          <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Text="{x:Static res:Strings.Claude_LocalMissing}" />
+        </DockPanel>
+      </Border>
       <Border Classes="banner" IsVisible="{Binding HasPending}">
         <DockPanel>
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" Margin="12,0,0,0">
