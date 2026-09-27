@@ -25,7 +25,8 @@ internal static class TestCores
     public static async Task<PairSyncCore> StartAsync(
         DataDirectory data, CancellationToken cancellationToken, PresenceOptions? presence = null, PairingOptions? pairing = null,
         TransferOptions? transfers = null, InternetOptions? internet = null, SyncOptions? sync = null,
-        PairSync.Application.Claude.ClaudeOptions? claude = null, PairSync.Application.Claude.ClaudeInstallerOptions? claudeInstaller = null)
+        PairSync.Application.Claude.ClaudeOptions? claude = null, PairSync.Application.Claude.ClaudeInstallerOptions? claudeInstaller = null,
+        PairSync.Application.Claude.ToolInstallerOptions? tools = null)
     {
         var core = await PairSyncCore.StartAsync(data, cancellationToken, services =>
         {
@@ -39,10 +40,25 @@ internal static class TestCores
                 services.AddSingleton(claude);
             if (claudeInstaller is not null)
                 services.AddSingleton(claudeInstaller);
+            // Never winget or pkexec from a test.
+            services.AddSingleton(tools ?? FakeTools(claude?.HomeDir ?? Path.Combine(data.Root, "home")));
         });
         core.Settings.Update(s => s with { StunServers = [] });
         return core;
     }
+
+    /// <summary>"Installs" a tool by putting a runnable file named after it into ~/.local/bin.</summary>
+    public static PairSync.Application.Claude.ToolInstallerOptions FakeTools(string home) => new()
+    {
+        Commands = tool =>
+        {
+            var bin = Path.Combine(home, ".local", "bin");
+            return OperatingSystem.IsWindows()
+                ? [new("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
+                    $"New-Item -ItemType Directory -Force '{bin}' | Out-Null; Copy-Item (Join-Path $env:SystemRoot 'System32\\whoami.exe') '{Path.Combine(bin, tool + ".exe")}'"])]
+                : [new("sh", ["-c", $"mkdir -p '{bin}' && printf '#!/bin/sh\\n' > '{bin}/{tool}' && chmod +x '{bin}/{tool}'"])];
+        },
+    };
 
     /// <summary>Sync timings for tests: short watcher quiet time and retries.</summary>
     public static SyncOptions FastSync { get; } = new()

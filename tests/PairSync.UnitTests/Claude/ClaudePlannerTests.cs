@@ -232,4 +232,20 @@ public sealed class ClaudePlannerTests
             s => s.Kind == ClaudeStepKind.InstallClaude);
         Assert.DoesNotContain(ClaudePlanner.Plan(Source(), Target(), offerInstall: false).Steps, s => s.Kind == ClaudeStepKind.InstallClaude);
     }
+    [Fact]
+    public void Missing_tools_come_first_then_claude_then_the_cli_steps()
+    {
+        var source = Source(plugins: [new ClaudePlugin("good@m", true, true, "1.0", false)],
+            marketplaces: [new ClaudeMarketplace("m", Json("""{"source":"github","repo":"org/m"}"""), null)]);
+
+        var plan = ClaudePlanner.Plan(source, Target() with { MissingTools = ["git", "jq"] }, offerInstall: true);
+        var request = ClaudePlanner.BuildApply(plan, new ClaudeSelection(new HashSet<string>(),
+            plan.Executables.Select(e => e.Id).ToHashSet(), new Dictionary<string, string>()));
+
+        Assert.Equal(["tool:git", "tool:jq", ClaudePlanner.InstallClaudeId], plan.Executables.Take(3).Select(e => e.Id));
+        Assert.Contains("winget", plan.Executables[0].Command, StringComparison.Ordinal);
+        Assert.Equal([ClaudeStepKind.InstallTool, ClaudeStepKind.InstallTool, ClaudeStepKind.InstallClaude, ClaudeStepKind.MarketplaceAdd,
+            ClaudeStepKind.PluginInstall], request.Steps.Select(s => s.Kind));
+        Assert.DoesNotContain(ClaudePlanner.Plan(source, Target()).Steps, s => s.Kind == ClaudeStepKind.InstallTool);
+    }
 }

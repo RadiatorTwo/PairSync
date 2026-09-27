@@ -67,6 +67,9 @@ public sealed record ClaudeSnapshot
 
     public IReadOnlyDictionary<string, JsonObject> McpServers { get; init; } = new Dictionary<string, JsonObject>();
 
+    /// <summary>Tools of <see cref="ClaudeTools.Names"/> the device lacks; null if unknown (older target).</summary>
+    public IReadOnlyList<string>? MissingTools { get; init; }
+
     public static string CurrentOs => OperatingSystem.IsWindows() ? "windows" : OperatingSystem.IsMacOS() ? "macos" : "linux";
 }
 

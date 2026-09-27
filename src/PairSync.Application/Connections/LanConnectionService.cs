@@ -265,6 +265,8 @@ public static class ConnectionServices
         services.AddSingleton(new Claude.ClaudeOptions());
         services.AddSingleton(new Claude.ClaudeInstallerOptions());
         services.AddSingleton<Claude.ClaudeInstaller>();
+        services.AddSingleton(new Claude.ToolInstallerOptions());
+        services.AddSingleton<Claude.ToolInstaller>();
         services.AddSingleton<Claude.ClaudeService>();
         return services;
     }

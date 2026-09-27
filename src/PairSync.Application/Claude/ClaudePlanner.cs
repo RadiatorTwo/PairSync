@@ -35,6 +35,9 @@ public enum ClaudeStepKind
 
     /// <summary>Installs Claude Code itself with the official installer and puts it on PATH (protocol 0.7).</summary>
     InstallClaude = 5,
+
+    /// <summary>Installs a tool of <see cref="ClaudeTools.Names"/> with the system's package manager (protocol 0.8).</summary>
+    InstallTool = 6,
 }
 
 /// <summary>A CLI step on the target. The target builds the command line itself from these fields.</summary>
@@ -150,6 +153,8 @@ public static class ClaudePlanner
     /// <param name="target">The target as it reported itself: settings and MCP servers already in comparable form.</param>
     public const string InstallClaudeId = "install:claude";
 
+    public static string ToolId(string tool) => "tool:" + tool;
+
     /// <param name="offerInstall">The target can install Claude Code itself (protocol 0.7); offered when it is missing there.</param>
     public static ClaudePlan Plan(ClaudeSnapshot source, ClaudeSnapshot target, bool offerInstall = false)
     {
@@ -197,6 +202,13 @@ public static class ClaudePlanner
             executables.Insert(0, new ExecutableItem(InstallClaudeId, ExecutableKind.Installer, "Install Claude Code",
                 target.Os == "windows" ? "irm https://claude.ai/install.ps1 | iex  (+ PATH)" : "curl -fsSL https://claude.ai/install.sh | bash  (+ PATH)", []));
             steps.Insert(0, new ClaudeStep(ClaudeStepKind.InstallClaude, "claude-code", null, InstallClaudeId, "official installer · user"));
+        }
+        // Tools the target reports missing (0.8 and later): git for marketplaces, bun and jq for plugin hooks.
+        foreach (var tool in (target.MissingTools ?? []).Reverse())
+        {
+            var how = target.Os == "windows" ? "winget install" : tool == "bun" ? "official installer into ~/.bun" : "package manager (asks for the password there)";
+            executables.Insert(0, new ExecutableItem(ToolId(tool), ExecutableKind.Installer, $"Install {tool}", $"{how}: {tool}", []));
+            steps.Insert(0, new ClaudeStep(ClaudeStepKind.InstallTool, tool, null, ToolId(tool), "for Claude Code plugins"));
         }
         return new ClaudePlan(entries, settings, steps, executables, mcp, synced, notes);
     }
@@ -379,14 +391,8 @@ public static class ClaudePlanner
         // A marketplace is only added for a plugin that is installed from it.
         var needed = steps.Where(s => s.Kind == ClaudeStepKind.PluginInstall).Select(s => s.Name[(s.Name.LastIndexOf('@') + 1)..]).ToHashSet(StringComparer.Ordinal);
         steps.InsertRange(0, plan.Steps.Where(s => s.Kind == ClaudeStepKind.MarketplaceAdd && needed.Contains(s.Name)));
-        // Installing Claude Code comes before every CLI step.
-        var install = steps.FindIndex(s => s.Kind == ClaudeStepKind.InstallClaude);
-        if (install > 0)
-        {
-            var step = steps[install];
-            steps.RemoveAt(install);
-            steps.Insert(0, step);
-        }
+        // Tools first, then Claude Code itself, then the CLI steps.
+        steps = [.. steps.OrderBy(s => s.Kind switch { ClaudeStepKind.InstallTool => 0, ClaudeStepKind.InstallClaude => 1, _ => 2 })];
         return new ClaudeApplyRequest(files, settings, steps);
 
         static JsonNode Parse(string json) => JsonNode.Parse(json)!;

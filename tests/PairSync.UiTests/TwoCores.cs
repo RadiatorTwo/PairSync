@@ -117,6 +117,13 @@ public sealed class TwoCores : IAsyncDisposable
             services.AddSingleton(new PairSync.Application.Claude.ClaudeOptions
             {
                 HomeDir = home, ConfigDir = Path.Combine(home, ".claude"), GlobalConfigFile = Path.Combine(home, ".claude.json"), Executable = "",
+                SearchSystemPath = false,
+            });
+            // Never winget or pkexec from a test: tools and Claude Code are only "installed" into the test's home.
+            services.AddSingleton(new PairSync.Application.Claude.ToolInstallerOptions { Commands = _ => [] });
+            services.AddSingleton(new PairSync.Application.Claude.ClaudeInstallerOptions
+            {
+                ScriptUri = new Uri("https://claude.invalid/install"), UserPath = new NoUserPath(),
             });
         });
         core.Settings.Update(s => s with { DeviceName = name, StunServers = stunServers ?? [] });
@@ -192,4 +199,10 @@ public static class UiAsync
             await Task.Delay(20);
         }
     }
+}
+
+/// <summary>Leaves the user's PATH alone in UI tests.</summary>
+public sealed class NoUserPath : PairSync.Application.Claude.IUserPath
+{
+    public PairSync.Application.Claude.PathUpdate Ensure(string folder) => new(folder, true, []);
 }

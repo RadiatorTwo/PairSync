@@ -33,7 +33,8 @@ public sealed record ClaudeApplyOutcome(string? Error, int FilesWritten, int Set
 /// the permissions it gave that device ("Apply Claude config", "Install programs").
 /// </summary>
 public sealed class ClaudeService(
-    PeerLinks links, DataDirectory data, SettingsStore settings, ClaudeOptions options, ClaudeInstaller installer, ILogger<ClaudeService> logger)
+    PeerLinks links, DataDirectory data, SettingsStore settings, ClaudeOptions options, ClaudeInstaller installer, ToolInstaller tools,
+    ILogger<ClaudeService> logger)
 {
     private const int FileDataBytes = 512 * 1024;
     private static readonly TimeSpan StateTimeout = TimeSpan.FromSeconds(60);
@@ -54,7 +55,7 @@ public sealed class ClaudeService(
     {
         var program = ClaudeLocator.FindProgram(options);
         var version = program is null ? null : await ClaudeLocator.GetVersionAsync(program, cancellationToken).ConfigureAwait(false);
-        return ClaudeInventory.Read(ClaudeLocator.Locate(options), version);
+        return ClaudeInventory.Read(ClaudeLocator.Locate(options), version) with { MissingTools = ClaudeTools.Missing(options) };
     }, cancellationToken);
 
     /// <summary>The <c>claude</c> program was found on this device.</summary>
@@ -85,6 +86,38 @@ public sealed class ClaudeService(
         else
             logger.LogWarning("Installing Claude Code failed: {Error}\n{Output}", result.Error, result.Output);
         return result;
+    }
+
+    /// <summary>Tools for Claude Code plugins this device lacks (git, bun, jq).</summary>
+    public IReadOnlyList<string> MissingToolsLocally => ClaudeTools.Missing(options);
+
+    /// <summary>"Install missing tools" on this device.</summary>
+    public async Task<IReadOnlyList<ToolInstallResult>> InstallToolsLocalAsync(IReadOnlyList<string> names, CancellationToken cancellationToken)
+    {
+        await _applying.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await InstallToolsAsync(names, "this device", cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _applying.Release();
+            Changed?.Invoke();
+        }
+    }
+
+    private async Task<IReadOnlyList<ToolInstallResult>> InstallToolsAsync(IReadOnlyList<string> names, string requestedBy, CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Installing {Tools} (requested by {By})", string.Join(", ", names), requestedBy);
+        var results = await tools.InstallAsync(names, cancellationToken).ConfigureAwait(false);
+        foreach (var result in results)
+        {
+            if (result.Success)
+                logger.LogInformation("Installed {Tool}", result.Tool);
+            else
+                logger.LogWarning("Installing {Tool} failed: {Error}\n{Output}", result.Tool, result.Error, result.Output);
+        }
+        return results;
     }
 
     /// <summary>One line about the PATH change, for step output and the page.</summary>
@@ -316,6 +349,29 @@ public sealed class ClaudeService(
                             cancellationToken).ConfigureAwait(false);
                     else
                         runnable.Add((i, steps[i]));
+                }
+
+                var toolSteps = runnable.Where(r => r.Step.Kind == ClaudeStepKind.InstallTool).ToList();
+                if (toolSteps.Count > 0)
+                {
+                    runnable.RemoveAll(r => r.Step.Kind == ClaudeStepKind.InstallTool);
+                    var missing = ClaudeTools.Missing(options);
+                    var needed = toolSteps.Where(t => missing.Contains(t.Step.Name)).ToList();
+                    foreach (var (index, step) in toolSteps.Except(needed))
+                        await control.SendAsync(new ClaudeStepResult { Index = index, Status = ClaudeStepStatus.Skipped, Output = $"{step.Name} is installed already." },
+                            cancellationToken).ConfigureAwait(false);
+                    if (needed.Count > 0)
+                    {
+                        var results = await InstallToolsAsync([.. needed.Select(n => n.Step.Name)], device.Name, cancellationToken).ConfigureAwait(false);
+                        foreach (var ((index, _), result) in needed.Zip(results))
+                            await control.SendAsync(new ClaudeStepResult
+                            {
+                                Index = index,
+                                Status = result.Success ? ClaudeStepStatus.Done : ClaudeStepStatus.Failed,
+                                ExitCode = result.Success ? 0 : 1,
+                                Output = string.Join("\n", new[] { result.Error, result.Output }.Where(t => !string.IsNullOrWhiteSpace(t))),
+                            }, cancellationToken).ConfigureAwait(false);
+                    }
                 }
 
                 var program = ClaudeLocator.FindProgram(options);

@@ -1351,4 +1351,22 @@
   <data name="Claude_Installed" xml:space="preserve">
     <value>Claude Code {0} installed.</value>
   </data>
+  <data name="Claude_ToolsMissing" xml:space="preserve">
+    <value>Missing on this device for Claude Code and its plugins: {0}. git is needed for marketplaces, bun and jq for plugins such as claude-mem.</value>
+  </data>
+  <data name="Claude_InstallTools" xml:space="preserve">
+    <value>Install missing tools</value>
+  </data>
+  <data name="Claude_ToolsInstalling" xml:space="preserve">
+    <value>Installing toolsâ€¦ Windows may ask for administrator rights, Linux for your password.</value>
+  </data>
+  <data name="Claude_ToolInstall" xml:space="preserve">
+    <value>install {0}</value>
+  </data>
+  <data name="Claude_ToolsInstalled" xml:space="preserve">
+    <value>Tools installed. Open a new terminal to use them there.</value>
+  </data>
+  <data name="Claude_ToolsPartly" xml:space="preserve">
+    <value>Not every tool could be installed; see below.</value>
+  </data>
 </root>

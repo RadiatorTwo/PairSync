@@ -44,16 +44,18 @@ public sealed class ClaudeScreenTests(HeadlessFixture ui)
         Assert.Equal("+1", page.PortableItems.Single(p => p.Key == "claude-md").Status);
         Assert.Equal("1 key", page.PortableItems.Single(p => p.Key == "settings").Status);
         Assert.False(page.PortableItems.Single(p => p.Key == "agent-memory").Enabled);
-        var install = page.Executables[0];
+        var install = page.Executables.Single(e => e.Item.Id == PairSync.Application.Claude.ClaudePlanner.InstallClaudeId);
         Assert.Equal(PairSync.Application.Claude.ClaudePlanner.InstallClaudeId, install.Item.Id);
         Assert.False(install.Allowed);
         Assert.True(page.LocalMissing);
-        var statusLine = page.Executables.Single(e => e.Item.Id != PairSync.Application.Claude.ClaudePlanner.InstallClaudeId);
+        Assert.True(page.ToolsMissing);
+        Assert.Equal(["tool:git", "tool:bun", "tool:jq"], page.Executables.Take(3).Select(e => e.Item.Id));
+        var statusLine = page.Executables.Single(e => e.Item.Kind != PairSync.Application.Claude.ExecutableKind.Installer);
         Assert.False(statusLine.Confirmed);
         Assert.False(statusLine.Allowed);
         Assert.Equal("office-pc does not allow this device to install programs. Allow it there under Devices → Permissions.", page.ProgramsHint);
         Assert.Equal("/opt/tools/statusline", page.PathMappings.Single().Original);
-        Assert.Equal("0 of 2 confirmed. Unchecked items are left out; everything else still applies.", page.ConfirmedText);
+        Assert.Equal("0 of 5 confirmed. Unchecked items are left out; everything else still applies.", page.ConfirmedText);
         Snapshots.Save(laptop.Window, "screen-claude");
 
         await page.ApplyCommand.ExecuteAsync(null);

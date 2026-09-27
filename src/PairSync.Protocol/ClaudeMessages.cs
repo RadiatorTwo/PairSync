@@ -78,6 +78,9 @@ public sealed record ClaudeState : IControlMessage
 
     /// <summary>Names of the target's path variables, e.g. <c>TOOLS_ROOT</c>; the values stay on the target.</summary>
     [Key(12)] public string[]? PathVariables { get; init; }
+
+    /// <summary>Tools for Claude Code plugins (git, bun, jq) the target lacks; null from targets before 0.8.</summary>
+    [Key(13)] public string[]? MissingTools { get; init; }
 }
 
 [MessagePackObject]

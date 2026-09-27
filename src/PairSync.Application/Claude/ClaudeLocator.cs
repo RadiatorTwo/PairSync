@@ -26,7 +26,8 @@ public sealed record ClaudeOptions
 public sealed record ClaudeEnvironment(string ConfigDir, bool ConfigDirFromEnv, string GlobalConfigFile, string HomeDir);
 
 /// <summary>How to start the <c>claude</c> CLI without a shell: the program plus arguments that go first.</summary>
-public sealed record ClaudeProgram(string FileName, IReadOnlyList<string> PrefixArguments);
+/// <param name="SearchPath">PATH for the CLI, so it finds git, bun and jq installed after PairSync started.</param>
+public sealed record ClaudeProgram(string FileName, IReadOnlyList<string> PrefixArguments, string? SearchPath = null);
 
 public static class ClaudeLocator
 {
@@ -45,14 +46,12 @@ public static class ClaudeLocator
     /// <summary>Finds the CLI in PATH and in the installers' usual places; null if Claude Code is not installed.</summary>
     public static ClaudeProgram? FindProgram(ClaudeOptions options)
     {
+        var path = ClaudeTools.SearchPath(options);
         if (options.Executable is { } configured)
-            return configured.Length == 0 ? null : ProgramFor(configured);
+            return configured.Length == 0 ? null : ProgramFor(configured) is { } fixedProgram ? fixedProgram with { SearchPath = path } : null;
 
         var home = options.HomeDir ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var folders = (options.SearchSystemPath ? Environment.GetEnvironmentVariable("PATH") ?? "" : "")
-            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Append(Path.Combine(home, ".local", "bin"))
-            .Append(Path.Combine(home, ".claude", "local"));
+        var folders = ClaudeTools.Folders(options).Append(Path.Combine(home, ".claude", "local"));
         string[] names = OperatingSystem.IsWindows() ? ["claude.exe", "claude.cmd"] : ["claude"];
         foreach (var name in names)
         {
@@ -61,8 +60,8 @@ public static class ClaudeLocator
                 try
                 {
                     var candidate = Path.Combine(folder, name);
-                    if (File.Exists(candidate))
-                        return ProgramFor(candidate);
+                    if (File.Exists(candidate) && ProgramFor(candidate) is { } found)
+                        return found with { SearchPath = path };
                 }
                 catch (ArgumentException)
                 {
@@ -128,6 +127,8 @@ public static class ClaudeCli
         };
         foreach (var argument in program.PrefixArguments.Concat(arguments))
             start.ArgumentList.Add(argument);
+        if (program.SearchPath is { } path)
+            start.Environment["PATH"] = path;
         return await RunProcessAsync(start, timeout, cancellationToken).ConfigureAwait(false);
     }
 

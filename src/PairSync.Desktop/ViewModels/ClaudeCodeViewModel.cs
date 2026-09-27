@@ -144,8 +144,15 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
     private bool _localMissing;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(InstallLocalCommand))]
+    [NotifyCanExecuteChangedFor(nameof(InstallLocalCommand), nameof(InstallToolsCommand))]
     private bool _isInstalling;
+
+    /// <summary>"Missing on this device for Claude Code plugins: git, jq"; null if nothing is missing.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ToolsMissing))]
+    private string? _missingToolsText;
+
+    public bool ToolsMissing => MissingToolsText is not null;
 
     public ClaudeCodeViewModel(PairSyncCore core, DialogHost dialogs) : base(AppPage.ClaudeCode)
     {
@@ -210,6 +217,8 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
     private void UpdatePending()
     {
         LocalMissing = !_core.Claude.IsInstalledLocally;
+        var tools = _core.Claude.MissingToolsLocally;
+        MissingToolsText = tools.Count == 0 ? null : string.Format(CultureInfo.CurrentCulture, Strings.Claude_ToolsMissing, string.Join(", ", tools));
         var pending = _core.Claude.Pending;
         PendingText = pending is null
             ? null
@@ -469,6 +478,32 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
     private void DiscardPending() => _core.Claude.DiscardPending();
 
     private bool CanInstallLocal() => !IsInstalling;
+
+    /// <summary>"Install missing tools": git, bun and jq for plugins, with winget or the package manager.</summary>
+    [RelayCommand(CanExecute = nameof(CanInstallLocal))]
+    private async Task InstallToolsAsync()
+    {
+        IsInstalling = true;
+        StepResults.Clear();
+        ResultText = Strings.Claude_ToolsInstalling;
+        OnPropertyChanged(nameof(HasResults));
+        try
+        {
+            var results = await _core.Claude.InstallToolsLocalAsync(_core.Claude.MissingToolsLocally, CancellationToken.None);
+            foreach (var result in results)
+                StepResults.Add(new ClaudeStepRowViewModel(string.Format(CultureInfo.CurrentCulture, Strings.Claude_ToolInstall, result.Tool),
+                    result.Success ? Strings.Claude_StepDone : string.Format(CultureInfo.CurrentCulture, Strings.Claude_StepFailed, 1),
+                    string.Join("\n", new[] { result.Error, result.Output?.Trim() }.Where(t => !string.IsNullOrWhiteSpace(t))) is { Length: > 0 } text ? text : null,
+                    !result.Success));
+            ResultText = results.All(r => r.Success) ? Strings.Claude_ToolsInstalled : Strings.Claude_ToolsPartly;
+        }
+        finally
+        {
+            IsInstalling = false;
+            UpdatePending();
+            OnPropertyChanged(nameof(HasResults));
+        }
+    }
 
     /// <summary>"Install Claude Code" on this device: official installer, then ~/.local/bin on PATH.</summary>
     [RelayCommand(CanExecute = nameof(CanInstallLocal))]

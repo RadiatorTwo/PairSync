@@ -1345,4 +1345,22 @@
   <data name="Claude_Installed" xml:space="preserve">
     <value>Claude Code {0} installiert.</value>
   </data>
+  <data name="Claude_ToolsMissing" xml:space="preserve">
+    <value>Auf diesem GerÃ¤t fehlen fÃ¼r Claude Code und seine Plugins: {0}. git braucht es fÃ¼r Marketplaces, bun und jq fÃ¼r Plugins wie claude-mem.</value>
+  </data>
+  <data name="Claude_InstallTools" xml:space="preserve">
+    <value>Fehlende Werkzeuge installieren</value>
+  </data>
+  <data name="Claude_ToolsInstalling" xml:space="preserve">
+    <value>Werkzeuge werden installiertâ€¦ Windows fragt eventuell nach Administratorrechten, Linux nach deinem Passwort.</value>
+  </data>
+  <data name="Claude_ToolInstall" xml:space="preserve">
+    <value>{0} installieren</value>
+  </data>
+  <data name="Claude_ToolsInstalled" xml:space="preserve">
+    <value>Werkzeuge installiert. Ã–ffne ein neues Terminal, um sie dort zu nutzen.</value>
+  </data>
+  <data name="Claude_ToolsPartly" xml:space="preserve">
+    <value>Nicht alle Werkzeuge lieÃŸen sich installieren; Details unten.</value>
+  </data>
 </root>

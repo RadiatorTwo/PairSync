@@ -27,6 +27,7 @@ internal static class ClaudeWire
             Marketplaces = [.. snapshot.Marketplaces.Select(m => m.Name)],
             McpServers = [.. comparable.McpServers.Select(s => new ClaudeMcpEntry { Name = s.Key, Json = s.Value.ToJsonString() })],
             PathVariables = [.. pathVariableNames],
+            MissingTools = snapshot.MissingTools is { } missing ? [.. missing] : null,
         };
     }
 
@@ -50,6 +51,7 @@ internal static class ClaudeWire
                 .Where(s => s.Json is not null)
                 .GroupBy(s => s.Item1, StringComparer.Ordinal)
                 .ToDictionary(g => g.Key, g => g.First().Json!, StringComparer.Ordinal),
+            MissingTools = state.MissingTools is { } missing ? [.. missing.Where(ClaudeTools.IsKnown).Distinct(StringComparer.Ordinal)] : null,
         };
     }
 
@@ -87,6 +89,7 @@ public static class ClaudeStepText
         ClaudeStepKind.PluginEnable => $"enable {step.Name}",
         ClaudeStepKind.PluginDisable => $"disable {step.Name}",
         ClaudeStepKind.InstallClaude => "install Claude Code · official installer + PATH",
+        ClaudeStepKind.InstallTool => $"install {step.Name}",
         _ => $"mcp add-json {step.Name}",
     };
 }
