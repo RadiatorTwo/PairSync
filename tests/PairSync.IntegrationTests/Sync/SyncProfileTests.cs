@@ -119,6 +119,21 @@ public sealed class SyncProfileTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Index_larger_than_one_channel_message_reaches_the_other_device()
+    {
+        var (a, b) = await StartPairAsync();
+        var (aFolder, bFolder) = (Folder("laptop"), Folder("office"));
+        // Many small files, like a .git folder: the index is far larger than one transport message (256 KiB).
+        for (var i = 0; i < 2500; i++)
+            Write(aFolder, $"objects/{i % 50:x2}/{i:x38}", "x");
+
+        await ShareAsync(a, b, aFolder, bFolder);
+
+        await WaitAsync(() => Directory.Exists(Path.Combine(bFolder, "objects")) && Directory.EnumerateFiles(Path.Combine(bFolder, "objects"), "*",
+            SearchOption.AllDirectories).Count() == 2500, "not all files reached B", seconds: 120);
+    }
+
+    [Fact]
     public async Task Declined_offer_leaves_the_profile_declined()
     {
         var (a, b) = await StartPairAsync();

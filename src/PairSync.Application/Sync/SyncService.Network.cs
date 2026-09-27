@@ -230,6 +230,9 @@ public sealed partial class SyncService
 
         var since = hello.IndexId == profile.IndexId ? hello.SeenSequence : 0;
         var upTo = profile.LastSequence;
+        // Each part must fit one transport message (256 KiB on LAN, possibly less over WebRTC); the estimate is an upper bound.
+        var budget = Math.Min(_options.IndexUpdateBytes, control.MaxMessageSize - 1024);
+        var maxChunkHashes = Math.Min(_options.MaxChunkHashBytes, budget / 2);
         var batch = new List<IndexEntry>();
         var size = 0;
         // Receive only: local changes stay here (and are undone by the next round), the other device never sees them.
@@ -238,9 +241,9 @@ public sealed partial class SyncService
             var changes = await _index.LocalChangesSinceAsync(profile.Id, since, 1000, _stopping.Token).ConfigureAwait(false);
             foreach (var change in changes.Where(c => c.Sequence <= upTo))
             {
-                var entry = change.ToEntry(_options.MaxChunkHashBytes);
+                var entry = change.ToEntry(maxChunkHashes);
                 var entrySize = entry.EstimatedSize();
-                if (batch.Count > 0 && size + entrySize > _options.IndexUpdateBytes)
+                if (batch.Count > 0 && size + entrySize > budget)
                 {
                     await control.SendAsync(new IndexUpdate { ProfileId = profile.Id, IndexId = profile.IndexId, Entries = [.. batch] }, _stopping.Token)
                         .ConfigureAwait(false);

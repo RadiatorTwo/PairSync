@@ -15,6 +15,9 @@ public sealed class ControlChannel(IMessageChannel channel)
     /// <summary>Set by the handshake; <see cref="PeerAccess.Paired"/> until then so Hello and HelloAck pass.</summary>
     public PeerAccess Access { get; internal set; } = PeerAccess.Paired;
 
+    /// <summary>Largest encoded control message the transport carries, at most the protocol limit.</summary>
+    public int MaxMessageSize => Math.Min(channel.MaxMessageSize, ProtocolLimits.MaxControlMessageSize);
+
     public ValueTask SendAsync(IControlMessage message, CancellationToken cancellationToken) =>
         channel.SendAsync(ControlCodec.Encode(message, Guid.NewGuid()), cancellationToken);
 
