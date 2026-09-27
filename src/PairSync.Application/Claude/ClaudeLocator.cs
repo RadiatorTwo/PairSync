@@ -109,6 +109,72 @@ public static class ClaudeLocator
 
 public sealed record CliResult(int ExitCode, string Output, bool TimedOut);
 
+/// <summary>Turns one line of a child process's output, read as Latin-1 (one char per byte), into readable text.</summary>
+public static class ProcessText
+{
+    private static readonly System.Text.Encoding StrictUtf8 = new System.Text.UTF8Encoding(false, throwOnInvalidBytes: true);
+    private static readonly Lazy<System.Text.Encoding> Oem = new(OemEncoding);
+
+    /// <summary>The line as the user would have seen it in a terminal; null if nothing visible is left.</summary>
+    public static string? Line(string latin1)
+    {
+        var bytes = System.Text.Encoding.Latin1.GetBytes(latin1);
+        string text;
+        try
+        {
+            text = StrictUtf8.GetString(bytes);
+        }
+        catch (System.Text.DecoderFallbackException)
+        {
+            text = Oem.Value.GetString(bytes);
+        }
+        return Clean(text);
+    }
+
+    /// <summary>
+    /// Drops what only makes sense on a terminal: ANSI escape sequences, progress lines redrawn with carriage returns
+    /// (the last state stays), backspaces and other control characters.
+    /// </summary>
+    public static string? Clean(string text)
+    {
+        text = System.Text.RegularExpressions.Regex.Replace(text, @"\x1B\[[0-?]*[ -/]*[@-~]|\x1B\][^\x07]*\x07", "");
+        var cr = text.TrimEnd('\r').LastIndexOf('\r');
+        if (cr >= 0)
+            text = text[(cr + 1)..];
+        var visible = new System.Text.StringBuilder(text.Length);
+        foreach (var c in text)
+        {
+            if (c == '\b')
+            {
+                if (visible.Length > 0)
+                    visible.Length--;
+            }
+            else if (c == '\t' || !char.IsControl(c))
+                visible.Append(c);
+        }
+        var line = visible.ToString().TrimEnd();
+        // winget redraws its download bar many times; the lines before and after say what happened.
+        if (line.Contains('█') || line.Contains('▒'))
+            return null;
+        return line.Trim().Length == 0 || line.Trim() is "-" or "\\" or "|" or "/" ? null : line;
+    }
+
+    private static System.Text.Encoding OemEncoding()
+    {
+        if (!OperatingSystem.IsWindows())
+            return System.Text.Encoding.Latin1;
+        try
+        {
+            var codePage = System.Globalization.CultureInfo.CurrentCulture.TextInfo.OEMCodePage;
+            return System.Text.CodePagesEncodingProvider.Instance.GetEncoding(codePage) ?? System.Text.Encoding.Latin1;
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException)
+        {
+            return System.Text.Encoding.Latin1;
+        }
+    }
+}
+
 /// <summary>Runs the <c>claude</c> CLI with an argument list (no shell) and a time limit.</summary>
 public static class ClaudeCli
 {
@@ -135,12 +201,16 @@ public static class ClaudeCli
     /// <summary>Starts <paramref name="start"/> (redirected, no window), collects its output and kills it after <paramref name="timeout"/>.</summary>
     internal static async Task<CliResult> RunProcessAsync(ProcessStartInfo start, TimeSpan timeout, CancellationToken cancellationToken)
     {
+        // Byte for byte: each line is decoded on its own, since tools write UTF-8 (claude, bun) or the OEM code page
+        // (winget, cmd, Windows PowerShell), sometimes both in one run.
+        start.StandardOutputEncoding = System.Text.Encoding.Latin1;
+        start.StandardErrorEncoding = System.Text.Encoding.Latin1;
         using var process = Process.Start(start) ?? throw new InvalidOperationException($"{Path.GetFileName(start.FileName)} did not start.");
         process.StandardInput.Close();
         var output = new System.Text.StringBuilder();
-        void Append(string? line)
+        void Append(string? raw)
         {
-            if (line is null)
+            if (raw is null || ProcessText.Line(raw) is not { } line)
                 return;
             lock (output)
             {
