@@ -2,6 +2,8 @@ using Avalonia;
 using PairSync.Application;
 using PairSync.Desktop.Platform;
 using PairSync.Storage;
+using PairSync.Storage.Identity;
+using PairSync.Storage.Secrets;
 
 namespace PairSync.Desktop;
 
@@ -26,7 +28,16 @@ internal static class Program
 
         // Before the UI thread exists, so blocking here cannot deadlock.
         var trayAvailable = TrayHost.IsAvailableAsync(new CancellationTokenSource(TimeSpan.FromSeconds(2)).Token).GetAwaiter().GetResult();
-        var core = PairSyncCore.StartAsync(dataDirectory, CancellationToken.None).GetAwaiter().GetResult();
+        PairSyncCore core;
+        try
+        {
+            core = PairSyncCore.StartAsync(dataDirectory, CancellationToken.None).GetAwaiter().GetResult();
+        }
+        catch (Exception e) when (e is IdentityUnavailableException or DatabaseTooNewException or SecretStoreUnavailableException)
+        {
+            // Nothing was changed; the user sees why and where the data is.
+            return BuildAvaloniaApp(new App { StartupError = (e.Message, dataDirectory.Root) }).StartWithClassicDesktopLifetime(args);
+        }
         try
         {
             return BuildAvaloniaApp(new App

@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:res="using:PairSync.Desktop.Resources"
+        x:Class="PairSync.Desktop.StartupErrorWindow"
+        Title="PairSync" Width="520" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterScreen" Background="{StaticResource BgBrush}">
+  <StackPanel Margin="28" Spacing="14">
+    <TextBlock Classes="h2" TextWrapping="Wrap" Text="{x:Static res:Strings.Startup_Title}" />
+    <TextBlock Name="Message" TextWrapping="Wrap" LineHeight="20.3" />
+    <TextBlock Name="Folder" Classes="mono hint" TextWrapping="Wrap" />
+    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+      <Button Name="OpenFolder" Content="{x:Static res:Strings.Settings_OpenFolder}" />
+      <Button Name="Quit" Classes="primary compact" IsDefault="True" Content="{x:Static res:Strings.Startup_Quit}" />
+    </StackPanel>
+  </StackPanel>
+</Window>

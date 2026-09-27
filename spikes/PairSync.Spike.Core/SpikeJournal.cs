@@ -15,7 +15,7 @@ public static class SpikeJournal
         var options = new DbContextOptionsBuilder<PairSyncDbContext>();
         Database.Configure(options, Path.Combine(directory, FileName));
         var contexts = new PooledDbContextFactory<PairSyncDbContext>(options.Options);
-        await Database.MigrateAsync(contexts, cancellationToken).ConfigureAwait(false);
+        await Database.MigrateAsync(contexts, new DataDirectory(directory), TimeProvider.System, cancellationToken).ConfigureAwait(false);
         return new SqliteChunkJournal(contexts, TimeProvider.System);
     }
 }

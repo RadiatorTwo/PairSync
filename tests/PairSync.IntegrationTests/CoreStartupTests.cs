@@ -44,7 +44,7 @@ public sealed class CoreStartupTests : IDisposable
 
         Assert.True(File.Exists(Data.DatabasePath));
         var log = Assert.Single(Directory.GetFiles(Data.LogsDirectory, "pairsync-*.log"));
-        Assert.Contains("PairSync core started", await ReadSharedAsync(log));
+        Assert.Contains("core started, data directory", await ReadSharedAsync(log));
     }
 
     [Fact]

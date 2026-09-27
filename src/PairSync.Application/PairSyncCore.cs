@@ -71,7 +71,8 @@ public sealed class PairSyncCore : IAsyncDisposable
             level.MinimumLevel = Logging.LevelFor(core.Settings.Current.VerboseLogging);
             core.Settings.Changed += settings => level.MinimumLevel = Logging.LevelFor(settings.VerboseLogging);
 
-            await Database.MigrateAsync(services.GetRequiredService<IDbContextFactory<PairSyncDbContext>>(), cancellationToken)
+            await Database.MigrateAsync(services.GetRequiredService<IDbContextFactory<PairSyncDbContext>>(), dataDirectory,
+                    services.GetRequiredService<TimeProvider>(), cancellationToken)
                 .ConfigureAwait(false);
 
             core.Identity = await services.GetRequiredService<DeviceIdentityStore>().LoadOrCreateAsync(cancellationToken).ConfigureAwait(false);

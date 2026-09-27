@@ -1333,4 +1333,10 @@
   <data name="Identity_QuitNow" xml:space="preserve">
     <value>Quit now</value>
   </data>
+  <data name="Startup_Title" xml:space="preserve">
+    <value>PairSync can't start</value>
+  </data>
+  <data name="Startup_Quit" xml:space="preserve">
+    <value>Quit</value>
+  </data>
 </root>

@@ -34,13 +34,18 @@ public sealed partial class App : Avalonia.Application
 
     public IAutostart? Autostart { get; init; }
 
+    /// <summary>The core could not start: show why instead of the main window.</summary>
+    public (string Message, string DataFolder)? StartupError { get; init; }
+
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            if (Core is { } core)
+            if (StartupError is { } error)
+                desktop.MainWindow = new StartupErrorWindow(error.Message, error.DataFolder);
+            else if (Core is { } core)
                 StartDesktop(desktop, core);
             else
                 desktop.MainWindow = new MainWindow();

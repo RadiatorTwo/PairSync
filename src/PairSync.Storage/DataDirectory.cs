@@ -17,6 +17,9 @@ public sealed class DataDirectory(string root)
 
     public string LogsDirectory => Path.Combine(Root, "logs");
 
+    /// <summary>Copies of the database taken before migrations.</summary>
+    public string BackupsDirectory => Path.Combine(Root, "backups");
+
     public static DataDirectory Default() => new(DefaultRoot());
 
     public static string DefaultRoot()
