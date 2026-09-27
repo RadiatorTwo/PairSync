@@ -97,6 +97,11 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
     private bool _disposed;
     private bool _keepPlan;
 
+    /// <summary>The log shows another device's apply; an automatic comparison then keeps quiet about missing permission.</summary>
+    private bool _showingIncoming;
+
+    private bool _automaticCompare;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasDevice))]
     private Choice<PairedDevice>? _selectedDevice;
@@ -269,14 +274,17 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
         if (_keepPlan)
             return;
         IsLoaded = false;
-        if (!IsReceiving)
+        if (!IsReceiving && !_showingIncoming)
         {
             Log.Start("");
             ResultText = null;
         }
         OnPropertyChanged(nameof(HasResults));
         if (value is not null)
+        {
+            _automaticCompare = true;
             _ = CompareAsync();
+        }
     }
 
     /// <summary>Asks the target for its state and builds the plan.</summary>
@@ -285,6 +293,8 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
     {
         if (SelectedDevice?.Value is not { } device)
             return;
+        var automatic = _automaticCompare;
+        _automaticCompare = false;
         _loading?.Cancel();
         var loading = _loading = new CancellationTokenSource();
         IsBusy = true;
@@ -300,7 +310,8 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
         }
         catch (ClaudeUnavailableException e)
         {
-            if (!loading.IsCancellationRequested)
+            // On the receiving side, "the other device does not allow this one" is noise next to its log.
+            if (!loading.IsCancellationRequested && !(e.NotAllowed && automatic && _showingIncoming))
                 Error = e.Message;
         }
         catch (OperationCanceledException)
@@ -403,6 +414,7 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
         var titles = request.Steps.Select(ClaudeStepText.Of).ToList();
         IsBusy = true;
         Error = null;
+        _showingIncoming = false;
         Log.Start(ApplyLabel);
         Log.Add(string.Format(CultureInfo.CurrentCulture, Strings.Claude_LogSending, request.Files.Count, request.Settings.Count, request.Steps.Count));
         ResultText = Strings.Claude_Applying;
@@ -459,6 +471,9 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
         {
             case ClaudeIncomingStage.Started:
                 IncomingText = string.Format(CultureInfo.CurrentCulture, Strings.Claude_Receiving, e.DeviceName);
+                _showingIncoming = true;
+                if (Error is not null && !IsLoaded)
+                    Error = null;
                 Log.Start(string.Format(CultureInfo.CurrentCulture, Strings.Claude_LogFrom, e.DeviceName));
                 ResultText = null;
                 Log.Add(e.Title);
@@ -506,6 +521,7 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
     [RelayCommand]
     private async Task ApplyPendingAsync()
     {
+        _showingIncoming = false;
         Log.Start(Strings.Claude_ApplyPending);
         ResultText = Strings.Claude_Applying;
         OnPropertyChanged(nameof(HasResults));
@@ -535,6 +551,7 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
     {
         IsInstalling = true;
         var missing = _core.Claude.MissingToolsLocally;
+        _showingIncoming = false;
         Log.Start(Strings.Claude_InstallTools);
         foreach (var tool in missing)
             Log.Add(string.Format(CultureInfo.CurrentCulture, Strings.Claude_ToolInstall, tool), ClaudeLogKind.Running);
@@ -563,6 +580,7 @@ public sealed partial class ClaudeCodeViewModel : PageViewModel, IDisposable
     private async Task InstallLocalAsync()
     {
         IsInstalling = true;
+        _showingIncoming = false;
         Log.Start(Strings.Claude_Install);
         Log.Add(Strings.Claude_Installing, ClaudeLogKind.Running);
         ResultText = Strings.Claude_Installing;

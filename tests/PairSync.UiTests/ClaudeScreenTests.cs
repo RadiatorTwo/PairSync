@@ -74,6 +74,9 @@ public sealed class ClaudeScreenTests(HeadlessFixture ui)
         await UiAsync.UntilAsync(() => there.Log.Entries.Any(e => e.Kind == ClaudeLogKind.Done));
         Assert.Equal("From laptop-win11", there.Log.Heading);
         Assert.False(there.IsReceiving);
+        // Its own automatic comparison with laptop-win11 (not allowed there) stays quiet next to the log.
+        await UiAsync.UntilAsync(() => !there.IsBusy);
+        Assert.Null(there.Error);
         Assert.StartsWith("laptop-win11 applies its Claude Code configuration", there.Log.Entries[0].Title, StringComparison.Ordinal);
         Assert.Equal(AppPage.ClaudeCode, office.Shell.ActivePage.Page);
         Snapshots.Save(office.Window, "screen-claude-target");
