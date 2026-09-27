@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="256" height="256">
+  <!-- Same mark as the tray icon (AppIcon.cs): outlined square paired with a filled one. -->
+  <rect x="3" y="3" width="17" height="17" fill="none" stroke="#1F3043" stroke-width="2.5"/>
+  <rect x="12" y="12" width="18" height="18" fill="#5980A6"/>
+</svg>

@@ -2,7 +2,8 @@ namespace PairSync.Storage;
 
 /// <summary>
 /// Where PairSync keeps its state: Windows <c>%APPDATA%\PairSync</c>, Linux <c>$XDG_DATA_HOME/pairsync</c>
-/// (else <c>~/.local/share/pairsync</c>). Tests pass their own root.
+/// (else <c>~/.local/share/pairsync</c>). <c>PAIRSYNC_DATA_DIR</c> (an absolute path) overrides it, e.g. for a
+/// portable setup or a second instance. Tests pass their own root.
 /// </summary>
 public sealed class DataDirectory(string root)
 {
@@ -22,8 +23,13 @@ public sealed class DataDirectory(string root)
 
     public static DataDirectory Default() => new(DefaultRoot());
 
+    public const string OverrideVariable = "PAIRSYNC_DATA_DIR";
+
     public static string DefaultRoot()
     {
+        var custom = Environment.GetEnvironmentVariable(OverrideVariable);
+        if (!string.IsNullOrWhiteSpace(custom) && Path.IsPathRooted(custom))
+            return custom;
         if (OperatingSystem.IsWindows())
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PairSync");
 

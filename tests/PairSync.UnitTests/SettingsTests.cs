@@ -85,6 +85,24 @@ public sealed class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void Data_directory_override_needs_an_absolute_path()
+    {
+        var custom = Path.Combine(_root.FullName, "portable");
+        try
+        {
+            Environment.SetEnvironmentVariable(DataDirectory.OverrideVariable, custom);
+            Assert.Equal(custom, DataDirectory.DefaultRoot());
+
+            Environment.SetEnvironmentVariable(DataDirectory.OverrideVariable, "relative/dir");
+            Assert.EndsWith(OperatingSystem.IsWindows() ? "PairSync" : "pairsync", DataDirectory.DefaultRoot());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(DataDirectory.OverrideVariable, null);
+        }
+    }
+
+    [Fact]
     public void Stun_servers_default_to_two_public_servers_and_are_cleaned_up()
     {
         Assert.Equal(AppSettings.DefaultStunServers, Open().Current.StunServers);

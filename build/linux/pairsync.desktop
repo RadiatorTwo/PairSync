@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PairSync
+Comment=Direct, encrypted file transfer and sync between your devices
+Exec=@EXEC@
+Icon=pairsync
+Terminal=false
+Categories=Network;FileTransfer;Utility;
+StartupWMClass=PairSync
