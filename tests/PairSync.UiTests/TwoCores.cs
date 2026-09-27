@@ -33,9 +33,13 @@ public sealed class FakeDesktop : IDesktopServices
 
     public Task<string?> PickFolderAsync(string? startIn = null) => Task.FromResult(FolderToPick);
 
-    public Task<string?> PickSaveFileAsync(string suggestedName, string extension) => Task.FromResult<string?>(null);
+    public string? SaveFileToPick { get; set; }
 
-    public Task<string?> PickOpenFileAsync(string extension) => Task.FromResult<string?>(null);
+    public string? OpenFileToPick { get; set; }
+
+    public Task<string?> PickSaveFileAsync(string suggestedName, string extension) => Task.FromResult(SaveFileToPick);
+
+    public Task<string?> PickOpenFileAsync(string extension) => Task.FromResult(OpenFileToPick);
 
     public Task CopyTextAsync(string text)
     {

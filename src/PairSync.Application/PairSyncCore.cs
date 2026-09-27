@@ -39,6 +39,15 @@ public sealed class PairSyncCore : IAsyncDisposable
     /// <summary>This device. Set once <see cref="StartAsync"/> has returned.</summary>
     public LocalIdentity Identity { get; private set; } = null!;
 
+    /// <summary>A password-protected backup of this device's identity (<see cref="IdentityBackup"/>).</summary>
+    /// <exception cref="ArgumentException">The password is too short.</exception>
+    public byte[] CreateIdentityBackup(string password) =>
+        IdentityBackup.Create(Identity.Identity, password, _services.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime);
+
+    /// <summary>Makes a restored identity the one used from the next start.</summary>
+    public Task RestoreIdentityAsync(RestoredIdentity restored, CancellationToken cancellationToken) =>
+        _services.GetRequiredService<DeviceIdentityStore>().RestoreAsync(restored, cancellationToken);
+
     /// <param name="configure">Replaces services after the defaults, e.g. the secret store in tests.</param>
     /// <exception cref="IdentityUnavailableException">The device identity exists but its private key cannot be loaded.</exception>
     public static async Task<PairSyncCore> StartAsync(

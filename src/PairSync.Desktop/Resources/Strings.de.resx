@@ -1264,4 +1264,67 @@
   <data name="Update_OpenPage" xml:space="preserve">
     <value>Release-Seite Ã¶ffnen</value>
   </data>
+  <data name="Identity_Export" xml:space="preserve">
+    <value>IdentitÃ¤t exportierenâ€¦</value>
+  </data>
+  <data name="Identity_Import" xml:space="preserve">
+    <value>IdentitÃ¤t importierenâ€¦</value>
+  </data>
+  <data name="Identity_Hint" xml:space="preserve">
+    <value>Sichere den SchlÃ¼ssel dieses GerÃ¤ts, um PairSync ohne neue Kopplung auf einen neuen Rechner umzuziehen. Wer Datei und Passwort hat, kann als dieses GerÃ¤t auftreten.</value>
+  </data>
+  <data name="Identity_PasswordTitleExport" xml:space="preserve">
+    <value>Sicherung mit Passwort schÃ¼tzen</value>
+  </data>
+  <data name="Identity_PasswordTitleImport" xml:space="preserve">
+    <value>Passwort der Sicherung</value>
+  </data>
+  <data name="Identity_Password" xml:space="preserve">
+    <value>Passwort</value>
+  </data>
+  <data name="Identity_Repeat" xml:space="preserve">
+    <value>Passwort wiederholen</value>
+  </data>
+  <data name="Identity_PasswordHint" xml:space="preserve">
+    <value>Ein vergessenes Passwort lÃ¤sst sich nicht wiederherstellen.</value>
+  </data>
+  <data name="Identity_TooShort" xml:space="preserve">
+    <value>Mindestens {0} Zeichen.</value>
+  </data>
+  <data name="Identity_Mismatch" xml:space="preserve">
+    <value>Die PasswÃ¶rter stimmen nicht Ã¼berein.</value>
+  </data>
+  <data name="Identity_Continue" xml:space="preserve">
+    <value>Weiter</value>
+  </data>
+  <data name="Identity_Saved" xml:space="preserve">
+    <value>IdentitÃ¤t gespeichert unter {0}.</value>
+  </data>
+  <data name="Identity_Failed" xml:space="preserve">
+    <value>Sicherung konnte nicht gespeichert werden: {0}</value>
+  </data>
+  <data name="Identity_ReadFailed" xml:space="preserve">
+    <value>Sicherung konnte nicht gelesen werden: {0}</value>
+  </data>
+  <data name="Identity_ReplaceTitle" xml:space="preserve">
+    <value>IdentitÃ¤t dieses GerÃ¤ts ersetzen?</value>
+  </data>
+  <data name="Identity_ReplaceText" xml:space="preserve">
+    <value>Die Sicherung gehÃ¶rt zum GerÃ¤t {0} ({1}). PairSync nutzt sie ab dem nÃ¤chsten Start. GerÃ¤te, die nur mit der bisherigen IdentitÃ¤t gekoppelt sind, erkennen dieses GerÃ¤t dann nicht mehr.</value>
+  </data>
+  <data name="Identity_ReplaceConfirm" xml:space="preserve">
+    <value>IdentitÃ¤t ersetzen</value>
+  </data>
+  <data name="Identity_SameDevice" xml:space="preserve">
+    <value>Diese Sicherung gehÃ¶rt bereits zu diesem GerÃ¤t. Nichts geÃ¤ndert.</value>
+  </data>
+  <data name="Identity_RestartTitle" xml:space="preserve">
+    <value>PairSync beenden, um abzuschlieÃŸen</value>
+  </data>
+  <data name="Identity_RestartText" xml:space="preserve">
+    <value>Die importierte IdentitÃ¤t gilt ab dem nÃ¤chsten Start. Beende PairSync jetzt und starte es erneut.</value>
+  </data>
+  <data name="Identity_QuitNow" xml:space="preserve">
+    <value>Jetzt beenden</value>
+  </data>
 </root>

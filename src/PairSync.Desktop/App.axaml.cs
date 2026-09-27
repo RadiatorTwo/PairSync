@@ -85,7 +85,7 @@ public sealed partial class App : Avalonia.Application
             new SyncsViewModel(core, dialogs, desktop, time),
             new ClaudeCodeViewModel(core, dialogs),
             devices,
-            new SettingsViewModel(core.Settings, autostart, trayAvailable, core, desktop, internet),
+            new SettingsViewModel(core.Settings, autostart, trayAvailable, core, desktop, internet, dialogs: dialogs, quit: quit),
         ], quit, dialogs);
         return shell;
     }

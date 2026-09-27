@@ -1270,4 +1270,67 @@
   <data name="Update_OpenPage" xml:space="preserve">
     <value>Open release page</value>
   </data>
+  <data name="Identity_Export" xml:space="preserve">
+    <value>Export identityâ€¦</value>
+  </data>
+  <data name="Identity_Import" xml:space="preserve">
+    <value>Import identityâ€¦</value>
+  </data>
+  <data name="Identity_Hint" xml:space="preserve">
+    <value>Back up this device's key to move PairSync to a new computer without pairing again. Whoever has the file and its password can act as this device.</value>
+  </data>
+  <data name="Identity_PasswordTitleExport" xml:space="preserve">
+    <value>Protect the backup with a password</value>
+  </data>
+  <data name="Identity_PasswordTitleImport" xml:space="preserve">
+    <value>Password of the backup</value>
+  </data>
+  <data name="Identity_Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="Identity_Repeat" xml:space="preserve">
+    <value>Repeat password</value>
+  </data>
+  <data name="Identity_PasswordHint" xml:space="preserve">
+    <value>There is no way to recover a forgotten password.</value>
+  </data>
+  <data name="Identity_TooShort" xml:space="preserve">
+    <value>Use at least {0} characters.</value>
+  </data>
+  <data name="Identity_Mismatch" xml:space="preserve">
+    <value>The passwords do not match.</value>
+  </data>
+  <data name="Identity_Continue" xml:space="preserve">
+    <value>Continue</value>
+  </data>
+  <data name="Identity_Saved" xml:space="preserve">
+    <value>Identity saved to {0}.</value>
+  </data>
+  <data name="Identity_Failed" xml:space="preserve">
+    <value>Could not save the backup: {0}</value>
+  </data>
+  <data name="Identity_ReadFailed" xml:space="preserve">
+    <value>Could not read the backup: {0}</value>
+  </data>
+  <data name="Identity_ReplaceTitle" xml:space="preserve">
+    <value>Replace this device's identity?</value>
+  </data>
+  <data name="Identity_ReplaceText" xml:space="preserve">
+    <value>The backup belongs to device {0} ({1}). PairSync uses it from the next start. Devices paired only with the current identity will no longer recognize this device.</value>
+  </data>
+  <data name="Identity_ReplaceConfirm" xml:space="preserve">
+    <value>Replace identity</value>
+  </data>
+  <data name="Identity_SameDevice" xml:space="preserve">
+    <value>This backup belongs to this device already. Nothing changed.</value>
+  </data>
+  <data name="Identity_RestartTitle" xml:space="preserve">
+    <value>Quit PairSync to finish</value>
+  </data>
+  <data name="Identity_RestartText" xml:space="preserve">
+    <value>The imported identity is used from the next start. Quit PairSync now and start it again.</value>
+  </data>
+  <data name="Identity_QuitNow" xml:space="preserve">
+    <value>Quit now</value>
+  </data>
 </root>

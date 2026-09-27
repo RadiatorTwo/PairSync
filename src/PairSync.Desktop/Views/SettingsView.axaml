@@ -29,6 +29,13 @@
           </StackPanel>
         </Grid>
         <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Settings_KeyFile}" IsVisible="{Binding KeyInFile}" />
+        <WrapPanel Orientation="Horizontal" ItemSpacing="10" LineSpacing="8" Margin="0,4,0,0" IsVisible="{Binding CanBackUpIdentity}">
+          <Button Name="ExportIdentity" Content="{x:Static res:Strings.Identity_Export}" Command="{Binding ExportIdentityCommand}" />
+          <Button Name="ImportIdentity" Content="{x:Static res:Strings.Identity_Import}" Command="{Binding ImportIdentityCommand}" />
+        </WrapPanel>
+        <TextBlock Name="IdentityResult" TextWrapping="Wrap" Text="{Binding IdentityMessage}"
+                   IsVisible="{Binding IdentityMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Identity_Hint}" IsVisible="{Binding CanBackUpIdentity}" />
       </StackPanel>
 
       <StackPanel Spacing="8">

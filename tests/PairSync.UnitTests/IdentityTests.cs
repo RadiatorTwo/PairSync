@@ -200,6 +200,20 @@ public sealed class DeviceIdentityStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task Restored_backup_becomes_the_identity_at_the_next_start()
+    {
+        using var original = DeviceIdentity.Create();
+        var backup = IdentityBackup.Create(original, "correct horse", DateTime.UtcNow);
+        (await Store().LoadOrCreateAsync(Ct)).Identity.Dispose();
+
+        await Store().RestoreAsync(IdentityBackup.Open(backup, "correct horse"), Ct);
+
+        using var loaded = (await Store().LoadOrCreateAsync(Ct)).Identity;
+        Assert.Equal(original.Id, loaded.Id);
+        Assert.Equal(original.PublicKey, loaded.PublicKey);
+    }
+
+    [Fact]
     public async Task Damaged_identity_file_is_an_error()
     {
         await File.WriteAllTextAsync(Store().PublicPath, "{ broken", Ct);

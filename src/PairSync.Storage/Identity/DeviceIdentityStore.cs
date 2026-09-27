@@ -117,6 +117,43 @@ public sealed class DeviceIdentityStore(DataDirectory dataDirectory, ISecretStor
         return new LocalIdentity(identity, record.Protection);
     }
 
+    /// <summary>
+    /// Replaces the stored identity with one from a backup (plan phase 6). Takes effect at the next start; the running
+    /// app keeps the identity it loaded. If writing fails halfway, the previous key is put back.
+    /// </summary>
+    /// <exception cref="SecretStoreUnavailableException">The secret store cannot be written right now.</exception>
+    /// <exception cref="IOException">identity.json cannot be written.</exception>
+    public async Task RestoreAsync(RestoredIdentity restored, CancellationToken cancellationToken)
+    {
+        using var identity = DeviceIdentity.FromPrivateKey(restored.DeviceId, restored.PrivateKey);
+        using var store = await secrets.OpenPreferredAsync(cancellationToken).ConfigureAwait(false);
+        var previous = await store.LoadAsync(SecretName, cancellationToken).ConfigureAwait(false);
+        await store.SaveAsync(SecretName, restored.PrivateKey, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            WriteRecord(new IdentityRecord
+            {
+                DeviceId = identity.Id,
+                PublicKey = identity.PublicKey,
+                Protection = store.Protection,
+                CreatedAtUtc = DateTime.UtcNow,
+            });
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            if (previous is not null)
+                await store.SaveAsync(SecretName, previous, CancellationToken.None).ConfigureAwait(false);
+            throw new IOException($"{PublicPath} cannot be written: {e.Message}", e);
+        }
+        finally
+        {
+            if (previous is not null)
+                CryptographicOperations.ZeroMemory(previous);
+        }
+        logger.LogInformation("Restored device identity {DeviceId}, fingerprint {Fingerprint}; used from the next start",
+            identity.Id, identity.Fingerprint.ToShortString());
+    }
+
     private IdentityRecord? ReadRecord()
     {
         if (!File.Exists(PublicPath))

@@ -65,6 +65,9 @@
     <DataTemplate DataType="vm:RenameDialogViewModel">
       <views:RenameDialogView />
     </DataTemplate>
+    <DataTemplate DataType="vm:IdentityPasswordDialogViewModel">
+      <views:IdentityPasswordDialogView />
+    </DataTemplate>
     <DataTemplate DataType="vm:PermissionsDialogViewModel">
       <views:PermissionsDialogView />
     </DataTemplate>

@@ -6,6 +6,7 @@ using PairSync.Application;
 using PairSync.Application.Updates;
 using PairSync.Desktop.Platform;
 using PairSync.Desktop.Resources;
+using PairSync.Storage.Identity;
 using PairSync.Storage.Secrets;
 using PairSync.Storage.Settings;
 using PairSync.Stun;
@@ -27,6 +28,8 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
     private readonly IDesktopServices? _desktop;
     private readonly InternetUi? _internet;
     private readonly UpdateCheck _updates;
+    private readonly DialogHost? _dialogs;
+    private readonly Action? _quit;
     private bool _loading;
 
     [ObservableProperty]
@@ -69,17 +72,25 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
     [ObservableProperty]
     private string? _updateText;
 
+    /// <summary>Result of the last identity export or import.</summary>
+    [ObservableProperty]
+    private string? _identityMessage;
+
     /// <summary><c>NAME=value</c> lines for Claude Code commands from other devices.</summary>
     [ObservableProperty]
     private string _pathVariables = "";
 
     /// <param name="core">Null in tests that only cover close behavior and autostart.</param>
     /// <param name="internet">Opens the NAT diagnostic; null leaves the button out.</param>
+    /// <param name="dialogs">For the identity backup dialogs; null leaves the backup buttons out.</param>
+    /// <param name="quit">Quits the app after an identity import.</param>
     public SettingsViewModel(
         SettingsStore settings, IAutostart autostart, bool trayAvailable, PairSyncCore? core = null, IDesktopServices? desktop = null,
-        InternetUi? internet = null, UpdateCheck? updates = null)
+        InternetUi? internet = null, UpdateCheck? updates = null, DialogHost? dialogs = null, Action? quit = null)
         : base(AppPage.Settings)
     {
+        _dialogs = dialogs;
+        _quit = quit;
         _updates = updates ?? new UpdateCheck();
         _settings = settings;
         _autostart = autostart;
@@ -162,6 +173,100 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
     {
         if (_desktop is not null && Update?.ReleaseUrl is { } url && Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps)
             await _desktop.OpenUriAsync(uri);
+    }
+
+    public bool CanBackUpIdentity => _core is not null && _desktop is not null && _dialogs is not null;
+
+    /// <summary>"Export identity…": password twice, then where to save the backup.</summary>
+    [RelayCommand]
+    private async Task ExportIdentityAsync()
+    {
+        if (_core is null || _desktop is null || _dialogs is null)
+            return;
+        var dialog = new IdentityPasswordDialogViewModel(export: true);
+        await _dialogs.ShowAsync(dialog);
+        if (dialog.Result is not { } password)
+            return;
+        var path = await _desktop.PickSaveFileAsync(_settings.Current.EffectiveDeviceName + IdentityBackup.FileExtension, IdentityBackup.FileExtension);
+        if (path is null)
+            return;
+        try
+        {
+            var content = _core.CreateIdentityBackup(password);
+            await File.WriteAllBytesAsync(path, content);
+            IdentityMessage = string.Format(CultureInfo.CurrentCulture, Strings.Identity_Saved, path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            IdentityMessage = string.Format(CultureInfo.CurrentCulture, Strings.Identity_Failed, e.Message);
+        }
+    }
+
+    /// <summary>"Import identity…": pick the backup, enter its password, confirm, then quit so the next start uses it.</summary>
+    [RelayCommand]
+    private async Task ImportIdentityAsync()
+    {
+        if (_core is null || _desktop is null || _dialogs is null)
+            return;
+        var path = await _desktop.PickOpenFileAsync(IdentityBackup.FileExtension);
+        if (path is null)
+            return;
+        byte[] content;
+        try
+        {
+            if (new FileInfo(path).Length > IdentityBackup.MaxFileSize)
+                throw new IOException(Strings.Code_FileTooLarge);
+            content = await File.ReadAllBytesAsync(path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            IdentityMessage = string.Format(CultureInfo.CurrentCulture, Strings.Identity_ReadFailed, e.Message);
+            return;
+        }
+
+        RestoredIdentity? restored = null;
+        var dialog = new IdentityPasswordDialogViewModel(export: false, password =>
+        {
+            try
+            {
+                restored = IdentityBackup.Open(content, password);
+                return null;
+            }
+            catch (InvalidIdentityBackupException e)
+            {
+                return e.Message;
+            }
+        });
+        await _dialogs.ShowAsync(dialog);
+        if (restored is null)
+            return;
+        if (restored.DeviceId == _core.Identity.Identity.Id)
+        {
+            IdentityMessage = Strings.Identity_SameDevice;
+            return;
+        }
+
+        var confirm = new ConfirmDialogViewModel(Strings.Identity_ReplaceTitle,
+            string.Format(CultureInfo.CurrentCulture, Strings.Identity_ReplaceText, restored.DeviceId, restored.Fingerprint.ToShortString()),
+            Strings.Identity_ReplaceConfirm);
+        await _dialogs.ShowAsync(confirm);
+        if (!confirm.Confirmed)
+            return;
+        try
+        {
+            await _core.RestoreIdentityAsync(restored, CancellationToken.None);
+        }
+        catch (Exception e) when (e is IOException or SecretStoreUnavailableException)
+        {
+            IdentityMessage = string.Format(CultureInfo.CurrentCulture, Strings.Identity_ReadFailed, e.Message);
+            return;
+        }
+
+        var restart = new ConfirmDialogViewModel(Strings.Identity_RestartTitle, Strings.Identity_RestartText, Strings.Identity_QuitNow);
+        IdentityMessage = Strings.Identity_RestartText;
+        await _dialogs.ShowAsync(restart);
+        if (restart.Confirmed)
+            _quit?.Invoke();
     }
 
     [RelayCommand]
