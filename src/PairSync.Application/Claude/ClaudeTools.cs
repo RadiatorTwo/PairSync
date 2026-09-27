@@ -5,12 +5,21 @@ namespace PairSync.Application.Claude;
 
 /// <summary>
 /// Programs Claude Code and common plugins call: <c>git</c> (marketplaces, the Bash tool on Windows), <c>bun</c> and
-/// <c>jq</c> (hooks of plugins such as claude-mem), <c>gh</c> (GitHub from Claude Code). Finds them also where installers put them after PairSync started,
+/// <c>jq</c> (hooks of plugins such as claude-mem), <c>gh</c> (GitHub from Claude Code), and the Warp terminal. Finds them also where installers put them after PairSync started,
 /// so CLI steps get a PATH that includes those folders.
 /// </summary>
 public static class ClaudeTools
 {
-    public static IReadOnlyList<string> Names { get; } = ["git", "bun", "jq", "gh"];
+    public static IReadOnlyList<string> Names { get; } = ["git", "bun", "jq", "gh", "warp"];
+
+    /// <summary>File names the tool's program has on this system (Warp's Linux packages install <c>warp-terminal</c>).</summary>
+    public static IReadOnlyList<string> ExecutableNames(string tool) => (tool, OperatingSystem.IsWindows()) switch
+    {
+        ("warp", true) => ["warp.exe"],
+        ("warp", false) => ["warp-terminal"],
+        (_, true) => [tool + ".exe", tool + ".cmd"],
+        _ => [tool],
+    };
 
     public static bool IsKnown(string name) => Names.Contains(name, StringComparer.Ordinal);
 
@@ -20,7 +29,7 @@ public static class ClaudeTools
     /// <summary>The full path of <paramref name="tool"/>, or null.</summary>
     public static string? Find(string tool, ClaudeOptions options)
     {
-        string[] names = OperatingSystem.IsWindows() ? [tool + ".exe", tool + ".cmd"] : [tool];
+        var names = ExecutableNames(tool);
         foreach (var folder in Folders(options))
         {
             foreach (var name in names)
@@ -61,6 +70,8 @@ public static class ClaudeTools
                 folders.Add(Path.Combine(local, "Programs", "Git", "cmd"));
                 folders.Add(Path.Combine(local, "Microsoft", "WinGet", "Links"));
                 folders.Add(Path.Combine(local, "Microsoft", "WindowsApps"));
+                folders.Add(Path.Combine(local, "Programs", "Warp"));
+                folders.Add(Path.Combine(programFiles, "Warp"));
             }
             else
             {

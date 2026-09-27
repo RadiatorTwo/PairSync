@@ -55,8 +55,8 @@ internal static class TestCores
             var bin = Path.Combine(home, ".local", "bin");
             return OperatingSystem.IsWindows()
                 ? [new("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
-                    $"New-Item -ItemType Directory -Force '{bin}' | Out-Null; Copy-Item (Join-Path $env:SystemRoot 'System32\\whoami.exe') '{Path.Combine(bin, tool + ".exe")}'"])]
-                : [new("sh", ["-c", $"mkdir -p '{bin}' && printf '#!/bin/sh\\n' > '{bin}/{tool}' && chmod +x '{bin}/{tool}'"])];
+                    $"New-Item -ItemType Directory -Force '{bin}' | Out-Null; Copy-Item (Join-Path $env:SystemRoot 'System32\\whoami.exe') '{Path.Combine(bin, PairSync.Application.Claude.ClaudeTools.ExecutableNames(tool)[0])}'"])]
+                : [new("sh", ["-c", $"mkdir -p '{bin}' && printf '#!/bin/sh\\n' > '{bin}/{PairSync.Application.Claude.ClaudeTools.ExecutableNames(tool)[0]}' && chmod +x '{bin}/{PairSync.Application.Claude.ClaudeTools.ExecutableNames(tool)[0]}'"])];
         },
     };
 

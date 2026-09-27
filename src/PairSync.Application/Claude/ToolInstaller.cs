@@ -13,13 +13,16 @@ public sealed record ToolInstallerOptions
     public Func<string, IReadOnlyList<ToolCommand>>? Commands { get; init; }
 }
 
-/// <summary>One program run to install a tool; <see cref="ScriptUri"/> means "download this script and run it with FileName".</summary>
-public sealed record ToolCommand(string FileName, IReadOnlyList<string> Arguments, Uri? ScriptUri = null);
+/// <summary>
+/// One program run to install a tool; <see cref="ScriptUri"/> means "download this file (script or package) and pass it
+/// as the last argument", saved with <see cref="FileExtension"/> (package managers look at it).
+/// </summary>
+public sealed record ToolCommand(string FileName, IReadOnlyList<string> Arguments, Uri? ScriptUri = null, string? FileExtension = null);
 
 public sealed record ToolInstallResult(string Tool, bool Success, string Output, string? Error);
 
 /// <summary>
-/// Installs git, bun, jq and gh for Claude Code and its plugins. Windows: winget (user scope where the package allows it; Git
+/// Installs git, bun, jq, gh and the Warp terminal for Claude Code and its plugins. Windows: winget (user scope where the package allows it; Git
 /// may ask for administrator rights on that screen). Linux: the distribution's package manager through pkexec,
 /// which asks for the password on that screen; bun with its official installer into <c>~/.bun</c>. Nothing is
 /// installed without the user confirming it on the Claude Code page.
@@ -32,6 +35,7 @@ public sealed class ToolInstaller(ClaudeOptions claude, ToolInstallerOptions opt
         ["bun"] = "Oven-sh.Bun",
         ["jq"] = "jqlang.jq",
         ["gh"] = "GitHub.cli",
+        ["warp"] = "Warp.Warp",
     };
 
     /// <summary>Installs <paramref name="tools"/> one after the other; each result says whether the tool is found afterwards.</summary>
@@ -39,7 +43,7 @@ public sealed class ToolInstaller(ClaudeOptions claude, ToolInstallerOptions opt
     {
         var results = new List<ToolInstallResult>();
         // Linux: one password prompt for all packages instead of one per tool.
-        var packages = OperatingSystem.IsWindows() || options.Commands is not null ? [] : tools.Where(t => t != "bun").ToList();
+        var packages = OperatingSystem.IsWindows() || options.Commands is not null ? [] : tools.Where(t => t is not ("bun" or "warp")).ToList();
         if (tools.Contains("bun") && !OperatingSystem.IsWindows() && options.Commands is null && ClaudeTools.Find("unzip", claude) is null)
             packages.Add("unzip"); // the bun installer unpacks a zip
         string? packageOutput = null, packageError = null;
@@ -80,6 +84,8 @@ public sealed class ToolInstaller(ClaudeOptions claude, ToolInstallerOptions opt
         }
         if (tool == "bun")
             return [new ToolCommand("bash", [], new Uri("https://bun.sh/install"))];
+        if (tool == "warp")
+            return WarpCommands();
         return PackageManagerCommands([tool]);
     }
 
@@ -98,6 +104,21 @@ public sealed class ToolInstaller(ClaudeOptions claude, ToolInstallerOptions opt
         return prefix[0].EndsWith("brew", StringComparison.Ordinal)
             ? [new ToolCommand(prefix[0], [.. prefix[1..], .. names])]
             : [new ToolCommand(pkexec, [.. prefix, .. names])];
+    }
+
+    /// <summary>Warp is not in the distributions' repositories: its official package from warp.dev, installed as a local file.</summary>
+    private IReadOnlyList<ToolCommand> WarpCommands()
+    {
+        var pkexec = ClaudeTools.Find("pkexec", claude) ?? throw new ToolInstallException("pkexec is missing. Install Warp from warp.dev yourself.");
+        return ClaudeTools.Find("pacman", claude) is { } pacman
+            ? [new ToolCommand(pkexec, [pacman, "-U", "--noconfirm"], new Uri("https://app.warp.dev/download?package=pacman"), ".pkg.tar.zst")]
+            : ClaudeTools.Find("apt-get", claude) is { } apt
+                ? [new ToolCommand(pkexec, [apt, "install", "-y"], new Uri("https://app.warp.dev/download?package=deb"), ".deb")]
+                : ClaudeTools.Find("dnf", claude) is { } dnf
+                    ? [new ToolCommand(pkexec, [dnf, "install", "-y"], new Uri("https://app.warp.dev/download?package=rpm"), ".rpm")]
+                    : ClaudeTools.Find("zypper", claude) is { } zypper
+                        ? [new ToolCommand(pkexec, [zypper, "--non-interactive", "--no-gpg-checks", "install"], new Uri("https://app.warp.dev/download?package=rpm"), ".rpm")]
+                        : throw new ToolInstallException("No known package manager found. Install Warp from warp.dev yourself.");
     }
 
     /// <summary>Package names for <paramref name="packageManager"/>: Arch calls the GitHub CLI github-cli, everyone else gh.</summary>
@@ -144,9 +165,10 @@ public sealed class ToolInstaller(ClaudeOptions claude, ToolInstallerOptions opt
                 start.ArgumentList.Add(argument);
             if (command.ScriptUri is { } uri)
             {
-                script = Path.Combine(Path.GetTempPath(), $"pairsync-tool-{Guid.NewGuid():N}{(OperatingSystem.IsWindows() ? ".ps1" : ".sh")}");
+                script = Path.Combine(Path.GetTempPath(),
+                    $"pairsync-tool-{Guid.NewGuid():N}{command.FileExtension ?? (OperatingSystem.IsWindows() ? ".ps1" : ".sh")}");
                 using var http = options.Handler is null ? new HttpClient() : new HttpClient(options.Handler, disposeHandler: false);
-                http.Timeout = TimeSpan.FromMinutes(2);
+                http.Timeout = TimeSpan.FromMinutes(10); // Warp's package is about 100 MB
                 await File.WriteAllBytesAsync(script, await http.GetByteArrayAsync(uri, cancellationToken).ConfigureAwait(false), cancellationToken)
                     .ConfigureAwait(false);
                 start.ArgumentList.Add(script);

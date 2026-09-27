@@ -399,15 +399,15 @@ public sealed class ClaudeTests : IAsyncLifetime
         await AllowAsync(target, source, programs: true);
 
         var fetched = await FetchAsync(source);
-        Assert.Equal(["git", "bun", "jq", "gh"], fetched.Snapshot.MissingTools);
+        Assert.Equal(["git", "bun", "jq", "gh", "warp"], fetched.Snapshot.MissingTools);
         var plan = ClaudePlanner.Plan(await source.Claude.ReadLocalAsync(Ct), fetched.Snapshot, fetched.CanInstallClaude);
-        Assert.Equal(["tool:git", "tool:bun", "tool:jq", "tool:gh"], plan.Executables.Take(4).Select(e => e.Id));
+        Assert.Equal(["tool:git", "tool:bun", "tool:jq", "tool:gh", "tool:warp"], plan.Executables.Take(5).Select(e => e.Id));
         var request = ClaudePlanner.BuildApply(plan, new ClaudeSelection(
-            new HashSet<string>(), new HashSet<string> { "tool:git", "tool:jq", "tool:gh" }, new Dictionary<string, string>()));
+            new HashSet<string>(), new HashSet<string> { "tool:git", "tool:jq", "tool:gh", "tool:warp" }, new Dictionary<string, string>()));
         var results = new List<ClaudeStepResult>();
         await source.Claude.ApplyAsync(fetched.Device, request, results.Add, Ct);
 
-        Assert.Equal([ClaudeStepStatus.Done, ClaudeStepStatus.Done, ClaudeStepStatus.Done], results.Select(r => r.Status));
+        Assert.Equal([ClaudeStepStatus.Done, ClaudeStepStatus.Done, ClaudeStepStatus.Done, ClaudeStepStatus.Done], results.Select(r => r.Status));
         Assert.Equal(["bun"], target.Claude.MissingToolsLocally);
         // CLI steps find tools installed after PairSync started.
         Assert.Contains(Path.Combine(Home("office"), ".local", "bin"),
@@ -422,7 +422,7 @@ public sealed class ClaudeTests : IAsyncLifetime
         var results = await core.Claude.InstallToolsLocalAsync(["bun"], Ct);
 
         Assert.True(Assert.Single(results).Success, results[0].Error);
-        Assert.Equal(["git", "jq", "gh"], core.Claude.MissingToolsLocally);
+        Assert.Equal(["git", "jq", "gh", "warp"], core.Claude.MissingToolsLocally);
     }
 
     [Fact]

@@ -206,7 +206,10 @@ public static class ClaudePlanner
         // Tools the target reports missing (0.8 and later): git for marketplaces, bun and jq for plugin hooks.
         foreach (var tool in (target.MissingTools ?? []).Reverse())
         {
-            var how = target.Os == "windows" ? "winget install" : tool == "bun" ? "official installer into ~/.bun" : "package manager (asks for the password there)";
+            var how = target.Os == "windows" ? "winget install"
+                : tool == "bun" ? "official installer into ~/.bun"
+                : tool == "warp" ? "package from warp.dev (asks for the password there)"
+                : "package manager (asks for the password there)";
             executables.Insert(0, new ExecutableItem(ToolId(tool), ExecutableKind.Installer, $"Install {tool}", $"{how}: {tool}", []));
             steps.Insert(0, new ClaudeStep(ClaudeStepKind.InstallTool, tool, null, ToolId(tool), "for Claude Code plugins"));
         }
