@@ -126,7 +126,7 @@ jobs:
 
       - name: Checksums
         run: |
-          cat dist/SHA256SUMS-* > dist/SHA256SUMS.txt
+          cat dist/SHA256SUMS-* | tr -d '\r' > dist/SHA256SUMS.txt
           cd dist && sha256sum -c SHA256SUMS.txt
 
       - name: Publish release

@@ -38,6 +38,7 @@ $sums = Join-Path $artifacts 'SHA256SUMS-win'
 $sha = [System.Security.Cryptography.SHA256]::Create()
 $stream = [System.IO.File]::OpenRead($exe)
 try { $hash = -join ($sha.ComputeHash($stream) | ForEach-Object { $_.ToString('x2') }) } finally { $stream.Dispose(); $sha.Dispose() }
-'{0}  {1}' -f $hash, (Split-Path $exe -Leaf) | Set-Content -Encoding ascii $sums
+# LF line ending, so sha256sum -c also accepts the file on Linux.
+[System.IO.File]::WriteAllText($sums, ('{0}  {1}' -f $hash, (Split-Path $exe -Leaf)) + "`n")
 
 Get-Item $exe, $sums | Select-Object Name, Length
