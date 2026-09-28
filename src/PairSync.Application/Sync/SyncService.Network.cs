@@ -368,11 +368,13 @@ public sealed partial class SyncService
         CancellationToken cancellationToken)
     {
         var queue = new ConcurrentQueue<SyncAction>(fetches.OrderBy(a => a.Remote!.Size));
-        run.Status = SyncStatus.Syncing;
+        Volatile.Write(ref run.FilesTotal, fetches.Count);
         Volatile.Write(ref run.FilesLeft, fetches.Count);
         Interlocked.Exchange(ref run.BytesLeft, fetches.Sum(a => a.Remote!.Size));
         Interlocked.Exchange(ref run.BytesDone, 0);
         run.Rate.Reset();
+        // Counters first: the page must not show the previous round's total as this one's.
+        run.Status = SyncStatus.Syncing;
         Changed?.Invoke();
 
         var byHash = local.Values.Where(f => f is { Deleted: false, IsDirectory: false, Sha256: not null, ChunkHashes: not null })

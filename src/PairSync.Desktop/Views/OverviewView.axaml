@@ -14,6 +14,18 @@
       <Setter Property="Margin" Value="0,14,0,0" />
     </Style>
   </UserControl.Styles>
+  <UserControl.DataTemplates>
+    <!-- A large file under a transfer or sync: name, "812 MB / 2.40 GB", thin bar. -->
+    <DataTemplate DataType="vm:FileBarViewModel">
+      <StackPanel Spacing="4">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Right" Classes="meta mono" Margin="12,0,0,0" Text="{Binding Text}" />
+          <TextBlock Classes="meta" TextTrimming="CharacterEllipsis" Text="{Binding Name}" />
+        </DockPanel>
+        <ProgressBar Classes="file" Value="{Binding Fraction}" />
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.DataTemplates>
 
   <Grid Margin="{StaticResource PagePadding}" RowDefinitions="Auto,Auto,*" RowSpacing="18">
     <StackPanel Spacing="18">
@@ -112,6 +124,13 @@
                     <TextBlock FontSize="15" FontWeight="Bold" TextTrimming="CharacterEllipsis" Text="{Binding Title}" />
                     <ProgressBar Value="{Binding Fraction}" IsVisible="{Binding ShowsProgress}" />
                     <TextBlock Classes="meta" TextTrimming="CharacterEllipsis" Text="{Binding Meta}" />
+                    <ItemsControl ItemsSource="{Binding Files}" IsVisible="{Binding HasFiles}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <StackPanel Spacing="8" />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                    </ItemsControl>
                   </StackPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
@@ -132,6 +151,8 @@
                       <TextBlock DockPanel.Dock="Right" Classes="meta" Margin="12,0,0,0" Text="{Binding Rate}" />
                       <TextBlock Classes="meta" TextTrimming="CharacterEllipsis" Text="{Binding Meta}" />
                     </DockPanel>
+                    <ContentControl Content="{Binding FileBar}"
+                                    IsVisible="{Binding FileBar, Converter={x:Static ObjectConverters.IsNotNull}}" />
                     <TextBlock Classes="meta" Text="{Binding ResumedText}"
                                IsVisible="{Binding ResumedText, Converter={x:Static ObjectConverters.IsNotNull}}" />
                     <StackPanel Orientation="Horizontal" Spacing="8">

@@ -42,9 +42,23 @@ public sealed record JobView(
     /// <summary>See <see cref="TransferJob.Title"/>.</summary>
     public string Title { get; init; } = "";
 
+    /// <summary>Files that are through: transferred, skipped or given up.</summary>
+    public int FilesDone { get; init; }
+
+    /// <summary>Size of <see cref="CurrentFile"/> and how much of it is through.</summary>
+    public long CurrentFileSize { get; init; }
+
+    public long CurrentFileBytes { get; init; }
+
     public double Fraction => TotalBytes > 0 ? Math.Clamp((double)TransferredBytes / TotalBytes, 0, 1) : State == JobState.Completed ? 1 : 0;
 
     public TimeSpan? Remaining => BytesPerSecond > 0 ? TimeSpan.FromSeconds((TotalBytes - TransferredBytes) / BytesPerSecond) : null;
+}
+
+/// <summary>A file on its way, for its own progress bar.</summary>
+public sealed record FileProgress(string Name, long Size, long Done)
+{
+    public double Fraction => Size > 0 ? Math.Clamp((double)Done / Size, 0, 1) : 0;
 }
 
 /// <summary>Live counters of a running job; the file statistics are replaced for every file.</summary>
@@ -80,11 +94,13 @@ internal sealed class JobProgress
         if (stats is null)
             return view with { TransferredBytes = DoneBytes };
         var chunks = stats.ResumedChunks + stats.ChunksConfirmed;
-        var inFile = Math.Min(_currentSize, (long)chunks * ProtocolLimits.ChunkSize);
+        var inFile = Math.Min(_currentSize, Math.Max((long)chunks * ProtocolLimits.ChunkSize, stats.FileBytesDone));
         return view with
         {
             TransferredBytes = DoneBytes + inFile,
             CurrentFile = CurrentFile,
+            CurrentFileSize = _currentSize,
+            CurrentFileBytes = inFile,
             CurrentChunk = chunks,
             CurrentChunkCount = stats.ChunkCount,
             BytesPerSecond = stats.BytesPerSecond,

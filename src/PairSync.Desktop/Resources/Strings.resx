@@ -133,6 +133,9 @@
   <data name="Files_Many" xml:space="preserve">
     <value>{0} files</value>
   </data>
+  <data name="Files_Progress" xml:space="preserve">
+    <value>{0} / {1} files</value>
+  </data>
   <data name="Items_One" xml:space="preserve">
     <value>1 item</value>
   </data>

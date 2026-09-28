@@ -1,4 +1,5 @@
 using PairSync.Domain;
+using PairSync.Application.Transfers;
 using PairSync.Protocol;
 
 namespace PairSync.Application.Sync;
@@ -53,6 +54,12 @@ public sealed record SyncProfileView(
     int FilesSent = 0)
 {
     public Guid Id => Profile.Id;
+
+    /// <summary>Files to fetch in this round; <see cref="FilesLeft"/> of them are still open.</summary>
+    public int FilesTotal { get; init; }
+
+    /// <summary>Files being fetched or sent right now, largest first.</summary>
+    public IReadOnlyList<FileProgress> ActiveFiles { get; init; } = [];
 }
 
 /// <summary>What "New profile" asks for.</summary>

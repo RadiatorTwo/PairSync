@@ -89,6 +89,8 @@ public sealed partial class SyncService : IAsyncDisposable
 
         public SyncStatus Status { get; set; } = SyncStatus.UpToDate;
 
+        public int FilesTotal;
+
         public int FilesLeft;
 
         public long BytesLeft;
@@ -200,12 +202,23 @@ public sealed partial class SyncService : IAsyncDisposable
             && _serving.GetValueOrDefault(profile.Id) is { IsActive: true } serve)
         {
             var sent = serve.BytesSent;
-            return new SyncProfileView(profile, peer, SyncStatus.Serving, conflicts, 0, 0, sent, serve.Rate.Read(sent, now), Volatile.Read(ref serve.FilesSent));
+            return new SyncProfileView(profile, peer, SyncStatus.Serving, conflicts, 0, 0, sent, serve.Rate.Read(sent, now), Volatile.Read(ref serve.FilesSent))
+            {
+                ActiveFiles = ActiveFiles(serve.Active.Keys),
+            };
         }
         var rate = run is not null && status == SyncStatus.Syncing ? run.Rate.Read(bytesDone, now) : 0;
         return new SyncProfileView(profile, peer, status, conflicts,
-            run is null ? 0 : Volatile.Read(ref run.FilesLeft), run is null ? 0 : Interlocked.Read(ref run.BytesLeft), bytesDone, rate);
+            run is null ? 0 : Volatile.Read(ref run.FilesLeft), run is null ? 0 : Interlocked.Read(ref run.BytesLeft), bytesDone, rate)
+        {
+            FilesTotal = run is null ? 0 : Volatile.Read(ref run.FilesTotal),
+            ActiveFiles = run is null ? [] : ActiveFiles(run.Active.Keys),
+        };
     }
+
+    /// <summary>Files on their way, largest first; those whose plan is not agreed yet (size 0) are left out.</summary>
+    private static FileProgress[] ActiveFiles(IEnumerable<TransferStats> active) =>
+        [.. active.Where(s => s.FileSize > 0).Select(s => new FileProgress(s.FileName, s.FileSize, s.FileBytesDone)).OrderByDescending(f => f.Size)];
 
     /// <summary>Creates a profile and offers it to the device; the offer waits until the device is reachable.</summary>
     /// <exception cref="SyncException">The folder or device is not usable.</exception>

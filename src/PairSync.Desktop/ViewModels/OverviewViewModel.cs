@@ -68,6 +68,15 @@ public sealed class DeviceCardViewModel(
 /// <summary>The NAT banner over the device grid: "Can't connect directly to office-pc." and why.</summary>
 public sealed record NatBannerViewModel(Guid DeviceId, string Headline, string Detail);
 
+/// <summary>A large file on its way under a transfer or sync: its own thin bar, "812 MB / 2.40 GB" beside it.</summary>
+public sealed record FileBarViewModel(string Name, double Fraction, string Text)
+{
+    /// <summary>Smaller files go by too fast for a bar of their own; the files bar shows them.</summary>
+    public const long MinSize = 16L * 1024 * 1024;
+
+    public static FileBarViewModel From(FileProgress file) => new(file.Name, file.Fraction, Format.Progress(file.Done, file.Size));
+}
+
 /// <summary>A job under "Active transfers"; updated in place so the list does not flicker.</summary>
 public sealed partial class TransferRowViewModel(Guid id, TransferService transfers) : ObservableObject
 {
@@ -98,6 +107,10 @@ public sealed partial class TransferRowViewModel(Guid id, TransferService transf
     [ObservableProperty]
     private string? _resumedText;
 
+    /// <summary>The large file being transferred in a job of several files; the main bar counts files then.</summary>
+    [ObservableProperty]
+    private FileBarViewModel? _fileBar;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanPause), nameof(CanResume))]
     private JobState _state;
@@ -126,13 +139,20 @@ public sealed partial class TransferRowViewModel(Guid id, TransferService transf
         Title = job.Title;
         Peer = (job.Direction == TransferDirection.Send ? "→ " : "← ") + job.PeerName;
         Size = Format.Progress(job.TransferredBytes, job.TotalBytes);
-        Fraction = job.Fraction;
+        // Several files: the bar counts files, so thousands of small ones do not leave it standing until the large ones come.
+        var byFiles = job.FileCount > 1;
+        Fraction = byFiles ? Math.Clamp((double)job.FilesDone / job.FileCount, 0, 1) : job.Fraction;
+        FileBar = byFiles && job.State == JobState.Running && job.CurrentFile is { } current && job.CurrentFileSize >= FileBarViewModel.MinSize
+            ? FileBarViewModel.From(new FileProgress(current, job.CurrentFileSize, job.CurrentFileBytes))
+            : null;
         State = job.State;
         PausedByPeer = job.PausedByPeer;
         IsResumed = job.ResumedChunks > 0;
         ResumedText = IsResumed ? string.Format(culture, Strings.Transfer_Resumed, Format.Count(job.ResumedChunks)) : null;
         Meta = job.State switch
         {
+            JobState.Running when byFiles => Format.FilesProgress(job.FilesDone, job.FileCount)
+                                              + (FileBar is null && job.CurrentFile is { } file ? " · " + file : ""),
             JobState.Running when job.CurrentFile is not null && job.CurrentChunkCount > 0 => string.Format(culture, Strings.Transfer_Chunk,
                 job.CurrentFile, Format.Count(job.CurrentChunk), Format.Count(job.CurrentChunkCount)),
             JobState.Running => Strings.Transfer_Starting,
@@ -151,7 +171,11 @@ public sealed partial class TransferRowViewModel(Guid id, TransferService transf
 
 /// <summary>A sync profile that is exchanging files right now: "Projects ⇄ office-pc".</summary>
 /// <param name="ShowsProgress">False while the other device fetches from here: only it knows how much is left.</param>
-public sealed record SyncRowViewModel(string Title, string Meta, double Fraction, bool ShowsProgress = true);
+/// <param name="Files">The large files on their way, one bar each.</param>
+public sealed record SyncRowViewModel(string Title, string Meta, double Fraction, bool ShowsProgress = true, IReadOnlyList<FileBarViewModel>? Files = null)
+{
+    public bool HasFiles => Files is { Count: > 0 };
+}
 
 /// <summary>An entry under "Recently completed".</summary>
 public sealed record RecentTransferViewModel(string Title, string Details, string Outcome, bool IsProblem, string When);
@@ -310,17 +334,25 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
         ActiveSyncs.Clear();
         foreach (var sync in syncs.Where(s => s.Status is SyncStatus.Syncing or SyncStatus.Serving))
         {
+            var title = string.Format(culture, Strings.Overview_SyncRow, sync.Profile.Name, sync.PeerName);
+            var files = sync.ActiveFiles.Where(f => f.Size >= FileBarViewModel.MinSize).Select(FileBarViewModel.From).ToList();
             if (sync.Status == SyncStatus.Serving)
             {
-                ActiveSyncs.Add(new SyncRowViewModel(string.Format(culture, Strings.Overview_SyncRow, sync.Profile.Name, sync.PeerName),
-                    Format.Serving(sync), 0, ShowsProgress: false));
+                ActiveSyncs.Add(new SyncRowViewModel(title, Format.Serving(sync), 0, ShowsProgress: false, files));
+                continue;
+            }
+            var rate = sync.BytesPerSecond > 0 ? Format.Rate(sync.BytesPerSecond) : Format.Bytes(sync.BytesLeft);
+            if (sync.FilesTotal > 1)
+            {
+                // The bar counts files: they are fetched smallest first, so most of the bytes come at the very end.
+                var done = sync.FilesTotal - sync.FilesLeft;
+                ActiveSyncs.Add(new SyncRowViewModel(title, Format.FilesProgress(done, sync.FilesTotal) + " · " + rate,
+                    Math.Clamp((double)done / sync.FilesTotal, 0, 1), Files: files));
                 continue;
             }
             var total = sync.BytesDone + sync.BytesLeft;
-            ActiveSyncs.Add(new SyncRowViewModel(
-                string.Format(culture, Strings.Overview_SyncRow, sync.Profile.Name, sync.PeerName),
-                string.Format(culture, Strings.SyncStatus_Syncing, Format.Files(sync.FilesLeft),
-                    sync.BytesPerSecond > 0 ? Format.Rate(sync.BytesPerSecond) : Format.Bytes(sync.BytesLeft)),
+            ActiveSyncs.Add(new SyncRowViewModel(title,
+                string.Format(culture, Strings.SyncStatus_Syncing, Format.Files(sync.FilesLeft), rate),
                 total > 0 ? (double)sync.BytesDone / total : 0));
         }
         _anyRunning = jobs.Any(j => j.State == JobState.Running) || ActiveSyncs.Count > 0;

@@ -203,7 +203,7 @@
     </Style>
   </ControlTheme>
 
-  <!-- Progress: 6 px, track Accent100, fill Accent; class "resumed" fills with Frame. -->
+  <!-- Progress: 6 px, track Accent100, fill Accent; class "resumed" fills with Frame, class "file" is a thin bar for one file. -->
   <ControlTheme x:Key="{x:Type ProgressBar}" TargetType="ProgressBar">
     <Setter Property="Background" Value="{StaticResource Accent100Brush}" />
     <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
@@ -220,6 +220,10 @@
     </Setter>
     <Style Selector="^.resumed">
       <Setter Property="Foreground" Value="{StaticResource FrameBrush}" />
+    </Style>
+    <Style Selector="^.file">
+      <Setter Property="Height" Value="3" />
+      <Setter Property="MinHeight" Value="3" />
     </Style>
   </ControlTheme>
 

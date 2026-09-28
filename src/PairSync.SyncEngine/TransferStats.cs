@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using PairSync.Protocol;
 
 namespace PairSync.SyncEngine;
 
@@ -27,6 +28,9 @@ public sealed class TransferStats
     public int SeededChunks { get; set; }
 
     public long BytesThisRun => Interlocked.Read(ref _bytesThisRun);
+
+    /// <summary>How much of the file is through: the chunks there before this run plus the bytes of this run.</summary>
+    public long FileBytesDone => Math.Clamp((long)ResumedChunks * ProtocolLimits.ChunkSize + BytesThisRun, 0, FileSize);
 
     public int ChunksConfirmed => Volatile.Read(ref _chunksConfirmed);
 

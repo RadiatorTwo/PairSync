@@ -32,6 +32,10 @@ public static class Format
     public static string Files(int count) =>
         count == 1 ? Strings.Files_One : string.Format(Culture, Strings.Files_Many, Count(count));
 
+    /// <summary>"1,234 / 6,000 files".</summary>
+    public static string FilesProgress(int done, int total) =>
+        string.Format(Culture, Strings.Files_Progress, Count(done), Count(total));
+
     public static string Items(int count) =>
         count == 1 ? Strings.Items_One : string.Format(Culture, Strings.Items_Many, Count(count));
 

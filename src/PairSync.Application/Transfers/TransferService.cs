@@ -142,6 +142,8 @@ public sealed partial class TransferService : IAsyncDisposable
             {
                 Job = j,
                 Done = j.Items.Where(i => i.State == JobItemState.Completed || i.State == JobItemState.Skipped).Sum(i => i.Size),
+                FilesDone = j.Items.Count(i => !i.IsDirectory
+                    && (i.State == JobItemState.Completed || i.State == JobItemState.Skipped || i.State == JobItemState.Failed)),
             })
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         var names = await db.Devices.AsNoTracking().ToDictionaryAsync(d => d.Id, d => d.Name, cancellationToken).ConfigureAwait(false);
@@ -152,6 +154,7 @@ public sealed partial class TransferService : IAsyncDisposable
                 r.Job.State, r.Job.PausedByPeer, r.Job.FileCount, r.Job.TotalBytes, r.Done, null, 0, 0, 0, 0, r.Job.LastError, r.Job.CreatedAtUtc)
             {
                 Title = r.Job.Title,
+                FilesDone = r.FilesDone,
             };
             return _runs.TryGetValue(r.Job.Id, out var run) ? run.Progress.Apply(view) : view;
         })];
