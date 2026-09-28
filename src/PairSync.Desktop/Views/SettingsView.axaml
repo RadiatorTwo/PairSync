@@ -16,6 +16,11 @@
         </TextBlock>
       </Border>
 
+      <StackPanel Spacing="8">
+        <ctl:Rubric Text="{x:Static res:Strings.Settings_Appearance}" />
+        <ctl:SegmentedControl Name="AppearanceTheme" ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding SelectedThemeOption}" />
+      </StackPanel>
+
       <StackPanel Spacing="8" IsVisible="{Binding Fingerprint, Converter={x:Static ObjectConverters.IsNotNull}}">
         <ctl:Rubric Text="{x:Static res:Strings.Settings_Device}" />
         <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
@@ -46,7 +51,7 @@
                   IsEnabled="{Binding AutostartSupported}">
           <TextBlock TextWrapping="Wrap">
             <Run Text="{x:Static res:Strings.Settings_Autostart}" />
-            <Run Foreground="{StaticResource TextMutedBrush}" Text="{x:Static res:Strings.Settings_AutostartHint}" />
+            <Run Foreground="{DynamicResource TextMutedBrush}" Text="{x:Static res:Strings.Settings_AutostartHint}" />
           </TextBlock>
         </CheckBox>
         <TextBlock Classes="hint" Text="{x:Static res:Strings.Settings_AutostartUnsupported}"
@@ -158,14 +163,14 @@
         <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Settings_UpdateHint}" />
       </StackPanel>
 
-      <Border BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,1,0,0" Padding="0,14,0,0"
+      <Border BorderBrush="{DynamicResource HairlineBrush}" BorderThickness="0,1,0,0" Padding="0,14,0,0"
               IsVisible="{Binding CanOpenLogs}">
         <StackPanel Spacing="10">
           <DockPanel>
             <Button DockPanel.Dock="Right" Classes="link" Content="{x:Static res:Strings.Settings_OpenFolder}" Command="{Binding OpenLogsCommand}" />
             <TextBlock TextWrapping="Wrap">
               <Run Text="{x:Static res:Strings.Settings_Logs}" />
-              <Run Foreground="{StaticResource TextMutedBrush}" Text="{x:Static res:Strings.Settings_LogsHint}" />
+              <Run Foreground="{DynamicResource TextMutedBrush}" Text="{x:Static res:Strings.Settings_LogsHint}" />
             </TextBlock>
           </DockPanel>
           <CheckBox Classes="switch" IsChecked="{Binding VerboseLogging}" Content="{x:Static res:Strings.Settings_Verbose}" />

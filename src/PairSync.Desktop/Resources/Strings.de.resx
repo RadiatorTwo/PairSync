@@ -52,6 +52,18 @@
   <data name="Settings_WhenClosed" xml:space="preserve">
     <value>Wenn das Fenster geschlossen wird</value>
   </data>
+  <data name="Settings_Appearance" xml:space="preserve">
+    <value>Erscheinungsbild</value>
+  </data>
+  <data name="Theme_System" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Theme_Light" xml:space="preserve">
+    <value>Hell</value>
+  </data>
+  <data name="Theme_Dark" xml:space="preserve">
+    <value>Dunkel</value>
+  </data>
   <data name="Close_Tray" xml:space="preserve">
     <value>Im Tray weiterlaufen</value>
   </data>

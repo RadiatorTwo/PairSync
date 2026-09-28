@@ -18,7 +18,8 @@
 
     <!-- A code of this device: connection code (step 1) or answer (step 2) -->
     <Grid Name="CodePanel" ColumnDefinitions="Auto,*" ColumnSpacing="20" IsVisible="{Binding ShowsCode}">
-      <Border Width="200" Height="200" Background="{StaticResource BgBrush}" VerticalAlignment="Top">
+      <!-- Black on white with a 16 px white quiet zone in both themes, or some scanners fail. -->
+      <Border Width="200" Height="200" Background="{DynamicResource QrBackgroundBrush}" Padding="16" VerticalAlignment="Top">
         <Image Source="{Binding QrCode}" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None" />
       </Border>
       <StackPanel Grid.Column="1" Spacing="12">
@@ -53,7 +54,7 @@
     <!-- Result -->
     <StackPanel Name="Connected" Spacing="6" IsVisible="{Binding IsConnected}">
       <StackPanel Orientation="Horizontal" Spacing="6">
-        <Border Width="8" Height="8" VerticalAlignment="Center" Background="{StaticResource AccentBrush}" />
+        <Border Width="8" Height="8" VerticalAlignment="Center" Background="{DynamicResource AccentBrush}" />
         <TextBlock FontWeight="Medium" TextWrapping="Wrap" Text="{Binding StatusText}" />
       </StackPanel>
       <TextBlock Classes="meta" Text="{Binding RouteText}" />

@@ -6,6 +6,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Styling;
 using PairSync.Desktop;
 using PairSync.Desktop.Controls;
 using PairSync.Desktop.ViewModels;
@@ -19,18 +20,105 @@ namespace PairSync.UiTests;
 /// </summary>
 public sealed class DesignSystemTests(HeadlessFixture ui)
 {
-    private static Color Token(string key) =>
-        (Color)Avalonia.Application.Current!.FindResource(key)!;
+    private static Color Token(string key, ThemeVariant variant) =>
+        Avalonia.Application.Current!.TryGetResource(key, variant, out var value) ? (Color)value! : throw new KeyNotFoundException(key);
 
     [Fact]
     public Task Tokens_match_the_handoff() => ui.RunAsync(() =>
     {
-        Assert.Equal(Color.Parse("#F2F2F3"), Token("BgColor"));
-        Assert.Equal(Color.Parse("#5980A6"), Token("AccentColor"));
-        Assert.Equal(Color.Parse("#4D7196"), Token("AccentPressedColor"));
-        Assert.Equal(Color.Parse("#E3E9F0"), Token("Accent100Color"));
-        Assert.Equal(Color.FromArgb(0x47, 0x1D, 0x1F, 0x20), Token("ScrimColor"));
+        Assert.Equal(Color.Parse("#F2F2F3"), Token("BgColor", ThemeVariant.Light));
+        Assert.Equal(Color.Parse("#5980A6"), Token("AccentColor", ThemeVariant.Light));
+        Assert.Equal(Color.Parse("#4D7196"), Token("AccentPressedColor", ThemeVariant.Light));
+        Assert.Equal(Color.Parse("#E3E9F0"), Token("Accent100Color", ThemeVariant.Light));
+        Assert.Equal(Color.Parse("#FFFFFF"), Token("OnAccentColor", ThemeVariant.Light));
+        Assert.Equal(Color.FromArgb(0x47, 0x1D, 0x1F, 0x20), Token("ScrimColor", ThemeVariant.Light));
+
+        Assert.Equal(Color.Parse("#16181B"), Token("BgColor", ThemeVariant.Dark));
+        Assert.Equal(Color.Parse("#7EA6CC"), Token("AccentColor", ThemeVariant.Dark));
+        Assert.Equal(Color.Parse("#9DBBD9"), Token("AccentPressedColor", ThemeVariant.Dark));
+        Assert.Equal(Color.Parse("#0E1620"), Token("OnAccentColor", ThemeVariant.Dark));
+        Assert.Equal(Color.Parse("#C5D6E8"), Token("Accent900Color", ThemeVariant.Dark));
+        Assert.Equal(Color.Parse("#16181B"), Token("OnAccent900Color", ThemeVariant.Dark));
+        Assert.Equal(Color.Parse("#99000000"), Token("ScrimColor", ThemeVariant.Dark));
     });
+
+    [Fact]
+    public Task Theme_switches_at_runtime_without_leftovers() => ui.RunAsync(() =>
+    {
+        var app = Avalonia.Application.Current!;
+        var window = new Window { Width = 200, Height = 100, Content = new Border { Classes = { "panel" } } };
+        window.Show();
+        try
+        {
+            app.RequestedThemeVariant = ThemeVariant.Dark;
+            using (var pixels = Pixels.From(window.CaptureRenderedFrame()!))
+                Assert.Equal(Color.Parse("#16181B"), pixels[2, 2]);
+            app.RequestedThemeVariant = ThemeVariant.Light;
+            using (var pixels = Pixels.From(window.CaptureRenderedFrame()!))
+                Assert.Equal(Color.Parse("#F2F2F3"), pixels[2, 2]);
+        }
+        finally
+        {
+            app.RequestedThemeVariant = ThemeVariant.Default;
+            window.Close();
+        }
+    });
+
+    [Fact]
+    public Task Fluent_palettes_come_from_the_tokens() => ui.RunAsync(() =>
+    {
+        var app = Avalonia.Application.Current!;
+        Assert.True(app.TryGetResource("SystemAccentColor", ThemeVariant.Dark, out var accent));
+        Assert.Equal(Color.Parse("#7EA6CC"), accent);
+        Assert.True(app.TryGetResource("SystemAccentColor", ThemeVariant.Light, out accent));
+        Assert.Equal(Color.Parse("#5980A6"), accent);
+    });
+
+    [Fact]
+    public Task Qr_code_is_black_on_white_in_dark_mode() => ui.RunAsync(() =>
+    {
+        var app = Avalonia.Application.Current!;
+        app.RequestedThemeVariant = ThemeVariant.Dark;
+        try
+        {
+            using var qr = Codes.QrCode("PSI2 test code");
+            var writeable = new WriteableBitmap(qr.PixelSize, qr.Dpi, PixelFormat.Bgra8888, AlphaFormat.Premul);
+            using (var target = writeable.Lock())
+                qr.CopyPixels(new PixelRect(qr.PixelSize), target.Address, target.RowBytes * qr.PixelSize.Height, target.RowBytes);
+            using var pixels = Pixels.From(writeable);
+            var seen = new HashSet<Color>();
+            for (var y = 0; y < qr.PixelSize.Height; y++)
+            {
+                for (var x = 0; x < qr.PixelSize.Width; x++)
+                    seen.Add(pixels[x, y]);
+            }
+            Assert.Equal([Colors.Black, Colors.White], seen.OrderBy(c => c.R));
+        }
+        finally
+        {
+            app.RequestedThemeVariant = ThemeVariant.Default;
+        }
+    });
+
+    /// <summary>DARK_MODE.md: every color comes from a token; only Tokens.axaml holds color values.</summary>
+    [Fact]
+    public void No_fixed_colors_outside_the_tokens()
+    {
+        var desktop = Path.GetFullPath(Path.Combine(SourceFolder(), "..", "..", "src", "PairSync.Desktop"));
+        var pattern = new System.Text.RegularExpressions.Regex(@"#[0-9A-Fa-f]{6}|Colors\.|Brushes\.|StaticResource \w*(Brush|Color|Shadow)\b");
+        var found = Directory.EnumerateFiles(desktop, "*.*", SearchOption.AllDirectories)
+            .Where(f => f.EndsWith(".axaml", StringComparison.Ordinal) || f.EndsWith(".cs", StringComparison.Ordinal))
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                        && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                        && Path.GetFileName(f) != "Tokens.axaml")
+            .SelectMany(f => File.ReadLines(f).Select((line, i) => (f, i, line)))
+            .Where(l => pattern.IsMatch(l.line))
+            .Select(l => $"{Path.GetRelativePath(desktop, l.f)}:{l.i + 1}: {l.line.Trim()}")
+            .ToList();
+        Assert.Empty(found);
+    }
+
+    private static string SourceFolder([System.Runtime.CompilerServices.CallerFilePath] string path = "") => Path.GetDirectoryName(path)!;
 
     [Fact]
     public Task Embedded_fonts_resolve() => ui.RunAsync(() =>
@@ -149,6 +237,9 @@ public sealed class DesignSystemTests(HeadlessFixture ui)
         var window = new Window { Width = 1280, Height = 800, Content = gallery };
         window.Show();
         Save(window.CaptureRenderedFrame()!, "gallery");
+        Avalonia.Application.Current!.RequestedThemeVariant = ThemeVariant.Dark;
+        Save(window.CaptureRenderedFrame()!, "gallery-dark");
+        Avalonia.Application.Current!.RequestedThemeVariant = ThemeVariant.Default;
         window.Close();
     });
 
@@ -165,6 +256,9 @@ public sealed class DesignSystemTests(HeadlessFixture ui)
         _ = shell.Dialogs.ShowAsync(new ConfirmDialogViewModel("Remove laptop-win11?",
             "Unfinished transfers with this device are canceled. To exchange files again, both devices have to pair anew.", "Remove"));
         Save(window.CaptureRenderedFrame()!, "shell-settings-dialog");
+        Avalonia.Application.Current!.RequestedThemeVariant = ThemeVariant.Dark;
+        Save(window.CaptureRenderedFrame()!, "shell-settings-dialog-dark");
+        Avalonia.Application.Current!.RequestedThemeVariant = ThemeVariant.Default;
         window.DataContext = null;
         window.Close();
     });

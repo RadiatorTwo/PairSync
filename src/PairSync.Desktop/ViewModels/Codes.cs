@@ -37,10 +37,18 @@ internal static class Codes
     {
         using var generator = new QRCodeGenerator();
         using var data = generator.CreateQrCode(text, QRCodeGenerator.ECCLevel.M);
-        // Dark modules in Text (#1D1F20) on the page background, 1 px per module; the view scales without smoothing.
-        var png = new PngByteQRCode(data).GetGraphic(1, [0x1D, 0x1F, 0x20], [0xF2, 0xF2, 0xF3]);
+        // Black on white in both themes (QrModuleColor, QrBackgroundColor), 1 px per module; the view scales without
+        // smoothing and adds the white quiet zone.
+        var png = new PngByteQRCode(data).GetGraphic(1, Rgb("QrModuleColor"), Rgb("QrBackgroundColor"), drawQuietZones: false);
         using var stream = new MemoryStream(png);
         return new Bitmap(stream);
+    }
+
+    /// <summary>A color token as RGB bytes for the QR renderer.</summary>
+    private static byte[] Rgb(string key)
+    {
+        var color = Themes.AppThemes.Token(Avalonia.Application.Current!, key, Avalonia.Styling.ThemeVariant.Default);
+        return [color.R, color.G, color.B];
     }
 
     /// <summary>"08:41".</summary>

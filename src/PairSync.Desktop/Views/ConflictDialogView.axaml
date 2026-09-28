@@ -7,8 +7,8 @@
              x:DataType="vm:ConflictDialogViewModel">
   <UserControl.Styles>
     <Style Selector="Border.diff">
-      <Setter Property="Background" Value="{StaticResource SurfaceInputBrush}" />
-      <Setter Property="BorderBrush" Value="{StaticResource HairlineSoftBrush}" />
+      <Setter Property="Background" Value="{DynamicResource SurfaceInputBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HairlineSoftBrush}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="Padding" Value="8,6" />
     </Style>

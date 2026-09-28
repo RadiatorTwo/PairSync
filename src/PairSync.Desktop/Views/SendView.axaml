@@ -18,7 +18,7 @@
       <StackPanel DockPanel.Dock="Top" Spacing="18">
         <TextBlock Classes="h1" Text="{Binding Title}" />
         <ctl:Card Name="DropZone" IsDashed="True" DragDrop.AllowDrop="True" Padding="26"
-                  BorderBrush="{StaticResource AccentBrush}" Background="{StaticResource DropZoneBrush}">
+                  BorderBrush="{DynamicResource AccentBrush}" Background="{DynamicResource DropZoneBrush}">
           <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
             <TextBlock VerticalAlignment="Center" Text="{x:Static res:Strings.Send_Drop}" />
             <TextBlock VerticalAlignment="Center" Classes="muted" Text="·" />
@@ -49,7 +49,7 @@
           <ItemsControl Name="Entries" ItemsSource="{Binding Entries}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:SendEntryViewModel">
-                <Border BorderBrush="{StaticResource HairlineSoftBrush}" BorderThickness="0,1,0,0" Padding="0,7">
+                <Border BorderBrush="{DynamicResource HairlineSoftBrush}" BorderThickness="0,1,0,0" Padding="0,7">
                   <Grid ColumnDefinitions="*,100,80,32">
                     <TextBlock Classes="mono" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding Display}"
                                ToolTip.Tip="{Binding Path}" />
@@ -68,7 +68,7 @@
 
     <!-- Right: where and how -->
     <DockPanel Grid.Column="1" Margin="0,50,0,0">
-      <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,1,0,0" Padding="0,14,0,0">
+      <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource HairlineBrush}" BorderThickness="0,1,0,0" Padding="0,14,0,0">
         <StackPanel Spacing="10">
           <DockPanel>
             <TextBlock DockPanel.Dock="Right" Classes="mono" FontSize="14" Text="{Binding SizeSummary}" />

@@ -8,7 +8,7 @@
   <UserControl.Styles>
     <!-- Entries below the first get a soft line and some air above. -->
     <Style Selector="ItemsControl.separated > ContentPresenter:nth-child(n+2)">
-      <Setter Property="BorderBrush" Value="{StaticResource HairlineSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HairlineSoftBrush}" />
       <Setter Property="BorderThickness" Value="0,1,0,0" />
       <Setter Property="Padding" Value="0,14,0,0" />
       <Setter Property="Margin" Value="0,14,0,0" />
@@ -76,9 +76,9 @@
                 <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,10,0,6"
                             IsVisible="{Binding State, Converter={x:Static ObjectConverters.IsNotNull}}">
                   <Border Width="8" Height="8" VerticalAlignment="Center"
-                          Background="{StaticResource AccentBrush}" IsVisible="{Binding IsConnected}" />
+                          Background="{DynamicResource AccentBrush}" IsVisible="{Binding IsConnected}" />
                   <Border Width="8" Height="8" VerticalAlignment="Center" BorderThickness="1"
-                          BorderBrush="{StaticResource TextMutedBrush}" IsVisible="{Binding !IsConnected}" />
+                          BorderBrush="{DynamicResource TextMutedBrush}" IsVisible="{Binding !IsConnected}" />
                   <TextBlock FontWeight="Medium" Text="{Binding State}" />
                 </StackPanel>
                 <TextBlock Classes="meta" LineHeight="19.5" TextWrapping="Wrap" Text="{Binding Line1}"

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using PairSync.Application;
 using PairSync.Desktop.Platform;
 using PairSync.Desktop.Resources;
+using PairSync.Desktop.Themes;
 using PairSync.Desktop.Tray;
 using PairSync.Desktop.ViewModels;
 using PairSync.Storage.Settings;
@@ -37,7 +38,11 @@ public sealed partial class App : Avalonia.Application
     /// <summary>The core could not start: show why instead of the main window.</summary>
     public (string Message, string DataFolder)? StartupError { get; init; }
 
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+        AppThemes.UseTokenPalettes(this);
+    }
 
     public override void OnFrameworkInitializationCompleted()
     {
@@ -105,13 +110,21 @@ public sealed partial class App : Avalonia.Application
         var autostart = Autostart ?? Platform.Autostart.ForCurrentPlatform();
         ApplyAutostart(core, autostart);
 
-        var icon = AppIcon.Create();
+        AppThemes.Apply(this, core.Settings.Current.Theme);
+        core.Settings.Changed += settings => Dispatcher.UIThread.Post(() => AppThemes.Apply(this, settings.Theme));
+
         var services = new WindowDesktopServices(() => _window, RevealWindow);
         _shell = CreateShell(core, TrayAvailable, autostart, services, TimeProvider.System, () => desktop.Shutdown());
-        _window = new MainWindow { DataContext = _shell, Icon = icon };
+        // The window icon sits on the title bar, which follows the app; the tray icon sits on the taskbar or panel.
+        _window = new MainWindow { DataContext = _shell, Icon = AppIcon.Create(this, ActualThemeVariant) };
+        ActualThemeVariantChanged += (_, _) => _window.Icon = AppIcon.Create(this, ActualThemeVariant);
         _events = new CoreEvents(core, _shell, services);
         if (TrayAvailable)
-            _tray = new TrayController(this, core, icon, RevealWindow, () => desktop.Shutdown());
+        {
+            _tray = new TrayController(this, core, AppIcon.Create(this, AppThemes.TaskbarVariant(this)), RevealWindow, () => desktop.Shutdown());
+            if (PlatformSettings is { } platform)
+                platform.ColorValuesChanged += (_, _) => Dispatcher.UIThread.Post(() => _tray?.SetIcon(AppIcon.Create(this, AppThemes.TaskbarVariant(this))));
+        }
 
         if (StartHidden && TrayAvailable)
         {

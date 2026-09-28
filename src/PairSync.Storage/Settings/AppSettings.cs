@@ -12,6 +12,15 @@ public enum CloseBehavior
     Quit = 2,
 }
 
+/// <summary>Light or dark colors; <see cref="System"/> follows the operating system, also when it switches.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<AppTheme>))]
+public enum AppTheme
+{
+    System = 0,
+    Light = 1,
+    Dark = 2,
+}
+
 /// <summary>User settings stored in <c>settings.json</c>. Unknown or missing values fall back to the defaults.</summary>
 public sealed record AppSettings
 {
@@ -21,6 +30,8 @@ public sealed record AppSettings
     public string? DeviceName { get; init; }
 
     public CloseBehavior CloseBehavior { get; init; } = CloseBehavior.Tray;
+
+    public AppTheme Theme { get; init; } = AppTheme.System;
 
     public bool StartWithSystem { get; init; }
 
@@ -68,6 +79,7 @@ public sealed record AppSettings
         {
             DeviceName = string.IsNullOrEmpty(name) ? null : name[..Math.Min(name.Length, MaxDeviceNameLength)],
             CloseBehavior = Enum.IsDefined(CloseBehavior) ? CloseBehavior : CloseBehavior.Tray,
+            Theme = Enum.IsDefined(Theme) ? Theme : AppTheme.System,
             Port = Port is >= 1024 and <= 65535 ? Port : DefaultPort,
             UploadLimitBytesPerSecond = Math.Max(0, UploadLimitBytesPerSecond),
             ParallelTransfers = Math.Clamp(ParallelTransfers, 1, 8),
@@ -89,6 +101,7 @@ public sealed record AppSettings
         other is not null
         && DeviceName == other.DeviceName
         && CloseBehavior == other.CloseBehavior
+        && Theme == other.Theme
         && StartWithSystem == other.StartWithSystem
         && Port == other.Port
         && UploadLimitBytesPerSecond == other.UploadLimitBytesPerSecond
@@ -100,7 +113,7 @@ public sealed record AppSettings
 
     public override int GetHashCode() =>
         HashCode.Combine(DeviceName, CloseBehavior, StartWithSystem, Port, UploadLimitBytesPerSecond, ParallelTransfers, ReceiveFolder,
-            (VerboseLogging, StunServers.Count + PathVariables.Count));
+            (VerboseLogging, Theme, StunServers.Count + PathVariables.Count));
 }
 
 [JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]

@@ -1,43 +1,89 @@
 <!-- Design tokens from the handoff (README "Design-Tokens"). Corner radius 0 everywhere, 1 px lines. -->
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <!-- Colors -->
-  <Color x:Key="BgColor">#F2F2F3</Color>
-  <Color x:Key="SurfaceInputColor">#FBFBFB</Color>
-  <Color x:Key="TextColor">#1D1F20</Color>
-  <Color x:Key="TextMutedColor">#55595D</Color>
-  <Color x:Key="TextDisabledColor">#8A8E92</Color>
-  <Color x:Key="HairlineColor">#C9CCD0</Color>
-  <Color x:Key="HairlineSoftColor">#E3E5E8</Color>
-  <Color x:Key="FrameColor">#8AA3BD</Color>
-  <Color x:Key="AccentColor">#5980A6</Color>
-  <Color x:Key="AccentPressedColor">#4D7196</Color>
-  <Color x:Key="Accent700Color">#3B5C7C</Color>
-  <Color x:Key="Accent900Color">#1F3043</Color>
-  <Color x:Key="Accent100Color">#E3E9F0</Color>
-  <Color x:Key="DropZoneColor">#E9EEF3</Color>
-  <!-- rgba(29,31,32,.28) -->
-  <Color x:Key="ScrimColor">#471D1F20</Color>
+  <!-- Colors per theme (DARK_MODE.md). Views and styles use the brushes below, always as DynamicResource. -->
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+      <Color x:Key="BgColor">#F2F2F3</Color>
+      <Color x:Key="SurfaceInputColor">#FBFBFB</Color>
+      <Color x:Key="TextColor">#1D1F20</Color>
+      <Color x:Key="TextMutedColor">#55595D</Color>
+      <Color x:Key="TextDisabledColor">#8A8E92</Color>
+      <Color x:Key="HairlineColor">#C9CCD0</Color>
+      <Color x:Key="HairlineSoftColor">#E3E5E8</Color>
+      <Color x:Key="FrameColor">#8AA3BD</Color>
+      <Color x:Key="AccentColor">#5980A6</Color>
+      <Color x:Key="AccentPressedColor">#4D7196</Color>
+      <Color x:Key="OnAccentColor">#FFFFFF</Color>
+      <Color x:Key="Accent700Color">#3B5C7C</Color>
+      <Color x:Key="Accent900Color">#1F3043</Color>
+      <Color x:Key="OnAccent900Color">#F2F2F3</Color>
+      <Color x:Key="Accent100Color">#E3E9F0</Color>
+      <Color x:Key="DropZoneColor">#E9EEF3</Color>
+      <!-- rgba(29,31,32,.28) -->
+      <Color x:Key="ScrimColor">#471D1F20</Color>
+      <Color x:Key="ShadowColor">#241D1F20</Color>
+      <BoxShadows x:Key="DialogShadow">0 24 60 0 #4D1D1F20</BoxShadows>
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Dark">
+      <Color x:Key="BgColor">#16181B</Color>
+      <Color x:Key="SurfaceInputColor">#1D2024</Color>
+      <Color x:Key="TextColor">#E6E8EA</Color>
+      <Color x:Key="TextMutedColor">#9AA0A6</Color>
+      <Color x:Key="TextDisabledColor">#6B7177</Color>
+      <Color x:Key="HairlineColor">#2E3237</Color>
+      <Color x:Key="HairlineSoftColor">#24272B</Color>
+      <Color x:Key="FrameColor">#4D6680</Color>
+      <Color x:Key="AccentColor">#7EA6CC</Color>
+      <Color x:Key="AccentPressedColor">#9DBBD9</Color>
+      <Color x:Key="OnAccentColor">#0E1620</Color>
+      <Color x:Key="Accent700Color">#9DBBD9</Color>
+      <Color x:Key="Accent900Color">#C5D6E8</Color>
+      <Color x:Key="OnAccent900Color">#16181B</Color>
+      <Color x:Key="Accent100Color">#1E2A37</Color>
+      <Color x:Key="DropZoneColor">#1A232D</Color>
+      <Color x:Key="ScrimColor">#99000000</Color>
+      <Color x:Key="ShadowColor">#8C000000</Color>
+      <!-- Dark mockup: rgba(0,0,0,.7) -->
+      <BoxShadows x:Key="DialogShadow">0 24 60 0 #B3000000</BoxShadows>
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
 
-  <SolidColorBrush x:Key="BgBrush" Color="{StaticResource BgColor}" />
-  <SolidColorBrush x:Key="SurfaceInputBrush" Color="{StaticResource SurfaceInputColor}" />
-  <SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}" />
-  <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMutedColor}" />
-  <SolidColorBrush x:Key="TextDisabledBrush" Color="{StaticResource TextDisabledColor}" />
-  <SolidColorBrush x:Key="HairlineBrush" Color="{StaticResource HairlineColor}" />
-  <SolidColorBrush x:Key="HairlineSoftBrush" Color="{StaticResource HairlineSoftColor}" />
-  <SolidColorBrush x:Key="FrameBrush" Color="{StaticResource FrameColor}" />
-  <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
-  <SolidColorBrush x:Key="AccentPressedBrush" Color="{StaticResource AccentPressedColor}" />
-  <SolidColorBrush x:Key="Accent700Brush" Color="{StaticResource Accent700Color}" />
-  <SolidColorBrush x:Key="Accent900Brush" Color="{StaticResource Accent900Color}" />
-  <SolidColorBrush x:Key="Accent100Brush" Color="{StaticResource Accent100Color}" />
-  <SolidColorBrush x:Key="DropZoneBrush" Color="{StaticResource DropZoneColor}" />
-  <SolidColorBrush x:Key="ScrimBrush" Color="{StaticResource ScrimColor}" />
-  <SolidColorBrush x:Key="OnAccentBrush" Color="White" />
+  <!-- QR codes stay black on white in both themes, or some scanners fail (DARK_MODE.md §2). -->
+  <Color x:Key="QrBackgroundColor">#FFFFFF</Color>
+  <Color x:Key="QrModuleColor">#000000</Color>
+  <SolidColorBrush x:Key="QrBackgroundBrush" Color="{DynamicResource QrBackgroundColor}" />
 
-  <!-- Shadows: only window (native), dialog and tray menu (native). -->
-  <BoxShadows x:Key="DialogShadow">0 24 60 0 #4D1D1F20</BoxShadows>
+  <!-- One brush per token; it follows the theme at runtime. -->
+  <SolidColorBrush x:Key="BgBrush" Color="{DynamicResource BgColor}" />
+  <SolidColorBrush x:Key="SurfaceInputBrush" Color="{DynamicResource SurfaceInputColor}" />
+  <SolidColorBrush x:Key="TextBrush" Color="{DynamicResource TextColor}" />
+  <SolidColorBrush x:Key="TextMutedBrush" Color="{DynamicResource TextMutedColor}" />
+  <SolidColorBrush x:Key="TextDisabledBrush" Color="{DynamicResource TextDisabledColor}" />
+  <SolidColorBrush x:Key="HairlineBrush" Color="{DynamicResource HairlineColor}" />
+  <SolidColorBrush x:Key="HairlineSoftBrush" Color="{DynamicResource HairlineSoftColor}" />
+  <SolidColorBrush x:Key="FrameBrush" Color="{DynamicResource FrameColor}" />
+  <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource AccentColor}" />
+  <SolidColorBrush x:Key="AccentPressedBrush" Color="{DynamicResource AccentPressedColor}" />
+  <SolidColorBrush x:Key="OnAccentBrush" Color="{DynamicResource OnAccentColor}" />
+  <SolidColorBrush x:Key="Accent700Brush" Color="{DynamicResource Accent700Color}" />
+  <SolidColorBrush x:Key="Accent900Brush" Color="{DynamicResource Accent900Color}" />
+  <SolidColorBrush x:Key="OnAccent900Brush" Color="{DynamicResource OnAccent900Color}" />
+  <SolidColorBrush x:Key="Accent100Brush" Color="{DynamicResource Accent100Color}" />
+  <SolidColorBrush x:Key="DropZoneBrush" Color="{DynamicResource DropZoneColor}" />
+  <SolidColorBrush x:Key="ScrimBrush" Color="{DynamicResource ScrimColor}" />
+  <SolidColorBrush x:Key="ShadowBrush" Color="{DynamicResource ShadowColor}" />
+
+  <!-- Fluent controls that keep their templates (text boxes, scroll bars, menus) follow the tokens. -->
+  <SolidColorBrush x:Key="TextControlBackground" Color="{DynamicResource SurfaceInputColor}" />
+  <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="{DynamicResource SurfaceInputColor}" />
+  <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="{DynamicResource SurfaceInputColor}" />
+  <SolidColorBrush x:Key="TextControlBorderBrush" Color="{DynamicResource HairlineColor}" />
+  <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="{DynamicResource FrameColor}" />
+  <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="{DynamicResource AccentColor}" />
+  <SolidColorBrush x:Key="TextControlForeground" Color="{DynamicResource TextColor}" />
+  <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="{DynamicResource TextColor}" />
+  <SolidColorBrush x:Key="TextControlForegroundFocused" Color="{DynamicResource TextColor}" />
 
   <!-- Typography (fonts are embedded, SIL Open Font License) -->
   <FontFamily x:Key="BodyFont">avares://PairSync/Assets/Fonts/Barlow#Barlow</FontFamily>

@@ -16,14 +16,14 @@
     <DockPanel>
       <!-- Sidebar: 212 px, 18 × 12 px padding, entries 2 px apart -->
       <Border DockPanel.Dock="Left" Width="{StaticResource SidebarWidth}" Padding="12,18"
-              BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,1,0">
+              BorderBrush="{DynamicResource HairlineBrush}" BorderThickness="0,0,1,0">
         <DockPanel>
           <StackPanel DockPanel.Dock="Top">
             <TextBlock Classes="brand" Text="PAIRSYNC" Margin="10,0" />
             <TextBlock Classes="mono hint" FontSize="12" Text="{Binding LocalDeviceName}" Margin="10,0,10,16"
                        TextTrimming="CharacterEllipsis" />
           </StackPanel>
-          <Border DockPanel.Dock="Bottom" Padding="10" BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,1,0,0">
+          <Border DockPanel.Dock="Bottom" Padding="10" BorderBrush="{DynamicResource HairlineBrush}" BorderThickness="0,1,0,0">
             <StackPanel Spacing="8">
               <TextBlock Classes="hint" Text="{Binding StatusText}" TextWrapping="Wrap" LineHeight="17.4" />
               <Button Name="QuitButton" Classes="link" FontSize="12" FontWeight="Medium"

@@ -54,6 +54,9 @@ internal sealed class TrayController : IDisposable
         QueueRefresh();
     }
 
+    /// <summary>The icon for a light or dark taskbar, after the system theme changed.</summary>
+    public void SetIcon(WindowIcon icon) => _icon.Icon = icon;
+
     /// <summary>Several events in a row cause one refresh.</summary>
     private void QueueRefresh()
     {

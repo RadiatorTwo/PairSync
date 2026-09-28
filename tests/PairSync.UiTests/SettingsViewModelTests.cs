@@ -23,6 +23,18 @@ public sealed class SettingsViewModelTests(HeadlessFixture ui) : IDisposable
     });
 
     [Fact]
+    public Task Theme_is_system_by_default_and_saved() => ui.RunAsync(() =>
+    {
+        using var vm = new SettingsViewModel(_settings.Store, new FakeAutostart(), trayAvailable: true);
+
+        Assert.Equal(["System", "Light", "Dark"], vm.ThemeOptions.Select(o => o.Label));
+        Assert.Equal(AppTheme.System, vm.SelectedThemeOption.Value);
+        vm.SelectedThemeOption = vm.ThemeOptions[2];
+
+        Assert.Equal(AppTheme.Dark, _settings.Open().Current.Theme);
+    });
+
+    [Fact]
     public Task No_tray_host_shows_the_banner() => ui.RunAsync(() =>
     {
         using var vm = new SettingsViewModel(_settings.Store, new FakeAutostart(), trayAvailable: false);

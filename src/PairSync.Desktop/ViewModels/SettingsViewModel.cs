@@ -43,6 +43,9 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
     private Choice<CloseBehavior> _selectedCloseOption;
 
     [ObservableProperty]
+    private Choice<AppTheme> _selectedThemeOption;
+
+    [ObservableProperty]
     private bool _startWithSystem;
 
     /// <summary>Why the autostart entry could not be changed; null when it worked.</summary>
@@ -113,11 +116,21 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
             new(CloseBehavior.Quit, Strings.Close_Quit),
         ];
         _selectedCloseOption = CloseOptions[0];
+        ThemeOptions =
+        [
+            new(AppTheme.System, Strings.Theme_System),
+            new(AppTheme.Light, Strings.Theme_Light),
+            new(AppTheme.Dark, Strings.Theme_Dark),
+        ];
+        _selectedThemeOption = ThemeOptions[0];
         Load(settings.Current);
         _settings.Changed += OnSettingsChanged;
     }
 
     public IReadOnlyList<Choice<CloseBehavior>> CloseOptions { get; }
+
+    /// <summary>"System / Light / Dark"; the app switches at once (App.axaml.cs follows the setting).</summary>
+    public IReadOnlyList<Choice<AppTheme>> ThemeOptions { get; }
 
     public bool TrayAvailable { get; }
 
@@ -378,6 +391,12 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
             _settings.Update(s => s with { CloseBehavior = value.Value });
     }
 
+    partial void OnSelectedThemeOptionChanged(Choice<AppTheme> value)
+    {
+        if (!_loading && value is not null)
+            _settings.Update(s => s with { Theme = value.Value });
+    }
+
     partial void OnStartWithSystemChanged(bool value)
     {
         if (_loading)
@@ -403,6 +422,7 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
         try
         {
             SelectedCloseOption = CloseOptions.First(o => o.Value == settings.CloseBehavior);
+            SelectedThemeOption = ThemeOptions.First(o => o.Value == settings.Theme);
             StartWithSystem = settings.StartWithSystem;
             DeviceName = settings.DeviceName ?? settings.EffectiveDeviceName;
             Port = settings.Port;

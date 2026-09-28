@@ -113,7 +113,7 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <Border Background="{StaticResource Accent100Brush}" Padding="10" IsVisible="{Binding HasMappings}">
+              <Border Background="{DynamicResource Accent100Brush}" Padding="10" IsVisible="{Binding HasMappings}">
                 <StackPanel Spacing="8">
                   <TextBlock FontWeight="Medium" Text="{x:Static res:Strings.Claude_PathsTitle}" />
                   <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Claude_PathsHint}" />
@@ -134,7 +134,7 @@
         </DockPanel>
       </Border>
 
-      <ctl:Card Grid.Column="2" Classes="marked" Padding="16" BorderBrush="{StaticResource Accent900Brush}" MarksBrush="{StaticResource Accent900Brush}">
+      <ctl:Card Grid.Column="2" Classes="marked" Padding="16" BorderBrush="{DynamicResource Accent900Brush}" MarksBrush="{DynamicResource Accent900Brush}">
         <DockPanel>
           <!-- Actions stay visible however long the list is. -->
           <StackPanel DockPanel.Dock="Bottom" Spacing="10" Margin="0,12,0,0">
@@ -180,7 +180,7 @@
         </DockPanel>
         <SelectableTextBlock Name="ResultText" TextWrapping="Wrap" FontWeight="Medium" Text="{Binding ResultText}"
                              IsVisible="{Binding ResultText, Converter={x:Static ObjectConverters.IsNotNull}}" />
-        <Border BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1" Padding="10,6" IsVisible="{Binding Log.HasEntries}">
+        <Border BorderBrush="{DynamicResource HairlineBrush}" BorderThickness="1" Padding="10,6" IsVisible="{Binding Log.HasEntries}">
           <ItemsControl Name="LogEntries" ItemsSource="{Binding Log.Entries}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:ClaudeLogEntryViewModel">
@@ -190,9 +190,9 @@
                     <Border Grid.Column="1" Classes="dot" Width="8" Height="8" VerticalAlignment="Center"
                             Classes.done="{Binding IsDone}" Classes.failed="{Binding IsFailed}">
                       <Border.Styles>
-                        <Style Selector="Border.dot"><Setter Property="Background" Value="{StaticResource HairlineBrush}" /></Style>
-                        <Style Selector="Border.done"><Setter Property="Background" Value="{StaticResource AccentBrush}" /></Style>
-                        <Style Selector="Border.failed"><Setter Property="Background" Value="{StaticResource Accent900Brush}" /></Style>
+                        <Style Selector="Border.dot"><Setter Property="Background" Value="{DynamicResource HairlineBrush}" /></Style>
+                        <Style Selector="Border.done"><Setter Property="Background" Value="{DynamicResource AccentBrush}" /></Style>
+                        <Style Selector="Border.failed"><Setter Property="Background" Value="{DynamicResource Accent900Brush}" /></Style>
                       </Border.Styles>
                     </Border>
                     <SelectableTextBlock Grid.Column="2" Classes="mono" FontSize="12" TextWrapping="Wrap" Text="{Binding Title}"
@@ -203,7 +203,7 @@
                       <TextBlock Classes="meta" Text="{Binding Status}" Classes.problem="{Binding IsFailed}" IsVisible="{Binding HasStatus}" />
                     </StackPanel>
                   </Grid>
-                  <Border Margin="76,4,0,4" Padding="8,6" Background="{StaticResource Accent100Brush}" IsVisible="{Binding IsExpanded}">
+                  <Border Margin="76,4,0,4" Padding="8,6" Background="{DynamicResource Accent100Brush}" IsVisible="{Binding IsExpanded}">
                     <SelectableTextBlock Classes="mono" FontSize="11" TextWrapping="Wrap" Text="{Binding Output}" />
                   </Border>
                 </StackPanel>
