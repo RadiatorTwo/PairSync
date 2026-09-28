@@ -1,6 +1,7 @@
 using PairSync.Domain;
 using PairSync.Application.Transfers;
 using PairSync.Protocol;
+using PairSync.SyncEngine;
 
 namespace PairSync.Application.Sync;
 
@@ -21,8 +22,8 @@ public sealed record SyncOptions
     /// <summary>Index entries per <see cref="IndexUpdate"/> are bounded by this estimated size.</summary>
     public int IndexUpdateBytes { get; init; } = 512 * 1024;
 
-    /// <summary>Largest chunk hash list sent with an index entry; larger files are fetched without reusing chunks.</summary>
-    public int MaxChunkHashBytes { get; init; } = 256 * 1024;
+    /// <summary>Largest chunk list sent with an index entry (about 16 GB of file); larger files are fetched without reusing chunks.</summary>
+    public int MaxChunkListBytes { get; init; } = 256 * 1024;
 }
 
 public enum SyncStatus
@@ -128,13 +129,13 @@ internal static class SyncMapping
         _ => SyncDirection.TwoWay,
     };
 
-    public static IndexEntry ToEntry(this SyncFile file, int maxChunkHashBytes) => new()
+    public static IndexEntry ToEntry(this SyncFile file, int maxChunkListBytes) => new()
     {
         Path = file.Path,
         IsDirectory = file.IsDirectory,
         Size = file.Size,
         Sha256 = file.Sha256,
-        ChunkHashes = file.ChunkHashes is { } hashes && hashes.Length <= maxChunkHashBytes ? hashes : null,
+        Chunks = file.Chunks is { } chunks && chunks.Length <= maxChunkListBytes ? chunks : null,
         MTimeUtc = file.MTimeUtc,
         Version = [.. file.VersionVector.Counters.Select(c => new VersionCounter { DeviceId = c.Key, Counter = c.Value })],
         Deleted = file.Deleted,
@@ -160,14 +161,14 @@ internal static class SyncMapping
         {
             return null;
         }
-        var chunks = isFile && entry.ChunkHashes is { } hashes && hashes.Length == FileHashes.ChunkCount(entry.Size) * 32 ? hashes : null;
+        var chunks = isFile && ContentChunks.Parse(entry.Chunks, entry.Size) is not null ? entry.Chunks : null;
         return new SyncFile
         {
             Path = path,
             IsDirectory = entry.IsDirectory && !entry.Deleted,
             Size = isFile ? entry.Size : 0,
             Sha256 = isFile ? entry.Sha256 : null,
-            ChunkHashes = chunks,
+            Chunks = chunks,
             MTimeUtc = DateTime.SpecifyKind(entry.MTimeUtc, DateTimeKind.Utc),
             Version = version.ToString(),
             Deleted = entry.Deleted,
@@ -178,5 +179,5 @@ internal static class SyncMapping
 
     /// <summary>Rough size of an entry in a MessagePack message, to split index updates.</summary>
     public static int EstimatedSize(this IndexEntry entry) =>
-        64 + (entry.Path?.Length ?? 0) * 3 + (entry.Sha256?.Length ?? 0) + (entry.ChunkHashes?.Length ?? 0) + (entry.Version?.Length ?? 0) * 28;
+        64 + (entry.Path?.Length ?? 0) * 3 + (entry.Sha256?.Length ?? 0) + (entry.Chunks?.Length ?? 0) + (entry.Version?.Length ?? 0) * 28;
 }

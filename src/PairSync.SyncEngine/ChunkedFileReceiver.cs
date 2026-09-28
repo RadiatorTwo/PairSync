@@ -31,12 +31,13 @@ public sealed record ReceiveOutcome(bool Success, string? FinalPath, string Mess
 public sealed record ReceiveTarget(string TargetPath, ExistingFileAction Policy, ChunkSeed? Seed = null);
 
 /// <summary>
-/// An older version of the file (or the same content elsewhere) on this device. Chunks whose hash appears in both
-/// lists are copied from it and checked again, so only changed chunks go over the network.
+/// An older version of the file (or the same content elsewhere) on this device. Content-defined chunks whose hash
+/// appears in both lists are copied from it to their place in the new file and checked again; every 4 MiB block they
+/// cover completely is not transferred. Bytes inserted or removed cost only the blocks around them.
 /// </summary>
-/// <param name="SourceChunkHashes">SHA-256 of each 4 MiB chunk of the source, concatenated.</param>
-/// <param name="WantedChunkHashes">SHA-256 of each chunk of the file being received, concatenated.</param>
-public sealed record ChunkSeed(string SourcePath, byte[] SourceChunkHashes, byte[] WantedChunkHashes);
+/// <param name="SourceChunks">Chunk list of the source (<see cref="ContentChunks"/>).</param>
+/// <param name="WantedChunks">Chunk list of the file being received.</param>
+public sealed record ChunkSeed(string SourcePath, byte[] SourceChunks, byte[] WantedChunks);
 
 /// <summary>
 /// Receives one file: writes verified chunks into a temporary file in the target directory,
@@ -272,47 +273,77 @@ public sealed class ChunkedFileReceiver(string targetDirectory, IChunkJournal jo
         }
     }
 
-    /// <summary>Copies chunks the seed file has into the temporary file and marks them confirmed.</summary>
+    /// <summary>
+    /// Copies the chunks the seed file has to their place in the temporary file and marks the blocks they cover
+    /// completely as confirmed.
+    /// </summary>
     private static async Task SeedAsync(ChunkSeed seed, TransferPlan plan, SafeFileHandle file, ChunkBitmap confirmed, CancellationToken cancellationToken)
     {
-        const int hashSize = DataFrameCodec.HashSize;
-        if (seed.WantedChunkHashes.Length != plan.ChunkCount * hashSize || seed.SourceChunkHashes.Length % hashSize != 0)
+        if (ContentChunks.Parse(seed.WantedChunks, plan.FileSize) is not { } wanted)
             return;
-        var source = new Dictionary<string, int>(StringComparer.Ordinal);
-        for (var j = seed.SourceChunkHashes.Length / hashSize - 1; j >= 0; j--)
-            source[Convert.ToHexString(seed.SourceChunkHashes, j * hashSize, hashSize)] = j;
+        var source = new Dictionary<string, ContentChunk>(StringComparer.Ordinal);
+        foreach (var chunk in ContentChunks.Parse(seed.SourceChunks) ?? [])
+            source.TryAdd(Key(chunk), chunk);
+        if (source.Count == 0)
+            return;
+
+        // Verified byte ranges of the temporary file, in order and without overlap (the wanted chunks follow each other).
+        var covered = new List<(long Start, long End)>();
         try
         {
             using var reader = File.OpenHandle(seed.SourcePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, FileOptions.RandomAccess);
             var sourceLength = RandomAccess.GetLength(reader);
-            var buffer = new byte[plan.ChunkSize];
-            for (var i = 0; i < plan.ChunkCount; i++)
+            var buffer = new byte[ContentChunks.MaxSize];
+            foreach (var chunk in wanted)
             {
-                if (confirmed.IsSet(i) || !source.TryGetValue(Convert.ToHexString(seed.WantedChunkHashes, i * hashSize, hashSize), out var j))
+                if (AllConfirmed(chunk) || !source.TryGetValue(Key(chunk), out var from) || from.Length != chunk.Length
+                    || from.Offset + from.Length > sourceLength)
                     continue;
-                var length = ChunkLength(plan, i);
-                var offset = (long)j * plan.ChunkSize;
-                if (offset + length > sourceLength)
-                    continue;
-                var chunk = buffer.AsMemory(0, length);
+                var bytes = buffer.AsMemory(0, chunk.Length);
                 var read = 0;
-                while (read < length)
+                while (read < chunk.Length)
                 {
-                    var n = await RandomAccess.ReadAsync(reader, chunk[read..], offset + read, cancellationToken).ConfigureAwait(false);
+                    var n = await RandomAccess.ReadAsync(reader, bytes[read..], from.Offset + read, cancellationToken).ConfigureAwait(false);
                     if (n == 0)
                         break;
                     read += n;
                 }
                 // The source may have changed since it was indexed: only verified bytes count.
-                if (read != length || !SHA256.HashData(chunk.Span).AsSpan().SequenceEqual(seed.WantedChunkHashes.AsSpan(i * hashSize, hashSize)))
+                if (read != chunk.Length || !SHA256.HashData(bytes.Span).AsSpan().SequenceEqual(chunk.Sha256.Span))
                     continue;
-                await RandomAccess.WriteAsync(file, chunk, (long)i * plan.ChunkSize, cancellationToken).ConfigureAwait(false);
-                confirmed.Set(i);
+                await RandomAccess.WriteAsync(file, bytes, chunk.Offset, cancellationToken).ConfigureAwait(false);
+                if (covered.Count > 0 && covered[^1].End == chunk.Offset)
+                    covered[^1] = (covered[^1].Start, chunk.Offset + chunk.Length);
+                else
+                    covered.Add((chunk.Offset, chunk.Offset + chunk.Length));
             }
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             // The seed is only a shortcut; whatever is missing comes over the network.
+        }
+
+        var range = 0;
+        for (var i = 0; i < plan.ChunkCount && range < covered.Count; i++)
+        {
+            long start = (long)i * plan.ChunkSize, end = start + ChunkLength(plan, i);
+            while (range < covered.Count && covered[range].End < end)
+                range++;
+            if (end > start && !confirmed.IsSet(i) && range < covered.Count && covered[range].Start <= start)
+                confirmed.Set(i);
+        }
+        return;
+
+        static string Key(ContentChunk chunk) => Convert.ToHexString(chunk.Sha256.Span);
+
+        bool AllConfirmed(ContentChunk chunk)
+        {
+            for (var i = (int)(chunk.Offset / plan.ChunkSize); i <= (int)((chunk.Offset + chunk.Length - 1) / plan.ChunkSize); i++)
+            {
+                if (!confirmed.IsSet(i))
+                    return false;
+            }
+            return true;
         }
     }
 

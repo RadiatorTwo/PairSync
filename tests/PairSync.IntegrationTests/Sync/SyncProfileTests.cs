@@ -252,7 +252,30 @@ public sealed class SyncProfileTests : IAsyncLifetime
 
         await WaitAsync(() => File.ReadAllBytes(Path.Combine(bFolder, "big.bin")).AsSpan().SequenceEqual(data), "change did not reach B", 60);
         var view = (await b.Sync.GetProfilesAsync(Ct)).Single(p => p.Id == profileId);
-        Assert.InRange(view.BytesDone, 1, ProtocolLimits.ChunkSize + 1024);
+        // The changed content-defined chunk may reach into the next 4 MiB block: at most two blocks go over the network.
+        Assert.InRange(view.BytesDone, 1, 2 * ProtocolLimits.ChunkSize + 1024);
+    }
+
+    [Fact]
+    public async Task Bytes_inserted_into_a_large_file_do_not_resend_the_rest()
+    {
+        var (a, b) = await StartPairAsync();
+        var (aFolder, bFolder) = (Folder("laptop"), Folder("office"));
+        var data = new byte[ProtocolLimits.ChunkSize * 8];
+        new Random(8).NextBytes(data);
+        WriteBytes(aFolder, "video.bin", data);
+        var profileId = await ShareAsync(a, b, aFolder, bFolder);
+        await WaitAsync(() => File.Exists(Path.Combine(bFolder, "video.bin")), "file did not reach B", 60);
+
+        // 1000 bytes near the start shift everything after them; fixed chunks would all change.
+        var inserted = new byte[1000];
+        new Random(9).NextBytes(inserted);
+        data = [.. data[..3_000_000], .. inserted, .. data[3_000_000..]];
+        WriteBytes(aFolder, "video.bin", data);
+
+        await WaitAsync(() => File.ReadAllBytes(Path.Combine(bFolder, "video.bin")).AsSpan().SequenceEqual(data), "change did not reach B", 60);
+        var view = (await b.Sync.GetProfilesAsync(Ct)).Single(p => p.Id == profileId);
+        Assert.InRange(view.BytesDone, 1, 3 * ProtocolLimits.ChunkSize);
     }
 
     [Fact]

@@ -82,8 +82,7 @@ public sealed record IndexEntry
 
     [Key(3)] public byte[]? Sha256 { get; init; }
 
-    /// <summary>SHA-256 per 4 MiB chunk; left out for very large files, which are then fetched without reusing chunks.</summary>
-    [Key(4)] public byte[]? ChunkHashes { get; init; }
+    // Key 4 held SHA-256 per fixed 4 MiB chunk up to protocol 0.8; it is no longer sent or read.
 
     [Key(5)] public DateTime MTimeUtc { get; init; }
 
@@ -92,6 +91,9 @@ public sealed record IndexEntry
     [Key(7)] public bool Deleted { get; init; }
 
     [Key(8)] public long Sequence { get; init; }
+
+    /// <summary>Content-defined chunks (length and SHA-256 each); left out for very large files, which are then fetched without reusing chunks.</summary>
+    [Key(9)] public byte[]? Chunks { get; init; }
 }
 
 /// <summary>Part of the answer to <see cref="SyncHello"/>; parts stay below the control message limit.</summary>

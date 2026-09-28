@@ -121,8 +121,11 @@ public sealed class SyncFile
     /// <summary>SHA-256 of the content; null for directories and tombstones.</summary>
     public byte[]? Sha256 { get; set; }
 
-    /// <summary>SHA-256 of each 4 MiB chunk, concatenated; lets a changed file be updated chunk by chunk.</summary>
-    public byte[]? ChunkHashes { get; set; }
+    /// <summary>
+    /// Content-defined chunks (length and SHA-256 each, see <c>ContentChunks</c>); let a changed file be updated from its
+    /// old version even when bytes were inserted. Null until the file was hashed with them (after an update: next scan).
+    /// </summary>
+    public byte[]? Chunks { get; set; }
 
     /// <summary>Only a hint for the rescan (skip hashing if size and time are unchanged); never decides equality.</summary>
     public DateTime MTimeUtc { get; set; }

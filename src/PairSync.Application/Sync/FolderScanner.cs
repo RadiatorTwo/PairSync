@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using PairSync.Domain;
 using PairSync.Protocol;
+using PairSync.SyncEngine;
 
 namespace PairSync.Application.Sync;
 
@@ -83,7 +84,9 @@ public sealed class FolderScanner(Guid deviceId, TimeProvider time)
                 }
 
                 var file = (FileInfo)child;
-                if (previous is { Deleted: false, IsDirectory: false } && previous.Size == file.Length && previous.MTimeUtc == file.LastWriteTimeUtc)
+                // Entries from before content-defined chunks are hashed once more to get them; the version stays.
+                if (previous is { Deleted: false, IsDirectory: false, Chunks: not null } && previous.Size == file.Length
+                    && previous.MTimeUtc == file.LastWriteTimeUtc)
                     continue;
                 if (now - file.LastWriteTimeUtc < SettleTime)
                 {
@@ -117,7 +120,7 @@ public sealed class FolderScanner(Guid deviceId, TimeProvider time)
                     Path = path,
                     Size = hashes.Size,
                     Sha256 = hashes.Sha256,
-                    ChunkHashes = hashes.ChunkHashes,
+                    Chunks = hashes.Chunks,
                     MTimeUtc = file.LastWriteTimeUtc,
                 };
                 if (previous is { Deleted: false, IsDirectory: false } && previous.SameContentAs(entry))
@@ -160,34 +163,19 @@ public sealed class FolderScanner(Guid deviceId, TimeProvider time)
     }
 }
 
-/// <summary>SHA-256 of a file and of each of its 4 MiB chunks, read once.</summary>
-public sealed record FileHashes(long Size, byte[] Sha256, byte[] ChunkHashes)
+/// <summary>SHA-256 of a file and its content-defined chunks, read once.</summary>
+public sealed record FileHashes(long Size, byte[] Sha256, byte[] Chunks)
 {
-    public static int ChunkCount(long size) => (int)Math.Max(1, (size + ProtocolLimits.ChunkSize - 1) / ProtocolLimits.ChunkSize);
-
     public static FileHashes Compute(string path, CancellationToken cancellationToken)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 20, FileOptions.SequentialScan);
         using var whole = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        var chunks = new MemoryStream();
-        var buffer = new byte[ProtocolLimits.ChunkSize];
         long size = 0;
-        while (true)
+        var chunks = ContentChunks.Split(stream, chunk =>
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var filled = 0;
-            int read;
-            while (filled < buffer.Length && (read = stream.Read(buffer, filled, buffer.Length - filled)) > 0)
-                filled += read;
-            if (filled == 0 && size > 0)
-                break;
-            var chunk = buffer.AsSpan(0, filled);
             whole.AppendData(chunk);
-            chunks.Write(SHA256.HashData(chunk));
-            size += filled;
-            if (filled < buffer.Length)
-                break;
-        }
-        return new FileHashes(size, whole.GetHashAndReset(), chunks.ToArray());
+            size += chunk.Length;
+        }, cancellationToken);
+        return new FileHashes(size, whole.GetHashAndReset(), chunks);
     }
 }

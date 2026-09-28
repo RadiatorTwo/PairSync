@@ -136,7 +136,7 @@ public sealed class SyncIndex(IDbContextFactory<PairSyncDbContext> contexts)
         IsDirectory = f.IsDirectory,
         Size = f.Size,
         Sha256 = f.Sha256,
-        ChunkHashes = f.ChunkHashes,
+        Chunks = f.Chunks,
         MTimeUtc = f.MTimeUtc,
         Version = f.Version,
         Deleted = f.Deleted,

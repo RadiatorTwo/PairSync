@@ -232,7 +232,7 @@ public sealed partial class SyncService
         var upTo = profile.LastSequence;
         // Each part must fit one transport message (256 KiB on LAN, possibly less over WebRTC); the estimate is an upper bound.
         var budget = Math.Min(_options.IndexUpdateBytes, control.MaxMessageSize - 1024);
-        var maxChunkHashes = Math.Min(_options.MaxChunkHashBytes, budget / 2);
+        var maxChunkList = Math.Min(_options.MaxChunkListBytes, budget / 2);
         var batch = new List<IndexEntry>();
         var size = 0;
         // Receive only: local changes stay here (and are undone by the next round), the other device never sees them.
@@ -241,7 +241,7 @@ public sealed partial class SyncService
             var changes = await _index.LocalChangesSinceAsync(profile.Id, since, 1000, _stopping.Token).ConfigureAwait(false);
             foreach (var change in changes.Where(c => c.Sequence <= upTo))
             {
-                var entry = change.ToEntry(maxChunkHashes);
+                var entry = change.ToEntry(maxChunkList);
                 var entrySize = entry.EstimatedSize();
                 if (batch.Count > 0 && size + entrySize > budget)
                 {
@@ -377,7 +377,7 @@ public sealed partial class SyncService
         run.Status = SyncStatus.Syncing;
         Changed?.Invoke();
 
-        var byHash = local.Values.Where(f => f is { Deleted: false, IsDirectory: false, Sha256: not null, ChunkHashes: not null })
+        var byHash = local.Values.Where(f => f is { Deleted: false, IsDirectory: false, Sha256: not null, Chunks: not null })
             .GroupBy(f => Convert.ToHexString(f.Sha256!)).ToDictionary(g => g.Key, g => g.First());
         var files = 0;
         long bytes = 0;
@@ -506,11 +506,11 @@ public sealed partial class SyncService
     /// <summary>The local file with matching chunks: the old version at the same path, or any file with the same content (moved or copied).</summary>
     private static ChunkSeed? SeedFor(SyncProfile profile, SyncFile remote, IReadOnlyDictionary<string, SyncFile> local, IReadOnlyDictionary<string, SyncFile> byHash)
     {
-        if (remote.ChunkHashes is null)
+        if (remote.Chunks is null)
             return null;
         var source = byHash.GetValueOrDefault(Convert.ToHexString(remote.Sha256!))
-                     ?? (local.GetValueOrDefault(remote.Path) is { Deleted: false, IsDirectory: false, ChunkHashes: not null } old ? old : null);
-        return source is null ? null : new ChunkSeed(SyncPaths.Full(profile.LocalPath, source.Path), source.ChunkHashes!, remote.ChunkHashes);
+                     ?? (local.GetValueOrDefault(remote.Path) is { Deleted: false, IsDirectory: false, Chunks: not null } old ? old : null);
+        return source is null ? null : new ChunkSeed(SyncPaths.Full(profile.LocalPath, source.Path), source.Chunks!, remote.Chunks);
     }
 
     /// <summary>Same name for the same wanted version, so an interrupted fetch resumes from its temporary file.</summary>
@@ -572,7 +572,7 @@ public sealed partial class SyncService
                 Path = action.Path,
                 Size = remote.Size,
                 Sha256 = remote.Sha256,
-                ChunkHashes = remote.ChunkHashes ?? FileHashes.Compute(full, cancellationToken).ChunkHashes,
+                Chunks = remote.Chunks ?? FileHashes.Compute(full, cancellationToken).Chunks,
                 MTimeUtc = File.GetLastWriteTimeUtc(full),
                 Version = action.Version,
             }, cancellationToken).ConfigureAwait(false);

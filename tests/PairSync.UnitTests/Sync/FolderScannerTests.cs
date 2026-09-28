@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using PairSync.Application.Sync;
 using PairSync.Domain;
 using PairSync.Protocol;
+using PairSync.SyncEngine;
 
 namespace PairSync.UnitTests.Sync;
 
@@ -42,7 +43,7 @@ public sealed class FolderScannerTests : IDisposable
         var file = _index["docs/a.txt"];
         Assert.Equal(5, file.Size);
         Assert.Equal(SHA256.HashData("hello"u8), file.Sha256);
-        Assert.Equal(32, file.ChunkHashes!.Length);
+        Assert.Equal(ContentChunks.EntrySize, file.Chunks!.Length);
         Assert.Equal(1, file.VersionVector[Me]);
     }
 
@@ -108,7 +109,7 @@ public sealed class FolderScannerTests : IDisposable
     }
 
     [Fact]
-    public void Chunk_hashes_cover_every_4_mib()
+    public void Chunks_cover_the_whole_file()
     {
         var full = Path.Combine(_root.FullName, "big.bin");
         var data = new byte[ProtocolLimits.ChunkSize * 2 + 10];
@@ -117,8 +118,24 @@ public sealed class FolderScannerTests : IDisposable
 
         var hashes = FileHashes.Compute(full, CancellationToken.None);
 
-        Assert.Equal(3 * 32, hashes.ChunkHashes.Length);
         Assert.Equal(SHA256.HashData(data), hashes.Sha256);
-        Assert.Equal(FileHashes.ChunkCount(data.Length), hashes.ChunkHashes.Length / 32);
+        var chunks = ContentChunks.Parse(hashes.Chunks, data.Length);
+        Assert.NotNull(chunks);
+        Assert.All(chunks, c => Assert.Equal(SHA256.HashData(data.AsSpan((int)c.Offset, c.Length)), c.Sha256.ToArray()));
+    }
+
+    [Fact]
+    public void Entries_without_chunks_are_hashed_again_without_a_new_version()
+    {
+        Write("a.txt", "hello");
+        ScanAndApply();
+        var before = _index["a.txt"];
+        before.Chunks = null; // as after the update to content-defined chunks
+
+        var result = ScanAndApply();
+
+        Assert.Empty(result.Changes);
+        Assert.NotNull(_index["a.txt"].Chunks);
+        Assert.Equal(before.Version, _index["a.txt"].Version);
     }
 }

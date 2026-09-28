@@ -548,7 +548,7 @@ public sealed partial class SyncService
         IsDirectory = f.IsDirectory,
         Size = f.Size,
         Sha256 = f.Sha256,
-        ChunkHashes = f.ChunkHashes,
+        Chunks = f.Chunks,
         MTimeUtc = f.MTimeUtc,
         Version = f.Version,
         Deleted = f.Deleted,
