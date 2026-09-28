@@ -32,6 +32,9 @@ public sealed record AppSettings
 
     public int ParallelTransfers { get; init; } = 2;
 
+    /// <summary>Received files go to <c>{this}/{sender}</c>; null means <c>Downloads/PairSync</c>.</summary>
+    public string? ReceiveFolder { get; init; }
+
     /// <summary>Debug-level diagnostic logs (never file contents or keys).</summary>
     public bool VerboseLogging { get; init; }
 
@@ -60,6 +63,7 @@ public sealed record AppSettings
     public AppSettings Normalized()
     {
         var name = DeviceName?.Trim();
+        var receive = ReceiveFolder?.Trim();
         return this with
         {
             DeviceName = string.IsNullOrEmpty(name) ? null : name[..Math.Min(name.Length, MaxDeviceNameLength)],
@@ -67,6 +71,7 @@ public sealed record AppSettings
             Port = Port is >= 1024 and <= 65535 ? Port : DefaultPort,
             UploadLimitBytesPerSecond = Math.Max(0, UploadLimitBytesPerSecond),
             ParallelTransfers = Math.Clamp(ParallelTransfers, 1, 8),
+            ReceiveFolder = !string.IsNullOrEmpty(receive) && Path.IsPathFullyQualified(receive) ? receive : null,
             StunServers = StunServers is null
                 ? DefaultStunServers
                 : [.. StunServers.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim())
@@ -88,13 +93,14 @@ public sealed record AppSettings
         && Port == other.Port
         && UploadLimitBytesPerSecond == other.UploadLimitBytesPerSecond
         && ParallelTransfers == other.ParallelTransfers
+        && ReceiveFolder == other.ReceiveFolder
         && VerboseLogging == other.VerboseLogging
         && StunServers.SequenceEqual(other.StunServers)
         && PathVariables.SequenceEqual(other.PathVariables);
 
     public override int GetHashCode() =>
-        HashCode.Combine(DeviceName, CloseBehavior, StartWithSystem, Port, UploadLimitBytesPerSecond, ParallelTransfers, VerboseLogging,
-            StunServers.Count + PathVariables.Count);
+        HashCode.Combine(DeviceName, CloseBehavior, StartWithSystem, Port, UploadLimitBytesPerSecond, ParallelTransfers, ReceiveFolder,
+            (VerboseLogging, StunServers.Count + PathVariables.Count));
 }
 
 [JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]

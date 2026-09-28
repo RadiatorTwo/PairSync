@@ -97,7 +97,7 @@ public sealed class TransferTests : IAsyncLifetime
     }
 
     private Task<Guid> SendAsync(PairSyncCore from, PairSyncCore to, IEnumerable<string> paths, ExistingFilePolicy policy = ExistingFilePolicy.KeepBoth) =>
-        from.Transfers.SendAsync(to.Identity.Identity.Id, SendScanner.Scan(paths, Ct), policy, suggestedFolder: null, Ct);
+        from.Transfers.SendAsync(to.Identity.Identity.Id, SendScanner.Scan(paths, Ct), policy, Ct);
 
     [Fact]
     public async Task Folder_arrives_without_asking_the_receiver()
@@ -129,16 +129,18 @@ public sealed class TransferTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Suggested_subfolder_is_used_below_the_sender_folder()
+    public async Task Files_go_to_the_receive_folder_the_receiver_chose()
     {
         var (sender, receiver) = await StartPairAsync();
+        var chosen = Path.Combine(receiver.DataDirectory.Root, "incoming");
+        receiver.Settings.Update(s => s with { ReceiveFolder = chosen });
         TestCores.MakeReachable(sender, receiver);
 
-        var jobId = await sender.Transfers.SendAsync(receiver.Identity.Identity.Id, SendScanner.Scan([Source("a.txt", 10)], Ct),
-            ExistingFilePolicy.KeepBoth, "Holiday/2026", Ct);
+        var jobId = await SendAsync(sender, receiver, [Source("a.txt", 10)]);
 
         Assert.Equal(HistoryOutcome.Completed, (await WaitForHistoryAsync(receiver, jobId)).Outcome);
-        Assert.True(File.Exists(Path.Combine(TargetOf(receiver), "Holiday", "2026", "a.txt")));
+        Assert.True(File.Exists(Path.Combine(chosen, "laptop", "a.txt")));
+        Assert.False(Directory.Exists(TargetOf(receiver)));
     }
 
     [Fact]

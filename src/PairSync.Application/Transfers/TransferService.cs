@@ -53,6 +53,12 @@ public sealed partial class TransferService : IAsyncDisposable
     /// <summary>A job was created or changed state. Progress is read from <see cref="GetJobsAsync"/>.</summary>
     public event Action? Changed;
 
+    /// <summary>Where received files go when the user did not pick a folder: <c>Downloads/PairSync</c>.</summary>
+    public string DefaultReceiveFolder => Path.Combine(_options.DownloadsFolder ?? KnownFolders.Downloads(), "PairSync");
+
+    /// <summary>The folder received files go to, one subfolder per sender (setting "Receive folder").</summary>
+    public string ReceiveFolder => _settings.Current.ReceiveFolder ?? DefaultReceiveFolder;
+
     private sealed class JobRun(Guid jobId, CancellationToken stopping)
     {
         public Guid JobId { get; } = jobId;
@@ -82,9 +88,7 @@ public sealed partial class TransferService : IAsyncDisposable
     }
 
     /// <summary>Creates a send job; it starts when the device is online and a transfer slot is free.</summary>
-    /// <param name="suggestedFolder">Folder name the receiver is offered below its download folder; null for none.</param>
-    public async Task<Guid> SendAsync(
-        Guid deviceId, SendDraft draft, ExistingFilePolicy policy, string? suggestedFolder, CancellationToken cancellationToken)
+    public async Task<Guid> SendAsync(Guid deviceId, SendDraft draft, ExistingFilePolicy policy, CancellationToken cancellationToken)
     {
         if (draft.Items.Count == 0)
             throw new ArgumentException("Nothing to send.", nameof(draft));
@@ -99,7 +103,6 @@ public sealed partial class TransferService : IAsyncDisposable
             Direction = TransferDirection.Send,
             State = JobState.Waiting,
             Policy = policy,
-            TargetPath = suggestedFolder,
             TotalBytes = draft.TotalBytes,
             FileCount = draft.FileCount,
             Title = JobTitles.From(draft.Items.Select(i => i.RelativePath)),

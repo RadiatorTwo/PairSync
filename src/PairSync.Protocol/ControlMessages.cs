@@ -169,7 +169,10 @@ public sealed record JobOffer : IControlMessage
 
     [Key(3)] public long TotalBytes { get; init; }
 
-    /// <summary>Folder name the sender proposes below the receiver's download folder.</summary>
+    /// <summary>
+    /// Folder name older senders proposed below the receiver's download folder. No longer sent and ignored when
+    /// received: the receiver alone decides where files go (its setting "Receive folder").
+    /// </summary>
     [Key(4)] public string? SuggestedFolder { get; init; }
 
     [Key(5)] public ExistingFileAction Policy { get; init; }

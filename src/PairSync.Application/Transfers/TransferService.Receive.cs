@@ -60,7 +60,7 @@ public sealed partial class TransferService
         else
         {
             // Paired devices that may send are accepted without asking; the sender's policy applies.
-            job = NewReceiveJob(offer, device, items, TargetFolderFor(device, offer), offer.Policy.FromWire());
+            job = NewReceiveJob(offer, device, items, TargetFolderFor(device), offer.Policy.FromWire());
             await using (var db = await _contexts.CreateDbContextAsync(token).ConfigureAwait(false))
             {
                 db.Jobs.Add(job);
@@ -109,14 +109,11 @@ public sealed partial class TransferService
         return (items, null);
     }
 
-    /// <summary><c>Downloads/PairSync/{sender}</c>, below it the folder the sender suggested.</summary>
-    private string TargetFolderFor(PairedDevice device, JobOffer offer)
-    {
-        var folder = Path.Combine(_options.DownloadsFolder ?? KnownFolders.Downloads(), "PairSync", FolderNameFor(device));
-        if (offer.SuggestedFolder is { } suggested && RelativePaths.IsValid(suggested))
-            folder = Path.Combine([folder, .. suggested.Split('/')]);
-        return folder;
-    }
+    /// <summary>
+    /// <c>{receive folder}/{sender}</c>. Only this device decides where files go: a folder an older sender still
+    /// suggests (<see cref="JobOffer.SuggestedFolder"/>) is ignored.
+    /// </summary>
+    private string TargetFolderFor(PairedDevice device) => Path.Combine(ReceiveFolder, FolderNameFor(device));
 
     private TransferJob NewReceiveJob(
         JobOffer offer, PairedDevice device, List<JobOfferItem> items, string folder, ExistingFilePolicy policy)

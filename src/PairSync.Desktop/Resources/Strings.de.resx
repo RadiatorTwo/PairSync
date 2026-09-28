@@ -289,15 +289,6 @@
   <data name="Send_NoDevices" xml:space="preserve">
     <value>Koppele zuerst unter „Geräte“ ein Gerät.</value>
   </data>
-  <data name="Send_Destination" xml:space="preserve">
-    <value>Vorgeschlagenes Ziel</value>
-  </data>
-  <data name="Send_DestinationHint" xml:space="preserve">
-    <value>Der Empfänger bestätigt Ort und Größe, bevor etwas geschrieben wird.</value>
-  </data>
-  <data name="Send_SubfolderPlaceholder" xml:space="preserve">
-    <value>optionaler Unterordner</value>
-  </data>
   <data name="Send_Existing" xml:space="preserve">
     <value>Wenn eine Datei schon existiert</value>
   </data>
@@ -477,6 +468,21 @@
   </data>
   <data name="Settings_DiscoveryError" xml:space="preserve">
     <value>LAN-Erkennung ist aus: {0}. Koppele stattdessen per Einladung.</value>
+  </data>
+  <data name="Settings_Receive" xml:space="preserve">
+    <value>Empfangen</value>
+  </data>
+  <data name="Settings_ReceiveFolder" xml:space="preserve">
+    <value>Empfangsordner</value>
+  </data>
+  <data name="Settings_ReceiveChoose" xml:space="preserve">
+    <value>Ändern…</value>
+  </data>
+  <data name="Settings_ReceiveDefault" xml:space="preserve">
+    <value>Standard verwenden</value>
+  </data>
+  <data name="Settings_ReceiveHint" xml:space="preserve">
+    <value>Dateien jedes Geräts landen darin in einem Unterordner mit seinem Namen.</value>
   </data>
   <data name="Settings_Limits" xml:space="preserve">
     <value>Limits</value>

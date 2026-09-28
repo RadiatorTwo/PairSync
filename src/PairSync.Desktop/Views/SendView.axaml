@@ -89,17 +89,6 @@
         </StackPanel>
 
         <StackPanel Spacing="8">
-          <ctl:Rubric Text="{x:Static res:Strings.Send_Destination}" />
-          <Border Classes="input" Padding="10,2">
-            <DockPanel>
-              <TextBlock DockPanel.Dock="Left" Classes="mono" VerticalAlignment="Center" Text="{Binding DestinationPrefix}" />
-              <TextBox Classes="mono bare" Text="{Binding Subfolder}" PlaceholderText="{x:Static res:Strings.Send_SubfolderPlaceholder}" />
-            </DockPanel>
-          </Border>
-          <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Send_DestinationHint}" />
-        </StackPanel>
-
-        <StackPanel Spacing="8">
           <ctl:Rubric Text="{x:Static res:Strings.Send_Existing}" />
           <RadioButton Content="{x:Static res:Strings.Policy_KeepBoth}" IsChecked="{Binding IsKeepBoth}" />
           <RadioButton Content="{x:Static res:Strings.Policy_Replace}" IsChecked="{Binding IsReplace}" />

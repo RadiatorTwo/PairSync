@@ -90,7 +90,7 @@ public sealed class InternetLinkTests : IAsyncLifetime
         Path.Combine(receiver.DataDirectory.Root, "downloads", "PairSync", sender);
 
     private static Task<Guid> SendAsync(PairSyncCore from, PairSyncCore to, params string[] paths) =>
-        from.Transfers.SendAsync(Id(to), SendScanner.Scan(paths, Ct), ExistingFilePolicy.KeepBoth, suggestedFolder: null, Ct);
+        from.Transfers.SendAsync(Id(to), SendScanner.Scan(paths, Ct), ExistingFilePolicy.KeepBoth, Ct);
 
     private static async Task<HistoryEntry> WaitForHistoryAsync(PairSyncCore core, Guid jobId, int seconds = 60)
     {

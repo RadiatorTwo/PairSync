@@ -61,6 +61,14 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
     [ObservableProperty]
     private decimal? _parallelTransfers;
 
+    /// <summary>Where received files go; below it one subfolder per device.</summary>
+    [ObservableProperty]
+    private string _receiveFolder = "";
+
+    /// <summary>The user picked a folder; "Use default" goes back to <c>Downloads/PairSync</c>.</summary>
+    [ObservableProperty]
+    private bool _hasCustomReceiveFolder;
+
     [ObservableProperty]
     private bool _verboseLogging;
 
@@ -122,6 +130,20 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
 
     /// <summary>No keyring on Linux: the key is in a 0600 file.</summary>
     public bool KeyInFile => _core?.Identity.Protection == SecretProtection.File;
+
+    public bool CanChooseReceiveFolder => _core is not null && _desktop is not null;
+
+    [RelayCommand]
+    private async Task ChooseReceiveFolderAsync()
+    {
+        if (_desktop is null)
+            return;
+        if (await _desktop.PickFolderAsync(ReceiveFolder.Length > 0 && Directory.Exists(ReceiveFolder) ? ReceiveFolder : null) is { } folder)
+            _settings.Update(s => s with { ReceiveFolder = folder });
+    }
+
+    [RelayCommand]
+    private void UseDefaultReceiveFolder() => _settings.Update(s => s with { ReceiveFolder = null });
 
     public string PortHint => string.Format(CultureInfo.CurrentCulture, Strings.Settings_PortHint, _settings.Current.Port);
 
@@ -386,6 +408,8 @@ public sealed partial class SettingsViewModel : PageViewModel, IDisposable
             Port = settings.Port;
             UploadLimitMegabytes = settings.UploadLimitBytesPerSecond / 1_000_000m;
             ParallelTransfers = settings.ParallelTransfers;
+            ReceiveFolder = settings.ReceiveFolder ?? _core?.Transfers.DefaultReceiveFolder ?? "";
+            HasCustomReceiveFolder = settings.ReceiveFolder is not null;
             VerboseLogging = settings.VerboseLogging;
             PathVariables = string.Join('\n', settings.PathVariables);
             if (!StunServers.Select(r => r.Uri).SequenceEqual(settings.StunServers))

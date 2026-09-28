@@ -49,7 +49,7 @@ public sealed class DeviceTests : IAsyncLifetime
         var path = Path.Combine(_root.FullName, "source", Guid.NewGuid().ToString("N") + ".bin");
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllBytes(path, RandomNumberGenerator.GetBytes(1000));
-        return await from.Transfers.SendAsync(to.Identity.Identity.Id, SendScanner.Scan([path], Ct), ExistingFilePolicy.KeepBoth, null, Ct);
+        return await from.Transfers.SendAsync(to.Identity.Identity.Id, SendScanner.Scan([path], Ct), ExistingFilePolicy.KeepBoth, Ct);
     }
 
     [Fact]

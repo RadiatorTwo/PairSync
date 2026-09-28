@@ -295,15 +295,6 @@
   <data name="Send_NoDevices" xml:space="preserve">
     <value>Pair a device first, under Devices.</value>
   </data>
-  <data name="Send_Destination" xml:space="preserve">
-    <value>Suggested destination</value>
-  </data>
-  <data name="Send_DestinationHint" xml:space="preserve">
-    <value>The recipient confirms the location and size before anything is written.</value>
-  </data>
-  <data name="Send_SubfolderPlaceholder" xml:space="preserve">
-    <value>optional subfolder</value>
-  </data>
   <data name="Send_Existing" xml:space="preserve">
     <value>If a file already exists</value>
   </data>
@@ -483,6 +474,21 @@
   </data>
   <data name="Settings_DiscoveryError" xml:space="preserve">
     <value>LAN discovery is off: {0}. Pair with an invitation instead.</value>
+  </data>
+  <data name="Settings_Receive" xml:space="preserve">
+    <value>Receiving</value>
+  </data>
+  <data name="Settings_ReceiveFolder" xml:space="preserve">
+    <value>Receive folder</value>
+  </data>
+  <data name="Settings_ReceiveChoose" xml:space="preserve">
+    <value>Change…</value>
+  </data>
+  <data name="Settings_ReceiveDefault" xml:space="preserve">
+    <value>Use default</value>
+  </data>
+  <data name="Settings_ReceiveHint" xml:space="preserve">
+    <value>Files from each device go into a subfolder with its name.</value>
   </data>
   <data name="Settings_Limits" xml:space="preserve">
     <value>Limits</value>

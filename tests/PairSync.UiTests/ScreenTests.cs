@@ -82,7 +82,7 @@ public sealed class ScreenTests(HeadlessFixture ui)
         Assert.Null(send.Target);
 
         await laptop.Core.Transfers.SendAsync(nas.Id,
-            Application.Transfers.SendScanner.Scan([cores.SourceFile("notes.md", 10)]), ExistingFilePolicy.KeepBoth, null, CancellationToken.None);
+            Application.Transfers.SendScanner.Scan([cores.SourceFile("notes.md", 10)]), ExistingFilePolicy.KeepBoth, CancellationToken.None);
 
         var overview = laptop.Page<OverviewViewModel>();
         await UiAsync.UntilAsync(() => overview.ActiveTransfers.Count == 1 && overview.Devices.Count == 1);
@@ -255,5 +255,27 @@ public sealed class ScreenTests(HeadlessFixture ui)
         Assert.Contains(laptop.Window.GetVisualDescendants().OfType<NumericUpDown>(), n => n.Name == "UploadLimit" && n.Value == 12.5m);
         Snapshots.Save(laptop.Window, "screen-settings");
         await Task.CompletedTask;
+    });
+
+    [Fact]
+    public Task Receive_folder_is_chosen_in_the_settings() => ui.RunAsync(async () =>
+    {
+        await using var cores = new TwoCores();
+        var laptop = await cores.StartAsync("laptop-win11");
+        var settings = laptop.Page<SettingsViewModel>();
+        var standard = Path.Combine(laptop.Core.DataDirectory.Root, "downloads", "PairSync");
+        Assert.Equal(standard, settings.ReceiveFolder);
+        Assert.False(settings.HasCustomReceiveFolder);
+
+        var chosen = Directory.CreateDirectory(Path.Combine(cores.Root, "incoming")).FullName;
+        laptop.Desktop.FolderToPick = chosen;
+        await settings.ChooseReceiveFolderCommand.ExecuteAsync(null);
+        await UiAsync.UntilAsync(() => settings.ReceiveFolder == chosen && settings.HasCustomReceiveFolder);
+        Assert.Equal(chosen, laptop.Core.Settings.Current.ReceiveFolder);
+        Assert.Equal(chosen, laptop.Core.Transfers.ReceiveFolder);
+
+        settings.UseDefaultReceiveFolderCommand.Execute(null);
+        await UiAsync.UntilAsync(() => settings.ReceiveFolder == standard && !settings.HasCustomReceiveFolder);
+        Assert.Null(laptop.Core.Settings.Current.ReceiveFolder);
     });
 }

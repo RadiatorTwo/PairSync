@@ -108,6 +108,21 @@
       </StackPanel>
 
       <StackPanel Spacing="10" IsVisible="{Binding Fingerprint, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <ctl:Rubric Text="{x:Static res:Strings.Settings_Receive}" />
+        <TextBlock Text="{x:Static res:Strings.Settings_ReceiveFolder}" />
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" Margin="10,0,0,0" IsVisible="{Binding CanChooseReceiveFolder}">
+            <Button Name="UseDefaultReceiveFolder" Content="{x:Static res:Strings.Settings_ReceiveDefault}" Command="{Binding UseDefaultReceiveFolderCommand}"
+                    IsVisible="{Binding HasCustomReceiveFolder}" />
+            <Button Name="ChooseReceiveFolder" Content="{x:Static res:Strings.Settings_ReceiveChoose}" Command="{Binding ChooseReceiveFolderCommand}" />
+          </StackPanel>
+          <TextBlock Name="ReceiveFolder" Classes="mono" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                     Text="{Binding ReceiveFolder}" ToolTip.Tip="{Binding ReceiveFolder}" />
+        </DockPanel>
+        <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Settings_ReceiveHint}" />
+      </StackPanel>
+
+      <StackPanel Spacing="10" IsVisible="{Binding Fingerprint, Converter={x:Static ObjectConverters.IsNotNull}}">
         <ctl:Rubric Text="{x:Static res:Strings.Settings_Limits}" />
         <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
           <StackPanel Spacing="6">

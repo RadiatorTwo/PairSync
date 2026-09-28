@@ -171,7 +171,6 @@ public sealed partial class TransferService
             ItemCount = job.Items.Count,
             FileCount = job.Items.Count(i => !i.IsDirectory),
             TotalBytes = job.Items.Sum(i => i.Size),
-            SuggestedFolder = job.TargetPath,
             Policy = job.Policy.ToWire(),
         }, token).ConfigureAwait(false);
 

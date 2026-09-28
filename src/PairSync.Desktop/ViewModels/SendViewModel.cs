@@ -65,9 +65,6 @@ public sealed partial class SendViewModel : PageViewModel, IDisposable
     private SendTarget? _target;
 
     [ObservableProperty]
-    private string _subfolder = "";
-
-    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsKeepBoth), nameof(IsReplace), nameof(IsSkip))]
     private ExistingFilePolicy _policy = ExistingFilePolicy.KeepBoth;
 
@@ -108,9 +105,6 @@ public sealed partial class SendViewModel : PageViewModel, IDisposable
     public bool HasEntries => Entries.Count > 0;
 
     public bool HasTargets => Targets.Count > 0;
-
-    /// <summary>Where the receiver is offered to save: its downloads folder, below this device's name.</summary>
-    public string DestinationPrefix => $"Downloads/PairSync/{_core.Settings.Current.EffectiveDeviceName}/";
 
     public bool IsKeepBoth
     {
@@ -241,8 +235,7 @@ public sealed partial class SendViewModel : PageViewModel, IDisposable
             return;
         try
         {
-            var folder = string.IsNullOrWhiteSpace(Subfolder) ? null : Subfolder.Trim();
-            await _core.Transfers.SendAsync(target.Id, draft, Policy, folder, CancellationToken.None);
+            await _core.Transfers.SendAsync(target.Id, draft, Policy, CancellationToken.None);
         }
         catch (Exception e) when (e is ArgumentException or IOException or InvalidOperationException)
         {
@@ -250,7 +243,6 @@ public sealed partial class SendViewModel : PageViewModel, IDisposable
             return;
         }
         _paths.Clear();
-        Subfolder = "";
         ShowDraft(null);
         _navigate(AppPage.Overview);
     }

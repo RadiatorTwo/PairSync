@@ -133,7 +133,7 @@ public sealed class InternetPairingTests : IAsyncLifetime
         // The link carries jobs right away, without a connection code.
         var file = Path.Combine(_root.FullName, "hello.bin");
         await File.WriteAllBytesAsync(file, RandomNumberGenerator.GetBytes(50_000), Ct);
-        var job = await a.Transfers.SendAsync(Id(b), SendScanner.Scan([file], Ct), ExistingFilePolicy.KeepBoth, suggestedFolder: null, Ct);
+        var job = await a.Transfers.SendAsync(Id(b), SendScanner.Scan([file], Ct), ExistingFilePolicy.KeepBoth, Ct);
         await WaitAsync(() => b.Transfers.GetHistoryAsync(50, Ct).Result.Any(h => h.JobId == job && h.Outcome == HistoryOutcome.Completed),
             "job did not complete over the new link", 60);
         Assert.Equal(await File.ReadAllBytesAsync(file, Ct),

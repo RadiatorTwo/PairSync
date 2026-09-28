@@ -6,7 +6,7 @@ namespace PairSync.Application.Transfers;
 
 public sealed record TransferOptions
 {
-    /// <summary>Received files go to <c>{this}/PairSync/{device}</c> unless the user picks another folder; null = the Downloads folder.</summary>
+    /// <summary>Base of the default receive folder <c>{this}/PairSync</c> (setting "Receive folder" empty); null = the Downloads folder.</summary>
     public string? DownloadsFolder { get; init; }
 
     /// <summary>How often waiting jobs are tried again while their device is online.</summary>
