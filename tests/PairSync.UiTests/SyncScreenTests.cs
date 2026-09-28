@@ -104,6 +104,11 @@ public sealed class SyncScreenTests(HeadlessFixture ui)
         Assert.Equal("Keep office-pc's", dialog.KeepOtherLabel);
         Assert.Equal("This device", dialog.Local.Device);
         Assert.StartsWith("SHA-256 ", dialog.Local.Hash, StringComparison.Ordinal);
+        await dialog.Compared;
+        var hunk = Assert.Single(dialog.Hunks);
+        Assert.Equal(("Line 1", "laptop version"), (hunk.LocalRange, hunk.LocalText));
+        Assert.Equal(("Line 1", "office version"), (hunk.RemoteRange, hunk.RemoteText));
+        Assert.Null(dialog.ComparisonNote);
         Snapshots.Save(laptop.Window, "screen-syncs-conflict");
 
         await dialog.KeepBothCommand.ExecuteAsync(null);

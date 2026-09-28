@@ -345,7 +345,8 @@ public sealed partial class SyncsViewModel : PageViewModel, IDisposable
     private async Task ResolveAsync(SyncProfileRowViewModel row, SyncConflict conflict)
     {
         var dialog = new ConflictDialogViewModel(row.Name, row.Device, row.Folder, conflict, _desktop,
-            resolution => _core.Sync.ResolveConflictAsync(conflict.Id, resolution, CancellationToken.None));
+            resolution => _core.Sync.ResolveConflictAsync(conflict.Id, resolution, CancellationToken.None),
+            () => ConflictDiff.CompareAsync(row.Folder, conflict, CancellationToken.None));
         await _dialogs.ShowAsync(dialog);
         await LoadDetailsAsync();
     }
@@ -587,7 +588,23 @@ public sealed partial class IncomingOfferDialogViewModel : DialogViewModel
 /// <summary>A side of the conflict dialog: device, size, edit time (for information only) and a short hash.</summary>
 public sealed record ConflictSide(string Device, string Size, string Edited, string Hash);
 
-/// <summary>"docs/plan.md was changed on both devices" with the three ways out.</summary>
+/// <summary>One place where the versions differ: line numbers and the lines of each side.</summary>
+public sealed record DiffHunkViewModel(string LocalRange, string LocalText, string RemoteRange, string RemoteText)
+{
+    public static DiffHunkViewModel From(DiffHunk hunk) =>
+        new(Range(hunk.LocalStart, hunk.LocalLines.Count), string.Join('\n', hunk.LocalLines),
+            Range(hunk.RemoteStart, hunk.RemoteLines.Count), string.Join('\n', hunk.RemoteLines));
+
+    /// <summary>"Line 12", "Lines 12–14"; lines only on the other side are "not here".</summary>
+    private static string Range(int start, int count) => count switch
+    {
+        0 => Strings.Diff_NotHere,
+        1 => string.Format(CultureInfo.CurrentCulture, Strings.Diff_Line, start),
+        _ => string.Format(CultureInfo.CurrentCulture, Strings.Diff_Lines, start, start + count - 1),
+    };
+}
+
+/// <summary>"docs/plan.md was changed on both devices" with the lines that differ and the three ways out.</summary>
 public sealed partial class ConflictDialogViewModel : DialogViewModel
 {
     private readonly Func<ConflictResolution, Task> _resolve;
@@ -597,8 +614,18 @@ public sealed partial class ConflictDialogViewModel : DialogViewModel
     [ObservableProperty]
     private string? _error;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasHunks))]
+    private IReadOnlyList<DiffHunkViewModel> _hunks = [];
+
+    /// <summary>"Comparing…", why there is no line comparison, or how many places are not shown.</summary>
+    [ObservableProperty]
+    private string? _comparisonNote;
+
+    /// <param name="compare">The line comparison of both versions; null shows none.</param>
     public ConflictDialogViewModel(
-        string profileName, string peerName, string folder, SyncConflict conflict, IDesktopServices desktop, Func<ConflictResolution, Task> resolve)
+        string profileName, string peerName, string folder, SyncConflict conflict, IDesktopServices desktop, Func<ConflictResolution, Task> resolve,
+        Func<Task<ConflictComparison>>? compare = null)
     {
         _resolve = resolve;
         _desktop = desktop;
@@ -609,6 +636,37 @@ public sealed partial class ConflictDialogViewModel : DialogViewModel
         KeepOtherLabel = string.Format(culture, Strings.Conflict_KeepOther, peerName);
         Local = Side(Strings.Conflict_ThisDevice, conflict.LocalSize, conflict.LocalMTimeUtc, conflict.LocalSha256);
         Remote = Side(peerName, conflict.RemoteSize, conflict.RemoteMTimeUtc, conflict.RemoteSha256);
+        Compared = compare is null ? Task.CompletedTask : CompareAsync(compare);
+    }
+
+    /// <summary>Done when the comparison is shown.</summary>
+    public Task Compared { get; }
+
+    public bool HasHunks => Hunks.Count > 0;
+
+    private async Task CompareAsync(Func<Task<ConflictComparison>> compare)
+    {
+        ComparisonNote = Strings.Diff_Comparing;
+        ConflictComparison result;
+        try
+        {
+            result = await compare();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            result = new ConflictComparison(ConflictComparisonKind.Missing, []);
+        }
+        Hunks = [.. result.Hunks.Select(DiffHunkViewModel.From)];
+        ComparisonNote = result.Kind switch
+        {
+            ConflictComparisonKind.Text when result.MoreHunks > 0 => string.Format(CultureInfo.CurrentCulture, Strings.Diff_More, result.MoreHunks),
+            ConflictComparisonKind.Text => null,
+            ConflictComparisonKind.LineEndingsOnly => Strings.Diff_LineEndingsOnly,
+            ConflictComparisonKind.Binary => Strings.Diff_Binary,
+            ConflictComparisonKind.TooLarge => string.Format(CultureInfo.CurrentCulture, Strings.Diff_TooLarge, Format.Bytes(ConflictDiff.MaxFileSize)),
+            ConflictComparisonKind.TooManyChanges => Strings.Diff_TooManyChanges,
+            _ => Strings.Diff_Missing,
+        };
     }
 
     private static ConflictSide Side(string device, long size, DateTime edited, byte[]? sha) => new(device, Format.Bytes(size),

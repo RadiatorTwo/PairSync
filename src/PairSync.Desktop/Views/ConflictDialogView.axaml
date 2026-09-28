@@ -5,7 +5,15 @@
              xmlns:res="using:PairSync.Desktop.Resources"
              x:Class="PairSync.Desktop.Views.ConflictDialogView"
              x:DataType="vm:ConflictDialogViewModel">
-  <StackPanel Spacing="16" MaxWidth="620">
+  <UserControl.Styles>
+    <Style Selector="Border.diff">
+      <Setter Property="Background" Value="{StaticResource SurfaceInputBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource HairlineSoftBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="8,6" />
+    </Style>
+  </UserControl.Styles>
+  <StackPanel Spacing="16" MaxWidth="880">
     <StackPanel Spacing="6">
       <ctl:Rubric Text="{Binding Rubric}" />
       <TextBlock Classes="h2" TextWrapping="Wrap" Text="{Binding Title}" />
@@ -28,6 +36,35 @@
         </StackPanel>
       </Border>
     </Grid>
+    <!-- Only the lines that differ, for the decision; nothing to edit or merge. -->
+    <StackPanel Spacing="8" IsVisible="{Binding HasHunks}">
+      <ctl:Rubric Text="{x:Static res:Strings.Diff_Rubric}" />
+      <ScrollViewer MaxHeight="360" HorizontalScrollBarVisibility="Disabled">
+        <ItemsControl Name="Hunks" ItemsSource="{Binding Hunks}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Spacing="10" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:DiffHunkViewModel">
+              <Grid ColumnDefinitions="*,*" ColumnSpacing="14" RowDefinitions="Auto,Auto" RowSpacing="4">
+                <TextBlock Classes="meta" Text="{Binding LocalRange}" />
+                <TextBlock Grid.Column="1" Classes="meta" Text="{Binding RemoteRange}" />
+                <Border Grid.Row="1" Classes="diff">
+                  <TextBlock Classes="mono" FontSize="12" TextWrapping="Wrap" Text="{Binding LocalText}" />
+                </Border>
+                <Border Grid.Row="1" Grid.Column="1" Classes="diff">
+                  <TextBlock Classes="mono" FontSize="12" TextWrapping="Wrap" Text="{Binding RemoteText}" />
+                </Border>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </StackPanel>
+    <TextBlock Classes="meta" TextWrapping="Wrap" Text="{Binding ComparisonNote}"
+               IsVisible="{Binding ComparisonNote, Converter={x:Static ObjectConverters.IsNotNull}}" />
     <TextBlock Classes="hint" TextWrapping="Wrap" Text="{x:Static res:Strings.Conflict_Note}" />
     <TextBlock Classes="problem" FontSize="13" TextWrapping="Wrap" Text="{Binding Error}"
                IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />

@@ -1093,6 +1093,39 @@
   <data name="Conflict_Edited" xml:space="preserve">
     <value>Edited {0}</value>
   </data>
+  <data name="Diff_Comparing" xml:space="preserve">
+    <value>Comparing…</value>
+  </data>
+  <data name="Diff_Line" xml:space="preserve">
+    <value>Line {0}</value>
+  </data>
+  <data name="Diff_Lines" xml:space="preserve">
+    <value>Lines {0}–{1}</value>
+  </data>
+  <data name="Diff_NotHere" xml:space="preserve">
+    <value>not in this version</value>
+  </data>
+  <data name="Diff_More" xml:space="preserve">
+    <value>{0} more places with differences are not shown.</value>
+  </data>
+  <data name="Diff_LineEndingsOnly" xml:space="preserve">
+    <value>Same text; only the line endings differ.</value>
+  </data>
+  <data name="Diff_Binary" xml:space="preserve">
+    <value>Not a text file: no line comparison.</value>
+  </data>
+  <data name="Diff_TooLarge" xml:space="preserve">
+    <value>Larger than {0}: no line comparison.</value>
+  </data>
+  <data name="Diff_TooManyChanges" xml:space="preserve">
+    <value>Too many differences for a line comparison.</value>
+  </data>
+  <data name="Diff_Missing" xml:space="preserve">
+    <value>One of the versions is not in the folder: no line comparison.</value>
+  </data>
+  <data name="Diff_Rubric" xml:space="preserve">
+    <value>Differences</value>
+  </data>
   <data name="Overview_SyncRow" xml:space="preserve">
     <value>{0} ⇄ {1}</value>
   </data>

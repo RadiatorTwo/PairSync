@@ -1087,6 +1087,39 @@
   <data name="Conflict_Edited" xml:space="preserve">
     <value>Bearbeitet {0}</value>
   </data>
+  <data name="Diff_Comparing" xml:space="preserve">
+    <value>Vergleiche …</value>
+  </data>
+  <data name="Diff_Line" xml:space="preserve">
+    <value>Zeile {0}</value>
+  </data>
+  <data name="Diff_Lines" xml:space="preserve">
+    <value>Zeilen {0}–{1}</value>
+  </data>
+  <data name="Diff_NotHere" xml:space="preserve">
+    <value>fehlt in dieser Version</value>
+  </data>
+  <data name="Diff_More" xml:space="preserve">
+    <value>{0} weitere Stellen mit Unterschieden werden nicht angezeigt.</value>
+  </data>
+  <data name="Diff_LineEndingsOnly" xml:space="preserve">
+    <value>Gleicher Text, nur die Zeilenenden unterscheiden sich.</value>
+  </data>
+  <data name="Diff_Binary" xml:space="preserve">
+    <value>Keine Textdatei: kein Zeilenvergleich.</value>
+  </data>
+  <data name="Diff_TooLarge" xml:space="preserve">
+    <value>Größer als {0}: kein Zeilenvergleich.</value>
+  </data>
+  <data name="Diff_TooManyChanges" xml:space="preserve">
+    <value>Zu viele Unterschiede für einen Zeilenvergleich.</value>
+  </data>
+  <data name="Diff_Missing" xml:space="preserve">
+    <value>Eine der Versionen liegt nicht im Ordner: kein Zeilenvergleich.</value>
+  </data>
+  <data name="Diff_Rubric" xml:space="preserve">
+    <value>Unterschiede</value>
+  </data>
   <data name="Overview_SyncRow" xml:space="preserve">
     <value>{0} ⇄ {1}</value>
   </data>
