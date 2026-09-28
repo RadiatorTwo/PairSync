@@ -8,6 +8,8 @@
     <SatelliteResourceLanguages>en;de</SatelliteResourceLanguages>
     <!-- Single-file builds carry libdatachannel and its dependencies (native/runtimes) inside the executable. -->
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- Symbol of PairSync.exe in Explorer and the taskbar pin (build/make-icon.py); window and tray draw theirs at runtime. -->
+    <ApplicationIcon>Assets\PairSync.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="PairSync.UiTests" />

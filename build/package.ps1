@@ -1,6 +1,5 @@
 # Builds the Windows package: tests, self-contained single-file PairSync.exe, zip and SHA256SUMS in artifacts/.
-# Signing is optional: set PAIRSYNC_SIGN_CERT (path to a .pfx) and PAIRSYNC_SIGN_PASSWORD; PAIRSYNC_TIMESTAMP_URL
-# overrides the timestamp server. Needs native/runtimes/win-x64 (native/build-win.ps1).
+# Needs native/runtimes/win-x64 (native/build-win.ps1).
 param(
     [switch]$SkipTests
 )
@@ -31,26 +30,19 @@ if ($LASTEXITCODE -ne 0) { throw 'Publish failed.' }
 
 # Native debug symbols of Skia and HarfBuzz come with their packages; users do not need them.
 Get-ChildItem $out -Filter *.pdb | Remove-Item -Force
-$exe = Join-Path $out 'PairSync.exe'
-if ($env:PAIRSYNC_SIGN_CERT) {
-    $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
-        Where-Object FullName -like '*x64*' | Sort-Object FullName | Select-Object -Last 1
-    if (-not $signtool) { throw 'signtool.exe not found; install the Windows SDK.' }
-    $timestamp = if ($env:PAIRSYNC_TIMESTAMP_URL) { $env:PAIRSYNC_TIMESTAMP_URL } else { 'http://timestamp.digicert.com' }
-    & $signtool.FullName sign /f $env:PAIRSYNC_SIGN_CERT /p $env:PAIRSYNC_SIGN_PASSWORD /fd SHA256 /tr $timestamp /td SHA256 $exe
-    if ($LASTEXITCODE -ne 0) { throw 'Signing failed.' }
-} else {
-    Write-Warning 'PAIRSYNC_SIGN_CERT not set: PairSync.exe is unsigned. Windows SmartScreen will warn on first start.'
-}
-
 $name = "PairSync-$version-$rid"
 $zip = Join-Path $artifacts "$name.zip"
 Remove-Item -Force $zip -ErrorAction SilentlyContinue
 Compress-Archive -Path "$out/*" -DestinationPath $zip
 
 $sums = Join-Path $artifacts 'SHA256SUMS-win'
+# .NET directly: Get-FileHash is missing when the Utility module does not load (seen when started from Git Bash).
+$sha = [System.Security.Cryptography.SHA256]::Create()
 Get-ChildItem $artifacts -Filter "PairSync-$version-*.zip" | ForEach-Object {
-    '{0}  {1}' -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name
+    $stream = [System.IO.File]::OpenRead($_.FullName)
+    try { $hash = -join ($sha.ComputeHash($stream) | ForEach-Object { $_.ToString('x2') }) } finally { $stream.Dispose() }
+    '{0}  {1}' -f $hash, $_.Name
 } | Set-Content -Encoding ascii $sums
+$sha.Dispose()
 
 Get-Item $zip, $sums | Select-Object Name, Length

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds the Linux package: tests, self-contained PairSync, tar.gz with install.sh and SHA256SUMS in artifacts/.
-# Signing is optional: set PAIRSYNC_GPG_KEY to sign SHA256SUMS with gpg. Needs native/runtimes/linux-x64
+# Needs native/runtimes/linux-x64
 # (native/build-linux.sh); without it the app falls back to a system libdatachannel, which the package cannot ship.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -37,9 +37,4 @@ chmod +x "$stage/install.sh" "$stage/app/PairSync"
 
 tar -C "$artifacts/stage" -czf "$artifacts/$name.tar.gz" "$name"
 (cd "$artifacts" && sha256sum PairSync-"$version"-*.tar.gz > SHA256SUMS-linux)
-if [[ -n "${PAIRSYNC_GPG_KEY:-}" ]]; then
-    gpg --batch --yes --local-user "$PAIRSYNC_GPG_KEY" --armor --detach-sign "$artifacts/SHA256SUMS-linux"
-else
-    echo "PAIRSYNC_GPG_KEY not set: SHA256SUMS-linux is unsigned." >&2
-fi
 ls -l "$artifacts/$name.tar.gz" "$artifacts/SHA256SUMS-linux"
