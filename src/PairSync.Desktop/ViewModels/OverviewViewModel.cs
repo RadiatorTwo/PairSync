@@ -150,7 +150,8 @@ public sealed partial class TransferRowViewModel(Guid id, TransferService transf
 }
 
 /// <summary>A sync profile that is exchanging files right now: "Projects ⇄ office-pc".</summary>
-public sealed record SyncRowViewModel(string Title, string Meta, double Fraction);
+/// <param name="ShowsProgress">False while the other device fetches from here: only it knows how much is left.</param>
+public sealed record SyncRowViewModel(string Title, string Meta, double Fraction, bool ShowsProgress = true);
 
 /// <summary>An entry under "Recently completed".</summary>
 public sealed record RecentTransferViewModel(string Title, string Details, string Outcome, bool IsProblem, string When);
@@ -165,7 +166,7 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
     private readonly TimeProvider _time;
     private readonly DispatcherTimer _timer;
     private readonly ILogger<OverviewViewModel> _logger;
-    private int _refreshQueued;
+    private readonly RefreshThrottle _refresh;
     private bool _anyRunning;
     private int _ticks;
     private bool _disposed;
@@ -185,6 +186,7 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
         : base(AppPage.Overview)
     {
         _core = core;
+        _refresh = new RefreshThrottle(RefreshAsync, TimeSpan.FromMilliseconds(500));
         _pair = pair;
         _internet = internet;
         _core.Internet.Changed += QueueRefresh;
@@ -247,16 +249,11 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
             _latency.Probe(_core.Presence.Devices.Where(d => d.State == PresenceState.Online && d.Lan is not null).Select(d => (d.Id, d.Lan!)));
     }
 
-    private void QueueRefresh()
-    {
-        if (Interlocked.Exchange(ref _refreshQueued, 1) == 0)
-            Ui.Run(() => _ = RefreshAsync());
-    }
+    private void QueueRefresh() => _refresh.Request();
 
     /// <summary>Reads presence, jobs and history again.</summary>
     public async Task RefreshAsync()
     {
-        Volatile.Write(ref _refreshQueued, 0);
         if (_disposed)
             return;
         try
@@ -311,8 +308,14 @@ public sealed partial class OverviewViewModel : PageViewModel, IDisposable
         foreach (var gone in rows.Values)
             ActiveTransfers.Remove(gone);
         ActiveSyncs.Clear();
-        foreach (var sync in syncs.Where(s => s.Status == SyncStatus.Syncing))
+        foreach (var sync in syncs.Where(s => s.Status is SyncStatus.Syncing or SyncStatus.Serving))
         {
+            if (sync.Status == SyncStatus.Serving)
+            {
+                ActiveSyncs.Add(new SyncRowViewModel(string.Format(culture, Strings.Overview_SyncRow, sync.Profile.Name, sync.PeerName),
+                    Format.Serving(sync), 0, ShowsProgress: false));
+                continue;
+            }
             var total = sync.BytesDone + sync.BytesLeft;
             ActiveSyncs.Add(new SyncRowViewModel(
                 string.Format(culture, Strings.Overview_SyncRow, sync.Profile.Name, sync.PeerName),

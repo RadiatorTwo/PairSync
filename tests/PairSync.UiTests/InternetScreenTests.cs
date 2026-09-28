@@ -101,7 +101,9 @@ public sealed class InternetScreenTests(HeadlessFixture ui)
         Assert.Equal(["Paste answer…", "Cancel"], CardOf(laptop, office).Actions.Select(x => x.Label));
 
         var (_, answer) = await office.Core.Internet.AnswerCodeAsync(code.Text, CancellationToken.None);
-        await UiAsync.UntilAsync(() => CardOf(office, laptop).InternetText == "Waiting for laptop-win11 to apply the answer");
+        // The overview refreshes a moment later, not within the event: the card may not be there yet.
+        await UiAsync.UntilAsync(() => office.Page<OverviewViewModel>().Devices.FirstOrDefault(d => d.Id == laptop.Id)?.InternetText
+                                       == "Waiting for laptop-win11 to apply the answer");
 
         _ = CardOf(laptop, office).Actions[0].Command.ExecuteAsync(null);
         await UiAsync.UntilAsync(() => laptop.Shell.Dialogs.Current is ConnectDialogViewModel);

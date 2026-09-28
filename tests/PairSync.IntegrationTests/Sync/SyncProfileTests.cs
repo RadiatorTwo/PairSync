@@ -134,6 +134,25 @@ public sealed class SyncProfileTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Source_shows_the_files_the_other_device_fetches()
+    {
+        var (a, b) = await StartPairAsync();
+        var (aFolder, bFolder) = (Folder("laptop"), Folder("office"));
+        WriteBytes(aFolder, "video.bin", new byte[12 * 1024 * 1024]);
+        // Slow enough to see the source while it sends.
+        a.Settings.Update(s => s with { UploadLimitBytesPerSecond = 4 * 1024 * 1024 });
+
+        await ShareAsync(a, b, aFolder, bFolder, SyncDirection.SendOnly);
+
+        SyncProfileView? serving = null;
+        await WaitAsync(() => (serving = a.Sync.GetProfilesAsync(Ct).Result.Single()) is { Status: SyncStatus.Serving, BytesDone: > 0 },
+            "A never showed that B fetches from it");
+        Assert.Equal("office", serving!.PeerName);
+        await WaitAsync(() => File.Exists(Path.Combine(bFolder, "video.bin")), "the file did not reach B");
+        await WaitAsync(() => a.Sync.GetProfilesAsync(Ct).Result.Single().Status == SyncStatus.UpToDate, "A still shows sending after B finished");
+    }
+
+    [Fact]
     public async Task Declined_offer_leaves_the_profile_declined()
     {
         var (a, b) = await StartPairAsync();

@@ -276,11 +276,30 @@ public sealed partial class SyncService
     /// <summary>Answers file requests one after the other until the other side closes the session.</summary>
     private async Task ServeFilesAsync(PeerConnection connection, PairedDevice device, FileRequest first)
     {
+        // Shown as "Sending to …" while the session lasts; only for a profile this device shares with the other one.
+        var serve = await OwnedProfileAsync(first.ProfileId, device.Id).ConfigureAwait(false) is not null
+            ? _serving.GetOrAdd(first.ProfileId, _ => new ServeRun())
+            : null;
+        serve?.Begin();
+        Changed?.Invoke();
+        try
+        {
+            await ServeRequestsAsync(connection, device, first, serve).ConfigureAwait(false);
+        }
+        finally
+        {
+            serve?.End();
+            Changed?.Invoke();
+        }
+    }
+
+    private async Task ServeRequestsAsync(PeerConnection connection, PairedDevice device, FileRequest first, ServeRun? serve)
+    {
         var control = connection.Channels.Control;
         var request = first;
         while (true)
         {
-            if (await ServeFileAsync(connection, device, request).ConfigureAwait(false) is { } reason)
+            if (await ServeFileAsync(connection, device, request, request.ProfileId == first.ProfileId ? serve : null).ConfigureAwait(false) is { } reason)
             {
                 await control.SendAsync(new FileUnavailable { ProfileId = request.ProfileId, Path = request.Path, Reason = reason }, _stopping.Token)
                     .ConfigureAwait(false);
@@ -301,7 +320,7 @@ public sealed partial class SyncService
     }
 
     /// <summary>Sends one file if allowed and unchanged; returns why not otherwise.</summary>
-    private async Task<string?> ServeFileAsync(PeerConnection connection, PairedDevice device, FileRequest request)
+    private async Task<string?> ServeFileAsync(PeerConnection connection, PairedDevice device, FileRequest request, ServeRun? serve)
     {
         var profile = await OwnedProfileAsync(request.ProfileId, device.Id).ConfigureAwait(false);
         if (profile is not { State: SyncProfileState.Active } || profile.Paused)
@@ -318,7 +337,24 @@ public sealed partial class SyncService
         if (!file.Exists || file.Length != entry.Size || file.LastWriteTimeUtc != entry.MTimeUtc)
             return "the file changed since it was indexed";
         var sender = new ChunkedFileSender(_transferOptions.Sender with { Throttle = _transfers.Throttle });
-        await sender.SendAsync(connection.Channels, file, _stopping.Token).ConfigureAwait(false);
+        if (serve is null)
+        {
+            await sender.SendAsync(connection.Channels, file, _stopping.Token).ConfigureAwait(false);
+            return null;
+        }
+        serve.Active[sender.Stats] = 0;
+        try
+        {
+            var result = await sender.SendAsync(connection.Channels, file, _stopping.Token).ConfigureAwait(false);
+            if (result.Success)
+                Interlocked.Increment(ref serve.FilesSent);
+        }
+        finally
+        {
+            serve.Active.TryRemove(sender.Stats, out _);
+            Interlocked.Add(ref serve.BytesDone, sender.Stats.BytesThisRun);
+            Changed?.Invoke();
+        }
         return null;
     }
 
@@ -336,7 +372,7 @@ public sealed partial class SyncService
         Volatile.Write(ref run.FilesLeft, fetches.Count);
         Interlocked.Exchange(ref run.BytesLeft, fetches.Sum(a => a.Remote!.Size));
         Interlocked.Exchange(ref run.BytesDone, 0);
-        run.FetchStartedUtc = _time.GetUtcNow().UtcDateTime;
+        run.Rate.Reset();
         Changed?.Invoke();
 
         var byHash = local.Values.Where(f => f is { Deleted: false, IsDirectory: false, Sha256: not null, ChunkHashes: not null })

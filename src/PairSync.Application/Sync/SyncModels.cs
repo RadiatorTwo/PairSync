@@ -35,6 +35,9 @@ public enum SyncStatus
     Declined,
     Detached,
     Problem,
+
+    /// <summary>The other device fetches files from this one.</summary>
+    Serving,
 }
 
 /// <summary>A profile as the Syncs page shows it.</summary>
@@ -46,7 +49,8 @@ public sealed record SyncProfileView(
     int FilesLeft,
     long BytesLeft,
     long BytesDone,
-    double BytesPerSecond)
+    double BytesPerSecond,
+    int FilesSent = 0)
 {
     public Guid Id => Profile.Id;
 }
@@ -70,6 +74,37 @@ public enum ConflictResolution
 }
 
 public sealed class SyncException(string message, Exception? inner = null) : Exception(message, inner);
+
+/// <summary>
+/// Bytes per second over the last few seconds, from readings taken whenever the status is read. Averaged over a whole
+/// round instead, the many small files that come first would hide the rate of the large ones.
+/// </summary>
+internal sealed class RateMeter
+{
+    private static readonly TimeSpan Window = TimeSpan.FromSeconds(5);
+
+    private readonly Queue<(DateTime At, long Bytes)> _samples = new();
+
+    public void Reset()
+    {
+        lock (_samples)
+            _samples.Clear();
+    }
+
+    /// <summary>The rate up to <paramref name="bytes"/> at <paramref name="now"/>; 0 until two readings are half a second apart.</summary>
+    public double Read(long bytes, DateTime now)
+    {
+        lock (_samples)
+        {
+            _samples.Enqueue((now, bytes));
+            while (_samples.Count > 1 && now - _samples.Peek().At > Window)
+                _samples.Dequeue();
+            var (at, first) = _samples.Peek();
+            var seconds = (now - at).TotalSeconds;
+            return seconds >= 0.5 ? Math.Max(0, bytes - first) / seconds : 0;
+        }
+    }
+}
 
 internal static class SyncMapping
 {

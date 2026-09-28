@@ -34,6 +34,7 @@ public sealed partial class SyncService : IAsyncDisposable
     private readonly ILogger<SyncService> _logger;
     private readonly CancellationTokenSource _stopping = new();
     private readonly ConcurrentDictionary<Guid, ProfileRun> _runs = new();
+    private readonly ConcurrentDictionary<Guid, ServeRun> _serving = new();
 
     // Held while a profile's folder or index is read or changed, so scans, rounds and applied files never interleave.
     // Kept for the life of the service: a profile that is restarted with new settings keeps its lock.
@@ -94,8 +95,6 @@ public sealed partial class SyncService : IAsyncDisposable
 
         public long BytesDone;
 
-        public DateTime FetchStartedUtc { get; set; }
-
         /// <summary>Receivers of files being fetched right now, for live progress.</summary>
         public ConcurrentDictionary<TransferStats, byte> Active { get; } = new();
 
@@ -104,11 +103,53 @@ public sealed partial class SyncService : IAsyncDisposable
 
         public ITimer? Retry { get; set; }
 
+        public RateMeter Rate { get; } = new();
+
         public void Dispose()
         {
             Watcher?.Dispose();
             Retry?.Dispose();
             Cancellation.Cancel();
+        }
+    }
+
+    /// <summary>The other device fetching files of a profile from this one: sessions, files and bytes sent.</summary>
+    private sealed class ServeRun
+    {
+        private readonly Lock _lock = new();
+        private int _sessions;
+
+        public int FilesSent;
+
+        /// <summary>Bytes of finished files; the files being sent count through <see cref="Active"/>.</summary>
+        public long BytesDone;
+
+        /// <summary>Senders of files going out right now, for live progress.</summary>
+        public ConcurrentDictionary<TransferStats, byte> Active { get; } = new();
+
+        public RateMeter Rate { get; } = new();
+
+        public bool IsActive => Volatile.Read(ref _sessions) > 0;
+
+        public long BytesSent => Interlocked.Read(ref BytesDone) + Active.Keys.Sum(s => s.BytesThisRun);
+
+        /// <summary>A fetch session begins; the first one after a quiet time starts the counters over.</summary>
+        public void Begin()
+        {
+            lock (_lock)
+            {
+                if (_sessions++ > 0)
+                    return;
+                FilesSent = 0;
+                BytesDone = 0;
+                Rate.Reset();
+            }
+        }
+
+        public void End()
+        {
+            lock (_lock)
+                _sessions--;
         }
     }
 
@@ -152,10 +193,18 @@ public sealed partial class SyncService : IAsyncDisposable
             _ => run?.Status ?? SyncStatus.UpToDate,
         };
         var bytesDone = run is null ? 0 : Interlocked.Read(ref run.BytesDone) + run.Active.Keys.Sum(s => s.BytesThisRun);
-        var elapsed = run is null ? 0 : (_time.GetUtcNow().UtcDateTime - run.FetchStartedUtc).TotalSeconds;
-        return new SyncProfileView(profile, names.GetValueOrDefault(profile.PeerDeviceId) ?? "removed device", status, conflicts,
-            run is null ? 0 : Volatile.Read(ref run.FilesLeft), run is null ? 0 : Interlocked.Read(ref run.BytesLeft), bytesDone,
-            status == SyncStatus.Syncing && elapsed > 0.5 ? bytesDone / elapsed : 0);
+        var peer = names.GetValueOrDefault(profile.PeerDeviceId) ?? "removed device";
+        var now = _time.GetUtcNow().UtcDateTime;
+        // A round of this device's own comes first; otherwise the other device fetching from here is what happens.
+        if (status is SyncStatus.UpToDate or SyncStatus.Scanning or SyncStatus.WaitingForDevice
+            && _serving.GetValueOrDefault(profile.Id) is { IsActive: true } serve)
+        {
+            var sent = serve.BytesSent;
+            return new SyncProfileView(profile, peer, SyncStatus.Serving, conflicts, 0, 0, sent, serve.Rate.Read(sent, now), Volatile.Read(ref serve.FilesSent));
+        }
+        var rate = run is not null && status == SyncStatus.Syncing ? run.Rate.Read(bytesDone, now) : 0;
+        return new SyncProfileView(profile, peer, status, conflicts,
+            run is null ? 0 : Volatile.Read(ref run.FilesLeft), run is null ? 0 : Interlocked.Read(ref run.BytesLeft), bytesDone, rate);
     }
 
     /// <summary>Creates a profile and offers it to the device; the offer waits until the device is reachable.</summary>

@@ -24,6 +24,11 @@ public static class Format
 
     public static string Count(int value) => value.ToString("N0", Culture);
 
+    /// <summary>"Sending to office-pc · 12 files sent · 48.1 MB/s"; the bytes sent while no rate is known yet.</summary>
+    public static string Serving(PairSync.Application.Sync.SyncProfileView view) =>
+        string.Format(Culture, Strings.SyncStatus_Serving, view.PeerName, Files(view.FilesSent),
+            view.BytesPerSecond > 0 ? Rate(view.BytesPerSecond) : Bytes(view.BytesDone));
+
     public static string Files(int count) =>
         count == 1 ? Strings.Files_One : string.Format(Culture, Strings.Files_Many, Count(count));
 

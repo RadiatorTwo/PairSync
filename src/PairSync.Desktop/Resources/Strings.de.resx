@@ -907,6 +907,9 @@
   <data name="SyncStatus_Syncing" xml:space="preserve">
     <value>Synchronisiert {0} · {1}</value>
   </data>
+  <data name="SyncStatus_Serving" xml:space="preserve">
+    <value>Sendet an {0} · {1} gesendet · {2}</value>
+  </data>
   <data name="SyncStatus_Waiting" xml:space="preserve">
     <value>Wartet auf {0}</value>
   </data>

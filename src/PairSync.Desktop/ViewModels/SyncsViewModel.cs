@@ -12,10 +12,30 @@ using PairSync.Domain;
 
 namespace PairSync.Desktop.ViewModels;
 
-/// <summary>A row of the profile table.</summary>
-public sealed record SyncProfileRowViewModel(SyncProfileView View, string Name, string Folder, string Device, string Direction, string Status, bool IsHighlighted)
+/// <summary>A row of the profile table; updated in place, so the list keeps its rows and the selection.</summary>
+public sealed partial class SyncProfileRowViewModel(Guid id) : ObservableObject
 {
-    public Guid Id => View.Id;
+    public Guid Id { get; } = id;
+
+    public SyncProfileView View { get; set; } = null!;
+
+    [ObservableProperty]
+    private string _name = "";
+
+    [ObservableProperty]
+    private string _folder = "";
+
+    [ObservableProperty]
+    private string _device = "";
+
+    [ObservableProperty]
+    private string _direction = "";
+
+    [ObservableProperty]
+    private string _status = "";
+
+    [ObservableProperty]
+    private bool _isHighlighted;
 }
 
 /// <summary>An open conflict under "Conflicts".</summary>
@@ -33,7 +53,7 @@ public sealed partial class SyncsViewModel : PageViewModel, IDisposable
     private readonly TimeProvider _time;
     private readonly ILogger<SyncsViewModel> _logger;
     private readonly DispatcherTimer _timer;
-    private int _refreshQueued;
+    private readonly RefreshThrottle _refresh;
     private bool _loading;
     private bool _disposed;
 
@@ -73,6 +93,7 @@ public sealed partial class SyncsViewModel : PageViewModel, IDisposable
         _desktop = desktop;
         _time = time;
         _logger = core.Logger<SyncsViewModel>();
+        _refresh = new RefreshThrottle(RefreshAsync, TimeSpan.FromMilliseconds(500));
         Directions = [new(SyncDirection.TwoWay, Strings.Direction_TwoWay), new(SyncDirection.SendOnly, Strings.Direction_SendOnly),
             new(SyncDirection.ReceiveOnly, Strings.Direction_ReceiveOnly)];
         Modes = [new(SyncMode.Automatic, Strings.Mode_Automatic), new(SyncMode.Manual, Strings.Mode_Manual)];
@@ -80,7 +101,7 @@ public sealed partial class SyncsViewModel : PageViewModel, IDisposable
         _core.Devices.Changed += QueueRefresh;
         _timer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) =>
         {
-            if (Profiles.Any(p => p.View.Status is SyncStatus.Syncing or SyncStatus.Scanning))
+            if (Profiles.Any(p => p.View.Status is SyncStatus.Syncing or SyncStatus.Scanning or SyncStatus.Serving))
                 QueueRefresh();
         });
         _timer.Start();
@@ -118,15 +139,10 @@ public sealed partial class SyncsViewModel : PageViewModel, IDisposable
 
     public string? ProblemText => Selected?.View.Profile.Problem;
 
-    private void QueueRefresh()
-    {
-        if (Interlocked.Exchange(ref _refreshQueued, 1) == 0)
-            Ui.Run(() => _ = RefreshAsync());
-    }
+    private void QueueRefresh() => _refresh.Request();
 
     public async Task RefreshAsync()
     {
-        Volatile.Write(ref _refreshQueued, 0);
         if (_disposed)
             return;
         try
@@ -134,14 +150,36 @@ public sealed partial class SyncsViewModel : PageViewModel, IDisposable
             var views = await _core.Sync.GetProfilesAsync(CancellationToken.None);
             if (_disposed)
                 return;
-            var selectedId = Selected?.Id;
-            Profiles.Clear();
-            foreach (var view in views)
-                Profiles.Add(Row(view));
+            var rows = Profiles.ToDictionary(r => r.Id);
+            for (var i = 0; i < views.Count; i++)
+            {
+                if (!rows.Remove(views[i].Id, out var row))
+                {
+                    row = new SyncProfileRowViewModel(views[i].Id);
+                    Profiles.Insert(Math.Min(i, Profiles.Count), row);
+                }
+                Fill(row, views[i]);
+                var index = Profiles.IndexOf(row);
+                if (index != i)
+                    Profiles.Move(index, i);
+            }
+            foreach (var gone in rows.Values)
+                Profiles.Remove(gone);
             AllPaused = views.Count > 0 && views.Where(v => v.Profile.State == SyncProfileState.Active).All(v => v.Profile.Paused);
             OnPropertyChanged(nameof(HasProfiles));
-            // Rows are new objects after every refresh, so this always reloads the details of the selected profile.
-            Selected = Profiles.FirstOrDefault(p => p.Id == selectedId) ?? Profiles.FirstOrDefault();
+            if (Selected is { } selected && Profiles.Contains(selected))
+            {
+                // Same row, new data: what depends on the profile, and its conflicts and activity.
+                OnPropertyChanged(nameof(PauseLabel));
+                OnPropertyChanged(nameof(IsActive));
+                OnPropertyChanged(nameof(RightsTitle));
+                OnPropertyChanged(nameof(ProblemText));
+                await LoadDetailsAsync();
+            }
+            else
+            {
+                Selected = Profiles.FirstOrDefault();
+            }
         }
         catch (Exception e) when (e is not OutOfMemoryException && !_disposed)
         {
@@ -149,7 +187,7 @@ public sealed partial class SyncsViewModel : PageViewModel, IDisposable
         }
     }
 
-    private static SyncProfileRowViewModel Row(SyncProfileView view)
+    private static void Fill(SyncProfileRowViewModel row, SyncProfileView view)
     {
         var culture = CultureInfo.CurrentCulture;
         var profile = view.Profile;
@@ -166,6 +204,7 @@ public sealed partial class SyncsViewModel : PageViewModel, IDisposable
             SyncStatus.Scanning => Strings.SyncStatus_Scanning,
             SyncStatus.Syncing => string.Format(culture, Strings.SyncStatus_Syncing, Format.Files(view.FilesLeft),
                 view.BytesPerSecond > 0 ? Format.Rate(view.BytesPerSecond) : Format.Bytes(view.BytesLeft)),
+            SyncStatus.Serving => Format.Serving(view),
             SyncStatus.WaitingForDevice => string.Format(culture, Strings.SyncStatus_Waiting, view.PeerName),
             SyncStatus.Paused => Strings.SyncStatus_Paused,
             SyncStatus.OfferPending => string.Format(culture, Strings.SyncStatus_Offer, view.PeerName),
@@ -174,8 +213,13 @@ public sealed partial class SyncsViewModel : PageViewModel, IDisposable
             SyncStatus.Problem => profile.Problem ?? "",
             _ => Strings.SyncStatus_UpToDate,
         };
-        return new SyncProfileRowViewModel(view, profile.Name, profile.LocalPath, view.PeerName, direction, status,
-            view.OpenConflicts > 0 || view.Status == SyncStatus.Problem);
+        row.View = view;
+        row.Name = profile.Name;
+        row.Folder = profile.LocalPath;
+        row.Device = view.PeerName;
+        row.Direction = direction;
+        row.Status = status;
+        row.IsHighlighted = view.OpenConflicts > 0 || view.Status == SyncStatus.Problem;
     }
 
     partial void OnSelectedChanged(SyncProfileRowViewModel? value) => _ = LoadDetailsAsync();
@@ -205,14 +249,23 @@ public sealed partial class SyncsViewModel : PageViewModel, IDisposable
             var activity = await _core.Sync.GetActivityAsync(profile.Id, 20, CancellationToken.None);
             if (Selected?.Id != profile.Id)
                 return;
-            Conflicts.Clear();
-            foreach (var conflict in conflicts)
-                Conflicts.Add(new SyncConflictRowViewModel(conflict, conflict.Path, Strings.Syncs_ConflictCause,
-                    new AsyncRelayCommand(() => ResolveAsync(row, conflict))));
+            // Replaced only when something changed; a refresh runs every second while syncing.
+            if (!Conflicts.Select(c => c.Conflict.Id).SequenceEqual(conflicts.Select(c => c.Id)))
+            {
+                Conflicts.Clear();
+                foreach (var conflict in conflicts)
+                    Conflicts.Add(new SyncConflictRowViewModel(conflict, conflict.Path, Strings.Syncs_ConflictCause,
+                        new AsyncRelayCommand(() => ResolveAsync(row, conflict))));
+            }
             var now = _time.GetUtcNow().UtcDateTime;
-            Activity.Clear();
-            foreach (var entry in activity)
-                Activity.Add(new SyncActivityRowViewModel(entry.Text, Format.Ago(entry.AtUtc, now), entry.Kind is SyncActivityKind.Problem or SyncActivityKind.Conflict));
+            var rows = activity.Select(entry => new SyncActivityRowViewModel(entry.Text, Format.Ago(entry.AtUtc, now),
+                entry.Kind is SyncActivityKind.Problem or SyncActivityKind.Conflict)).ToList();
+            if (!Activity.SequenceEqual(rows))
+            {
+                Activity.Clear();
+                foreach (var entry in rows)
+                    Activity.Add(entry);
+            }
             OnPropertyChanged(nameof(HasConflicts));
             OnPropertyChanged(nameof(HasActivity));
         }
