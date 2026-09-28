@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 # Builds the Linux package: tests, self-contained PairSync, tar.gz with install.sh and SHA256SUMS in artifacts/.
-# Needs native/runtimes/linux-x64
-# (native/build-linux.sh); without it the app falls back to a system libdatachannel, which the package cannot ship.
+# Needs native/runtimes/linux-x64 (native/build-linux.sh); without it the app falls back to a system libdatachannel,
+# which the package cannot ship. Options: --skip-tests, --version X (overrides Directory.Build.props).
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 rid=linux-x64
 skip_tests=false
-[[ "${1:-}" == "--skip-tests" ]] && skip_tests=true
+version=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --skip-tests) skip_tests=true; shift ;;
+        --version) version="$2"; shift 2 ;;
+        *) echo "Unknown option $1" >&2; exit 2 ;;
+    esac
+done
 
-version="$(dotnet msbuild "$root/src/PairSync.Desktop/PairSync.Desktop.csproj" -getProperty:Version | tr -d '[:space:]')"
+[[ -n "$version" ]] || version="$(dotnet msbuild "$root/src/PairSync.Desktop/PairSync.Desktop.csproj" -getProperty:Version | tr -d '[:space:]')"
 [[ -n "$version" ]] || { echo "Could not read the version." >&2; exit 1; }
 if ! compgen -G "$root/native/runtimes/$rid/native/*.so*" >/dev/null; then
     echo "Native libraries missing in native/runtimes/$rid. Run native/build-linux.sh first." >&2
@@ -29,7 +36,7 @@ if [[ "$skip_tests" == false ]]; then
 fi
 
 dotnet publish "$root/src/PairSync.Desktop/PairSync.Desktop.csproj" -c Release -r "$rid" --self-contained true \
-    -p:PublishSingleFile=true -p:DebugType=none -o "$stage/app" -nologo -v q
+    -p:PublishSingleFile=true -p:DebugType=none -p:Version="$version" -o "$stage/app" -nologo -v q
 # Native debug symbols of Skia and HarfBuzz come with their packages; users do not need them.
 find "$stage/app" -name '*.pdb' -delete
 cp "$root/build/linux/install.sh" "$root/build/linux/pairsync.desktop" "$root/build/linux/pairsync.svg" "$stage/"

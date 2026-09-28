@@ -1,0 +1,145 @@
+# Builds PairSync for Windows (single PairSync.exe) and Linux (tar.gz with install.sh), including libdatachannel
+# with the patched libjuice from native/. A tag v* publishes a GitHub release with both files; a tag with a hyphen
+# (v1.1.0-test.1) becomes a pre-release. Started by hand, the workflow only builds and keeps the files as artifacts.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # The vcpkg commit native/ was built and tested with; the cache key includes it.
+  VCPKG_COMMIT: de46587b4beaa638743916fe5674825cecfb48b3
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            rid: win-x64
+            triplet: x64-windows
+          # The oldest supported Ubuntu keeps the glibc requirement low for other distributions.
+          - os: ubuntu-22.04
+            rid: linux-x64
+            triplet: x64-linux-dynamic
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="$(dotnet msbuild src/PairSync.Desktop/PairSync.Desktop.csproj -getProperty:Version | tr -d '[:space:]')"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "PairSync $version"
+
+      - name: Cache native libraries
+        id: native-cache
+        uses: actions/cache@v4
+        with:
+          path: native/runtimes/${{ matrix.rid }}
+          key: "native-${{ matrix.rid }}-${{ env.VCPKG_COMMIT }}-${{ hashFiles('native/vcpkg.json', 'native/vcpkg-configuration.json', 'native/vcpkg-ports/**', 'native/triplets/**', 'native/build-*') }}"
+
+      - name: Set up vcpkg
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --quiet https://github.com/microsoft/vcpkg.git "$RUNNER_TEMP/vcpkg"
+          git -C "$RUNNER_TEMP/vcpkg" checkout --quiet "$VCPKG_COMMIT"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.bat" -disableMetrics
+          else
+            "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+          fi
+          echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+
+      - name: Build libdatachannel (Windows)
+        if: steps.native-cache.outputs.cache-hit != 'true' && runner.os == 'Windows'
+        shell: pwsh
+        run: ./native/build-win.ps1 -Vcpkg $env:VCPKG_ROOT
+
+      - name: Build libdatachannel (Linux)
+        if: steps.native-cache.outputs.cache-hit != 'true' && runner.os == 'Linux'
+        run: ./native/build-linux.sh
+
+      - name: Build
+        run: dotnet build PairSync.slnx -c Release
+
+      - name: Unit tests
+        run: dotnet test --project tests/PairSync.UnitTests/PairSync.UnitTests.csproj -c Release --no-build
+
+      # Loads the libdatachannel built above: proves the bundled libraries and their dependencies resolve here.
+      - name: WebRTC smoke test
+        run: >
+          dotnet test --project tests/PairSync.TransportTests/PairSync.TransportTests.csproj -c Release --no-build --
+          --filter-method "*Channels_open_on_both_sides_and_route_is_host*"
+          --filter-method "*Messages_arrive_in_order_and_intact*"
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./build/package.ps1 -SkipTests -Version "${{ steps.version.outputs.version }}"
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: ./build/package.sh --skip-tests --version "${{ steps.version.outputs.version }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pairsync-${{ matrix.rid }}
+          path: |
+            artifacts/PairSync-*-win-x64.exe
+            artifacts/PairSync-*-linux-x64.tar.gz
+            artifacts/SHA256SUMS-*
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        run: |
+          cat dist/SHA256SUMS-* > dist/SHA256SUMS.txt
+          cd dist && sha256sum -c SHA256SUMS.txt
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          files=(dist/PairSync-*-win-x64.exe dist/PairSync-*-linux-x64.tar.gz dist/SHA256SUMS.txt)
+          # A release written by hand before the tag keeps its notes; only the files are added.
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            prerelease=()
+            [[ "$TAG" == *-* ]] && prerelease=(--prerelease)
+            gh release create "$TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY" --title "PairSync ${TAG#v}" --generate-notes "${prerelease[@]}"
+          fi
